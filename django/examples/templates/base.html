@@ -1,0 +1,35 @@
+<!doctype html>
+{% load static %}
+
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!-- bootstrap -->
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" type="text/css"
+          href="https://cdn.datatables.net/v/dt/dt-1.10.18/b-1.5.6/b-html5-1.5.6/rg-1.1.0/rr-1.2.4/datatables.min.css"/>
+    <script type="text/javascript"
+            src="https://cdn.datatables.net/v/dt/dt-1.10.18/b-1.5.6/b-html5-1.5.6/rg-1.1.0/rr-1.2.4/datatables.min.js"></script>
+    <script type="text/javascript" src="{% static 'datatables/js/filtered-datatable.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'datatables/css/datatables.css' %}"/>
+</head>
+<body>
+<div class="p-4">
+    <h4>{{ title }}</h4>
+    {{ description|safe }}
+    <br>
+    <br>
+    <a href="{% url 'example1' %}" class="btn btn-primary">Example 1</a>
+    <a href="{% url 'example2' %}" class="btn btn-primary">Example 2</a>
+    <a href="{% url 'example3' %}" class="btn btn-primary">Example 3</a>
+</div>
+
+
+{% block table %}
+{% endblock %}
+
+</body>
+</html>

@@ -1,0 +1,64 @@
+.tag-filter {
+    font-size: 12px;
+    padding: 0 2px 0 2px;
+    margin: 1px;
+    font-family: Arial;
+    display: inline-block;
+    user-select: none;
+}
+
+.tag-filter:hover {
+    width: 62px;
+}
+
+.option-3 {
+    color: #fff;
+    background-color: #28a745;
+}
+
+.option-3:after {
+    content: '\2713';
+}
+
+.option-3:hover:after {
+    content: '\2713 Required';
+}
+
+.option-2 {
+    color: #fff;
+    background-color: #007bff;
+}
+
+.option-2::after {
+    content: '\2714';
+}
+
+.option-2:hover:after {
+    content: '\2714 \00a0 Include';
+}
+
+.option-4 {
+    color: #212529;
+    background-color: #ffc107;
+}
+
+.option-4:after {
+    content: '\2716';
+}
+
+.option-4:hover:after {
+    content: '\2716 \00a0 Exclude';
+}
+
+.option-1 {
+    color: #fff;
+    background-color: #6c757d;
+}
+
+.option-1:after {
+    content: '\2715';
+}
+
+.option-1:hover:after {
+    content: '\2715 \00a0 Not set';
+}
