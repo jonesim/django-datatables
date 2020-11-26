@@ -522,7 +522,7 @@ class DatatableTable:
             orgdata = ',' + self.orgdata
         else:
             orgdata = ''
-        inittable = (f'DataTables.{self.html_id}= new PythonTable("{self.html_id}", '
+        inittable = (f'django_datatables.DataTables.{self.html_id}= new PythonTable("{self.html_id}", '
                      f'local_colDefs_{self.html_id}, "{self.ajax}" {orgdata});')
 
         return 'local_colDefs_' + self.html_id + '=' + col_def_str + ";" + inittable

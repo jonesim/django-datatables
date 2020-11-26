@@ -3,6 +3,15 @@
 if (typeof django_datatables === 'undefined'){
     var django_datatables = function(){
         setup = {}
+        DataTables = {}
+
+        function exec_filter(table, function_name, data ){
+            for (i=0; i<table.filters.length; i++){
+                if (function_name in table.filters[i]){
+                    table.filters[i][function_name](data)
+                }
+            }
+        }
 
         function init_setup(table_id){
             if (typeof(setup[table_id]) === 'undefined')
@@ -28,12 +37,12 @@ if (typeof django_datatables === 'undefined'){
             setup,
             add_filter,
             add_plugin,
+            DataTables,
+            exec_filter,
         }
     }()
 }
 
-
-DataTables = {}
 
 function make_lookup_dict(lookup_data) {
 
@@ -65,41 +74,16 @@ function getCookie(name) {
     return cookieValue;
 }
 
-function geturl (cell , row, column)
-{
-    if (row[column + colOptions[column]['link']])  {
-        return urls[column].replace ('999999',row[column + colOptions[column]['link']].toString());
+function geturl (cell , row, column) {
+    if (row[column + colOptions[column]['link']]) {
+        return urls[column].replace('999999', row[column + colOptions[column]['link']].toString());
     }
-    if (row[column + colOptions[column]['javascript']])  {
-        return urls[column].replace ('999999',row[column + colOptions[column]['javascript']].toString());
+    if (row[column + colOptions[column]['javascript']]) {
+        return urls[column].replace('999999', row[column + colOptions[column]['javascript']].toString());
     }
 
     return null;
-
 }
-
-    function saveFilter()
-    {
-        console.log(DataTables['example2'].table.api().order())
-        filterStore = {}
-        $(".filtercheck").each(function ()
-        {
-            filterStore[$(this).attr("id")] = $(this).prop('checked')
-        }).promise().done(function()
-        {
-            localStorage.setItem('filterStore_'+window.location.pathname,JSON.stringify(filterStore))
-        });
-    }
-
-    function restoreFilter()
-    {
-        filterStore = JSON.parse(localStorage.getItem('filterStore_'+window.location.pathname))
-        for (i in filterStore)
-        {
-            $('#'+i).prop('checked', filterStore[i])
-        }
-    }
-
 
 function rep_options(html, option_dict)
 {
@@ -611,7 +595,11 @@ function PythonTable(html_id, tablesetup, ajax_url , options = {})
     }
     self.columnRender = []
 
-    this.postInit = function (settings, json){
+    this.postInit = function (settings, json) {
+        var table = self
+        self.table.api().on('stateSaveParams.dt', function (e, settings, data) {
+            django_datatables.exec_filter(table, 'save_state', data)
+        })
         self.table = this
         self.filters = django_datatables.setup[html_id].filters
         self.filters.forEach(function (filter) {
@@ -634,9 +622,8 @@ function PythonTable(html_id, tablesetup, ajax_url , options = {})
             plugin.init(self);
         })
 
-        restoreFilter()
         this.api().draw()
-        self.table.api().on('draw', function () {
+        this.api().on('draw', function () {
             self.filters.forEach(function (filter) {
                 filter.refresh()
             })
@@ -685,6 +672,7 @@ function PythonTable(html_id, tablesetup, ajax_url , options = {})
         pageLength : tablesetup.tableOptions.pageLength,
         fixedHeader: true,
         orderClasses: false,
+        stateSave: true,
         ajax: ajax_dict,
         data:tabledata,
         deferRender: true,

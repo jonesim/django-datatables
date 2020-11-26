@@ -25,6 +25,27 @@
                     return acc;
                 }, this.total)
                 this.html();
+
+                // restore saved state
+                try {
+                    state_data = table.table.api().state.loaded().columns[{{ column_no }}].tag_filter
+                    $('#{{ html_id }} .tag-filter').each(function () {
+                        saved_class = state_data[$(this).attr('data-value')]
+                        if (saved_class != 'option-1') {
+                            $(this).removeClass('option-1')
+                            $(this).addClass(saved_class)
+                        }
+                    })
+                } catch (e) {
+                    console.log(e)
+                }
+            },
+
+            save_state: function (data) {
+                data.columns[{{ column_no }}].tag_filter = {}
+                $('#{{ html_id }} .tag-filter').each(function () {
+                    data.columns[{{ column_no }}].tag_filter[$(this).attr('data-value')] = this.className.match(/option-\d+/)[0];
+                })
             },
 
             buildfilter: function (data) {
@@ -62,8 +83,8 @@
                     }
                     return acc;
                 }, this.total)
-                totals=this.total
-                 $("#{{ html_id }} .badge").each(function () {
+                totals = this.total
+                $("#{{ html_id }} .badge").each(function () {
                     var result = totals[$(this).attr("data-value")]
                     set_badge(this, result[0], result[1])
                 })
@@ -146,17 +167,13 @@
             },
 
             change_multi_input: function (data) {
-                option_pos = this.className.indexOf('option-') + 7;
-                current_option = parseInt(this.className.substring(option_pos, option_pos + 1));
-                $(this).removeClass('option-' + current_option.toString());
-                current_option += 1;
-                if (current_option == 5) {
-                    current_option = 1;
-                }
-                $(this).addClass('option-' + current_option.toString());
+                options = ['option-1', 'option-2', 'option-3', 'option-4']
+                option_class = this.className.match(/option-\d+/)[0];
+                $(this).removeClass(option_class);
+                next_option = options[(options.indexOf(option_class) + 1) % 4]
+                $(this).addClass(next_option);
                 data.data.filter.buildfilter(data)
             },
-
         }
     </script>
 

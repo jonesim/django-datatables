@@ -38,9 +38,9 @@ class Example2(DatatableView):
         )
         if 'pk' in self.kwargs:
             self.table.filter = {'company__id': self.kwargs['pk']}
-        self.table.pivot('company__name')
+        # self.table.pivot('company__name')
         # self.table.columns[0].options['total'] = True
-        self.table.columns[0].options['select2'] = True
+        self.table.columns[2].options['select2'] = True
 
     def add_to_context(self, **kwargs):
         context = {'description': '''

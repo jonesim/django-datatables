@@ -1,11 +1,16 @@
 <input id="search_{{ table.html_id }}" type="text" class="form-control" placeholder="Search">
 
 <script>
-    filter={
+    filter = {
         init: function (table) {
-            $('#search_{{ table.html_id }}').keyup(function() {
-                table.table.api().search( this.value ).draw();
-             });
+            $('#search_{{ table.html_id }}').keyup(function () {
+                table.table.api().search(this.value).draw();
+            });
+            try {
+                $('#search_{{ table.html_id }}').val(table.table.api().state.loaded().search.search);
+            } catch (e) {
+                console.log(e)
+            }
         }
     }
     django_datatables.add_plugin('{{ table.html_id }}', filter)

@@ -11,7 +11,14 @@
 <script>
     var plugin = {
         init: function (table) {
+            state_data = table.table.api().state.loaded()
             $('#{{ table.html_id }} .column-search').each(function () {
+                try {
+                    $(this).val(state_data.columns[table.table.api().column($(this).attr('data-col')+ ':name').index()].search.search)
+                }
+                catch (e){
+                    console.log(e)
+                }
                 if ($(this).attr('data-col') != '') {
                     table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
                 }

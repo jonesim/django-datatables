@@ -4,10 +4,10 @@
 {% block content %}
     <div class="row pb-2">
         <div class="col-6 text-center">
-            <a class="small all-check" href="javascript:void(0);">all</a>
+            <a class="small all-check" href="javascript:void(0);"><i style="font-size: large" class="fas fa-check-square"></i></a>
         </div>
         <div class="col-6 text-center">
-            <a class="small none-check" href="javascript:void(0);">none</a>
+            <a class="small none-check" href="javascript:void(0);"><i style="font-size: large" class="far fa-square"></i></a>
         </div>
     </div>
     <div class="filter-content">
@@ -25,6 +25,23 @@
                     return acc;
                 }, this.total);
                 this.html();
+
+                // restore saved state
+                try {
+                    state_data = table.table.api().state.loaded().columns[{{ column_no }}].pivot_filter
+                    $('#{{ html_id }} .filtercheck').each(function () {
+                        $(this).prop('checked', state_data[$(this).attr('data-value')])
+                    })
+                } catch (e) {
+                    console.log(e)
+                }
+            },
+
+            save_state: function (data) {
+                data.columns[{{ column_no }}].pivot_filter = {}
+                $("#{{ html_id }} .filtercheck").each(function () {
+                    data.columns[{{ column_no }}].pivot_filter[$(this).attr('data-value')] = $(this).prop('checked')
+                })
             },
 
             filter: function (data) {
@@ -64,7 +81,6 @@
                     this_filter.filter_data.push(decodeURI($(this).attr("data-value")))
                 }).promise().done(function () {
                     if (refresh) this_filter.pTable.table.api().draw();
-                    saveFilter();
                 })
             },
 
