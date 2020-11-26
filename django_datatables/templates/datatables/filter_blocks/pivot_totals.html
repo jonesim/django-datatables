@@ -1,0 +1,118 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+
+{% block content %}
+    <div class="row pb-2">
+        <div class="col-6 text-center">
+            <a class="small all-check" href="javascript:void(0);">all</a>
+        </div>
+        <div class="col-6 text-center">
+            <a class="small none-check" href="javascript:void(0);">none</a>
+        </div>
+    </div>
+    <table class="small w-100">
+        <tr>
+            <td></td>
+            <td class="text-right text-secondary">Total</td>
+            <td class="text-right">Filtered</td>
+        </tr>
+        <tbody class="filter-content">
+        </tbody>
+    </table>
+
+{% endblock %}
+
+
+{% block javascript %}
+    <script>
+        filter = {
+            init: function (table) {
+                this.pTable = table
+                this.total = {}
+                this.filter_data = []
+                this.pTable.table.api().data().toArray().reduce(function (acc, current) {
+                    add_to_sum(current[{{ column_no }}], acc, parseInt(current[{{ sum_ref }}]));
+                    return acc;
+                }, this.total);
+                this.html();
+            },
+
+            buildfilter: function (data) {
+                if (data != undefined) {
+                    this_filter = data.data.filter
+                    refresh = true
+                } else {
+                    this_filter = this
+                    refresh = false
+                }
+                this_filter.filter_data = []
+                $("#{{ html_id }} .filtercheck:checked").each(function () {
+                    this_filter.filter_data.push(decodeURI($(this).attr("data-value")))
+                }).promise().done(function () {
+                    if (refresh) this_filter.pTable.table.api().draw();
+                    saveFilter();
+                })
+            },
+
+            filter: function (data) {
+                var col_data = data[{{ column_no }}]
+                if (typeof (col_data) == 'number') col_data = col_data.toString();
+                if (this.filter_data.indexOf(col_data) < 0) {
+                    if (col_data == "" | col_data == null) {
+                        if (this.filter_data.indexOf("null") < 0) return false
+                    } else return false
+                }
+                return true
+            },
+
+            refresh: function () {
+                reset_totals_single(this.total)
+                this.pTable.table.api().rows({filter: 'applied'}).data().toArray().reduce(function (acc, current) {
+                    add_to_sum(current[{{ column_no }}], acc, parseInt(current[{{ sum_ref }}]));
+                    return acc;
+                }, this.total)
+                graph_data = []
+                totals = this.total
+                $("#{{ html_id }} .total").each(function () {
+                    var result = totals[decodeURI($(this).attr("data-value"))]
+                    $(this).html(numberWithCommas(result[0]))
+                })
+                $("#{{ html_id }} .overall").each(function () {
+                    var result = totals[decodeURI($(this).attr("data-value"))]
+                    $(this).html(numberWithCommas(result[1]))
+                })
+                if (typeof (chart) != 'undefined') chart.data = graph_data;
+            },
+
+            html: function () {
+                htmlcheckbox = `{% include 'datatables/filter_rows/checkbox_total.html' %}`
+                htmldata = ''
+                sortkeys = []
+                for (i in this.total) {
+                    if (this.total[i][0] > 0) sortkeys.push(i)
+                }
+                sortkeys.sort()
+                for (j = 0; j < sortkeys.length; j++) {
+                    i = sortkeys[j]
+                    htmldata += htmlcheckbox.replace(/%1/g, i).replace(/%6/g, encodeURI(i))
+                }
+                $('#{{ html_id }} .filter-content').html(htmldata)
+                $("#{{ html_id }} .filtercheck").change({filter: this}, this.buildfilter)
+                $("#{{ html_id }} .all-check").click({filter: this, checked: true}, this.checkall)
+                $("#{{ html_id }} .none-check").click({filter: this, checked: false}, this.checkall)
+            },
+
+            checkall: function (data) {
+                this_filter = data.data.filter
+                $("#{{ html_id }} .filtercheck").each(function () {
+                    $(this).prop('checked', data.data.checked)
+                }).promise().done(function () {
+                    this_filter.buildfilter(data)
+                });
+            },
+        }
+    </script>
+{% endblock %}
+
+
+
+

@@ -12,7 +12,8 @@ class Example1(DatatableView):
         self.add_columns(
             'id',
             'name',
-            ('people', {'title': 'A&B', 'annotations': {'people': Count('person__id')}}),
+            'Tags',
+            ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
             ColumnLink(column_name='view_company', field='name', url_name='example2'),
         )
 
@@ -37,6 +38,9 @@ class Example2(DatatableView):
         )
         if 'pk' in self.kwargs:
             self.table.filter = {'company__id': self.kwargs['pk']}
+        self.table.pivot('company__name')
+        # self.table.columns[0].options['total'] = True
+        self.table.columns[0].options['select2'] = True
 
     def add_to_context(self, **kwargs):
         context = {'description': '''
@@ -79,7 +83,7 @@ class Example3(DatatableView):
     def setup_table(self):
         self.add_columns(
             'name',
-            ColumnBase(column_name='Custom Result function', field='people', row_result=self.badge,
+            ColumnBase(column_name='CustomResultFunction', field='people', row_result=self.badge,
                        annotations={'people': Count('person__id')}),
             ColumnBase(column_name='Range', field='people1', annotations={'people1': Count('person__id')},
                        row_result=self.range, hidden=True),

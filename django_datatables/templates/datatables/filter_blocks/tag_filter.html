@@ -1,0 +1,163 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+{% load datatable_tags %}
+
+{% block content %}
+    <div class="row pb-2">
+        <div class="col-12 text-right">
+            <a class="small all-clear" href="javascript:void(0);">clear</a>
+        </div>
+    </div>
+    <div class="filter-content">
+    </div>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        filter = {
+            init: function (table) {
+                this.pTable = table
+                this.colOption = table.initsetup.colOptions[{{ column_no }}]
+                this.total = {}
+                this.pTable.table.api().column({{ column_no }}).data().reduce(function (acc, current) {
+                    for (v = 0; v < current.length; v++) {
+                        add_to_sum(current[v], acc, 1);
+                    }
+                    return acc;
+                }, this.total)
+                this.html();
+            },
+
+            buildfilter: function (data) {
+                if (data != undefined) {
+                    this_filter = data.data.filter
+                    refresh = true
+                } else {
+                    this_filter = this
+                    refresh = false
+                }
+                this_filter.filter_data = {
+                    'required': [],
+                    'include': [],
+                    'exclude': [],
+                }
+                filter_section = $("#{{ html_id }} .tag-filter").each(function () {
+                    id = parseInt($(this).attr("data-value"))
+                    if ($(this).hasClass('option-3')) {
+                        this_filter.filter_data.required.push(id)
+                    } else if ($(this).hasClass('option-2')) {
+                        this_filter.filter_data.include.push(id)
+                    } else if ($(this).hasClass('option-4')) {
+                        this_filter.filter_data.exclude.push(id)
+                    }
+                }).promise().done(function () {
+                    if (refresh) this_filter.pTable.table.api().draw();
+                })
+            },
+
+            refresh: function () {
+                reset_totals_single(this.total)
+                this.pTable.table.api().column({{ column_no }}, {"filter": "applied"}).data().reduce(function (acc, current) {
+                    for (v = 0; v < current.length; v++) {
+                        add_to_sum(current[v], acc, 1)
+                    }
+                    return acc;
+                }, this.total)
+                totals=this.total
+                 $("#{{ html_id }} .badge").each(function () {
+                    var result = totals[$(this).attr("data-value")]
+                    set_badge(this, result[0], result[1])
+                })
+            },
+
+            filter: function (data) {
+                if (this.filter_data.length == this.colOption.filter_len) return true
+                notfound = true
+                for (req = 0; req < this.filter_data.required.length; req++) {
+                    if (data[{{ column_no }}].indexOf(this.filter_data.required[req]) < 0) {
+                        return false
+                    }
+                    notfound = false
+                }
+                for (ex = 0; ex < this.filter_data.exclude.length; ex++) {
+                    if (data[{{ column_no }}].indexOf(this.filter_data.exclude[ex]) >= 0) {
+                        return false
+                    }
+                }
+                if (this.filter_data.include.length == 0) {
+                    return true
+                }
+                for (itag = 0; itag < data[{{ column_no }}].length; itag++) {
+                    if (data[{{ column_no }}][itag] < 0x10000) {
+                        curtag = data[{{ column_no }}][itag]
+                        if (this.filter_data.include.indexOf(curtag) >= 0) {
+                            notfound = false
+                        }
+                    }
+                }
+                if (notfound === true) return false
+                return true
+            },
+
+            html: function () {
+
+                tagsection = `  <div class="filter-header" id="tagsec-%3-%1" data-target="#collapsesect%3_%4">
+                            <li class="list-group-item list-group-item-secondary p-1 my-1">%1
+                                <span id="chbadge-%3-%4" class="small badge badge-pill badge-primary mx-1">%2</span>
+                            </li>
+                            </div>
+                            <div id="collapsesect%3_%4" class="collapse">`
+
+                tagcheckbox = `{% include 'datatables/filter_rows/checkbox_tag.html' %}`
+                endsection = `</div>`
+                html = ""
+                insection = false
+
+                for (l = 0; l < this.colOption['lookup'].length; l++) {
+                    curlookup = this.colOption['lookup'][l]
+                    if (curlookup[0] >= 0x10000) {
+                        if (insection) html += endsection
+                        insection = true
+                        html_source = tagsection
+                    } else {
+                        html_source = tagcheckbox
+                    }
+                    textoptions =
+                        {
+                            1: curlookup[1],
+                            4: curlookup[0],
+                            5: curlookup[1].replace(/\W/g, '')
+                        }
+                    html += rep_options(html_source, textoptions)
+                }
+                if (insection) html += endsection
+                $('#{{ html_id }} .filter-content').html(html)
+                $("#{{ html_id }} .all-clear").click({filter: this}, this.clearall)
+                $("#{{ html_id }} .tag-filter").click({filter: this}, this.change_multi_input)
+            },
+
+            clearall: function (data) {
+                this_filter = data.data.filter
+                $("#{{ html_id }} .tag-filter").each(function () {
+                    $(this).removeClass("option-2 option-3 option-4");
+                    $(this).addClass("option-1");
+                }).promise().done(function () {
+                    this_filter.buildfilter(data)
+                });
+            },
+
+            change_multi_input: function (data) {
+                option_pos = this.className.indexOf('option-') + 7;
+                current_option = parseInt(this.className.substring(option_pos, option_pos + 1));
+                $(this).removeClass('option-' + current_option.toString());
+                current_option += 1;
+                if (current_option == 5) {
+                    current_option = 1;
+                }
+                $(this).addClass('option-' + current_option.toString());
+                data.data.filter.buildfilter(data)
+            },
+
+        }
+    </script>
+
+{% endblock %}

@@ -23,3 +23,7 @@ class Command(BaseCommand):
                                                     surname=r['Surname'],
                                                     date_entered=datetime.datetime.strptime(r['date_entered'],
                                                                                             '%d/%m/%Y'))
+                for tag in r['tags'].split(','):
+                    if tag!='':
+                        tag = models.Tags.objects.get_or_create(tag=tag)[0]
+                        tag.company.add(company)

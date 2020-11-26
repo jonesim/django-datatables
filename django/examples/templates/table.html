@@ -1,8 +1,15 @@
 {% extends 'base.html' %}
+{% load datatable_tags %}
 {% block table %}
-
-    <div class="p-4">
-        {{ setup.javascript_setup|safe }}
+    <div class="d-block float-left" style="width:400px">
+        <div id="filterSection"></div>
+        {% table_search datatable %}
+        {% for c in datatable.columns %}
+            {% filter_block datatable forloop.counter0 c %}
+        {% endfor %}
+    </div>
+    <div class="px-4 d-block float-left">
+        {{ datatable.javascript_setup|safe }}
     </div>
 
 {% endblock %}

@@ -5,6 +5,7 @@ from abc import abstractmethod
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 from .detect_device import detect_device
 from .columns import ColumnBase
 from .model_def import DatatableModel
@@ -392,7 +393,7 @@ class DatatableTable:
     @staticmethod
     def generate_column(column_setup, start_field, model_field, **kwargs):
         if isclass(column_setup):
-            column = column_setup(start_field, **kwargs)
+            column = column_setup(**kwargs, column_name=column_setup.__name__)
         elif isinstance(column_setup, ColumnBase):
             return column_setup.get_class_instance(column_name=start_field, **kwargs)
         else:
@@ -464,20 +465,7 @@ class DatatableTable:
         return ''.join([tag_str.format(e) for e in array])
 
     def search_boxes(self):
-        retstr = ''
-        if self.table_options.get('no-col-search', False):
-            return retstr
-        search_box = (
-            '<th>'        
-            '<input name="{}" type="text" class="form-control form-control-sm small {}-column-search" data-col="{}"/>'
-            '</th>'
-        )
-        for c in self.columns:
-            if not c.options.get('no-col-search', False):
-                retstr += search_box.format(c.column_name, self.html_id, c.column_name)
-            else:
-                retstr += '<th></th>'
-        return '<tr>' + retstr + '</tr>'
+        return render_to_string('datatables/search_boxes.html', {'table': self})
 
     def html_setup(self):
         footer = ''
@@ -527,14 +515,14 @@ class DatatableTable:
         }
 
         col_def_str = json.dumps(table_vars)
-        # col_def_str = col_def_str.replace('"&', "")
-        # col_def_str = col_def_str.replace('&"', "")
+        col_def_str = col_def_str.replace('"&', "")
+        col_def_str = col_def_str.replace('&"', "")
 
         if self.orgdata is not None:
             orgdata = ',' + self.orgdata
         else:
             orgdata = ''
-        inittable = (f'DataTables.{self.html_id}= new PythonTable("#{self.html_id}", '
+        inittable = (f'DataTables.{self.html_id}= new PythonTable("{self.html_id}", '
                      f'local_colDefs_{self.html_id}, "{self.ajax}" {orgdata});')
 
         return 'local_colDefs_' + self.html_id + '=' + col_def_str + ";" + inittable
@@ -636,7 +624,7 @@ class DatatableView(TemplateView):
     """
     def get_context_data(self, **kwargs):
         context = super(DatatableView, self).get_context_data(**kwargs)
-        context['setup'] = self.table
+        context['datatable'] = self.table
         context.update(self.add_to_context(**kwargs))
         return context
 

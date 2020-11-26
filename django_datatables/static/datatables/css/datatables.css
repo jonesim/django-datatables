@@ -62,3 +62,33 @@
 .option-1:hover:after {
     content: '\2715 \00a0 Not set';
 }
+
+[data-toggle="collapse"] .expandicon::before {
+    content: "\f102";
+    font-family: "Font Awesome 5 Free";
+    font-style: normal;
+    font-weight: 800;
+    text-decoration: inherit;
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+}
+
+[data-toggle="collapse"].collapsed .expandicon:before {
+    content: "\f103";
+    font-family: "Font Awesome 5 Free";
+    font-style: normal;
+    font-weight: 800;
+    text-decoration: inherit;
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+}
+
+.section-header-right {
+    float: right;
+}

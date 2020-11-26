@@ -8,6 +8,10 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 
+class ColumnNameError(Exception):
+    pass
+
+
 class ColumnBase:
 
     @staticmethod
@@ -42,10 +46,11 @@ class ColumnBase:
                     return_args.append(a)
         return return_args
 
-    def __init__(self, *, field, **kwargs):
+    def __init__(self, field=None, **kwargs):
         if not self.initialise(locals()):
             return
         # Remove  ._$ characters from beginning of name and set appropriate options
+        self._column_name = None
         self.options: Dict[KT, VT] = {}
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
         self.options: Dict[KT, VT] = options
@@ -55,7 +60,7 @@ class ColumnBase:
         self.field = field
         self.title = self.title_from_name(self.column_name)
         self.column_type = 0
-        self.annotations = None
+        self._annotations = None
         self.additional_columns = []
         self.kwargs = kwargs
         self.replace_list = []
@@ -63,12 +68,40 @@ class ColumnBase:
         self.setup_kwargs(kwargs)
 
     @property
+    def annotations(self):
+        return self._annotations
+
+    @annotations.setter
+    def annotations(self, value):
+        if self.field is None:
+            self._field = value
+        elif type(self.field) == str:
+            if value != self.field:
+                self._field = [self.field, value]
+        else:
+            if value not in self.field:
+                self._field.append(value)
+        self._annotations = value
+
+    @property
+    def column_name(self):
+        return self._column_name
+
+    @column_name.setter
+    def column_name(self, value):
+        if not re.match('^[A-Za-z0-9\._]+$', value):
+            raise ColumnNameError('Invalid column_name: ' + value)
+        self._column_name = value
+
+    @property
     def field(self):
         return self._field
 
     @field.setter
     def field(self, fields):
-        if isinstance(fields, (list, tuple)):
+        if fields is None:
+            self._field = None
+        elif isinstance(fields, (list, tuple)):
             self._field = [self.model_path + o for o in fields]
         else:
             self._field = self.model_path + fields
@@ -152,11 +185,15 @@ class ColumnBase:
         return self
 
 
-'''
-class SimpleColumn(ColumnClassWrapper):
-    class ColumnClass(ColumnBase):
+class DatatableColumn(ColumnBase):
+    def __init__(self, **kwargs):
+        if not self.initialise(locals()):
+            return
+        super().__init__( **kwargs)
+        self.col_setup()
+
+    def col_setup(self):
         pass
-'''
 
 
 class LambdaColumn(ColumnBase):

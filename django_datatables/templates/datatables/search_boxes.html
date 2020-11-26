@@ -1,0 +1,27 @@
+{% for c in table.columns %}
+    <th>
+        {% if not c.options.no_col_search %}
+            <input name="{{ c.column_name }}" type="text"
+                   class="form-control form-control-sm small column-search"
+                   data-col="{{ c.column_name }}"/>
+        {% endif %}
+    </th>
+{% endfor %}
+
+<script>
+    var plugin = {
+        init: function (table) {
+            $('#{{ table.html_id }} .column-search').each(function () {
+                if ($(this).attr('data-col') != '') {
+                    table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
+                }
+            })
+            $('#{{ table.html_id }} .column-search').on('keyup change', function () {
+                table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
+                    .draw();
+            })
+        }
+    }
+    django_datatables.add_plugin('{{ table.html_id }}', plugin)
+
+</script>

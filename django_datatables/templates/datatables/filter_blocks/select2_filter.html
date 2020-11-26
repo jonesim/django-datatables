@@ -1,0 +1,88 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+
+{% block content %}
+        <select class="filter-content" style="width:100%" multiple="multiple">
+        </select>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        filter = {
+            init: function (table) {
+                this.pTable = table;
+                this.total = {};
+                this.filter_data = [];
+                this.pTable.table.api().column(this.column).data().reduce(function (acc, current) {
+                    add_to_sum(current, acc, 1);
+                    return acc;
+                }, this.total);
+                this.html();
+            },
+
+            buildfilter: function (data) {
+                if (typeof (data) == 'undefined') return;
+                let this_filter = data.data.filter;
+                this_filter.filter_data = [];
+                let selected = $("#{{ html_id }} select").select2('data');
+                for (let i = 0; i < selected.length; i++) {
+                    this_filter.filter_data.push(selected[i].text)
+                }
+                this_filter.pTable.table.api().draw();
+            },
+
+            filter: function (data) {
+                let col_data = data[{{ column_no }}].toString();
+                if (this.filter_data.length === 0) return true;
+                if (this.filter_data.indexOf(col_data) < 0) {
+                    if (col_data === "" || data[{{ column_no }}] === null) {
+                        if (this.filter_data.indexOf("null") < 0) return false
+                    } else return false;
+                }
+                return true;
+            },
+
+            refresh: function () {
+                reset_totals_single(this.total);
+                this.pTable.table.api().column(this.column, {"filter": "applied"}).data().reduce(function (acc, current) {
+                    add_to_sum(current, acc, 1);
+                    return acc;
+                }, this.total);
+            },
+
+            html: function () {
+                const optionhtml = `<option value="%6">%1</option>`
+                let htmldata = '';
+                let sortkeys = [];
+                for (let i in this.total) {
+                    if (this.total[i][0] > 0) sortkeys.push(i)
+                }
+                sortkeys.sort();
+                for (let j = 0; j < sortkeys.length; j++) {
+                    htmldata += optionhtml.replace(/%1/g, sortkeys[j]).replace(/%6/g, encodeURI(sortkeys[j]))
+                }
+                $('#{{ html_id }} .filter-content').html(htmldata);
+                $("#{{ html_id }} select").select2({
+                    templateResult: this.format_template(this)
+                }).change({filter: this}, this.buildfilter);
+            },
+
+            format_template: function (that) {
+                return function (state) {
+                    let dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill badge-%3">%2</span></span>';
+                    if (state.loading) return;
+                    let numbers = that.total[state.text];
+                    let numbers_text;
+                    if (numbers[0]===numbers[1]){
+                        numbers_text = numbers[0].toString()
+                    } else{
+                        numbers_text = numbers[0].toString() + '/' + numbers[1].toString()
+                    }
+                    let colour;
+                    if (numbers[0] > 0) colour = 'primary'; else colour = 'secondary';
+                    return $(dropdown_item.replace('%1', state.text).replace('%2', numbers_text).replace('%3', colour));
+                }
+            }
+        }
+
+    </script>
+{% endblock %}

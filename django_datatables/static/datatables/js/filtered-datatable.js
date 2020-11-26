@@ -1,6 +1,36 @@
 
 
+if (typeof django_datatables === 'undefined'){
+    var django_datatables = function(){
+        setup = {}
 
+        function init_setup(table_id){
+            if (typeof(setup[table_id]) === 'undefined')
+                setup[table_id] = {}
+        }
+
+        function add_to_setup_list(table_id, setup_type, value){
+            init_setup(table_id)
+            if (typeof(setup[table_id][setup_type]) === "undefined"){
+                setup[table_id][setup_type] = []
+            }
+            setup[table_id][setup_type].push(value)
+        }
+
+        function add_filter(table_id, filter){
+            add_to_setup_list(table_id, 'filters', filter)
+        }
+
+        function add_plugin(table_id, plugin){
+            add_to_setup_list(table_id, 'plugins', plugin)
+        }
+        return {
+            setup,
+            add_filter,
+            add_plugin,
+        }
+    }()
+}
 
 
 DataTables = {}
@@ -48,11 +78,9 @@ function geturl (cell , row, column)
 
 }
 
-
-
-
     function saveFilter()
     {
+        console.log(DataTables['example2'].table.api().order())
         filterStore = {}
         $(".filtercheck").each(function ()
         {
@@ -73,8 +101,6 @@ function geturl (cell , row, column)
     }
 
 
-
-
 function rep_options(html, option_dict)
 {
     for (o in option_dict)
@@ -87,355 +113,10 @@ function rep_options(html, option_dict)
 
 
 
-function filter_tags(pTable, column, title)
-{
-
-    this.column = column
-    this.pTable = pTable
-    this.title = title
-    this.html_title = title.replace(/\W/g,'')
-    this.colOption = pTable.initsetup.colOptions[this.column]
-    this.total = {}
-
-    this.pTable.table.api().column(this.column).data().reduce(function (acc, current) {
-            for (v=0;v<current.length;v++)
-            {
-                add_to_sum( current[v], acc, 1);
-            }
-            return acc;
-            },  this.total  )
-
-
-
-    this.buildfilter = function(data)
-        {
-            if (data!=undefined)
-            {
-                this_filter = data.data.filter
-                refresh = true
-            }
-            else
-            {
-                this_filter = this
-                refresh = false
-            }
-            this_filter.filter_data = []
-
-            this_filter.filter_data={
-                'required': [],
-                'include': [],
-                'exclude': [],
-            }
-                filter_section = $("#filter_"+this_filter.html_title + ' .tag-filter').each(function(){
-                    id = parseInt(decodeURI($(this).attr("data-value")))
-                    if ($(this).hasClass('option-3')){
-                        this_filter.filter_data.required.push(id)
-                    }
-                    else if ($(this).hasClass('option-2')){
-                        this_filter.filter_data.include.push(id)
-
-                    }
-                    else if ($(this).hasClass('option-4')){
-                        this_filter.filter_data.exclude.push(id)
-
-                    }
-                }).promise().done( function ()
-                { if (refresh) this_filter.pTable.table.api().draw(); })
-        }
-
-
-
-
-    this.refresh = function ()
-        {
-
-            reset_totals_single(this.total)
-            this.pTable.table.api().column(this.column, {"filter":"applied"}).data().reduce(function (acc, current)
-            {
-                for (v=0;v<current.length;v++)
-                {
-                  add_to_sum( current[v], acc, 1)
-                }
-                return acc;
-            },  this.total  )
-
-            for (i in this.total)
-            {
-                partid = this.column + '-' + i.replace(/\W/g,'')
-                badgeid = '#chbadge-'+ partid
-                set_badge( badgeid, this.total[i][0] , this.total[i][1])
-            }
-        }
-
-    this.filter = function ( data )
-        {
-            if (this.filter_data.length==this.colOption.filter_len) return true
-            notfound = true
-            for (req=0; req<this.filter_data.required.length; req++){
-                    if (data[this.column].indexOf(this.filter_data.required[req])<0)
-                    {
-                        return false
-                    }
-                    notfound = false
-            }
-            for (ex=0; ex<this.filter_data.exclude.length; ex++){
-                    if (data[this.column].indexOf(this.filter_data.exclude[ex])>=0)
-                    {
-                        return false
-                    }
-            }
-            if (this.filter_data.include.length == 0) {return true}
-            for (itag=0;itag<data[this.column].length;itag++)
-            {
-                if (data[this.column][itag]<0x10000)
-                {
-                    curtag = data[this.column][itag]
-                    if (this.filter_data.include.indexOf(curtag)>=0 )
-                    {
-                        notfound = false
-                    }
-                }
-            }
-            if (notfound===true) return false
-            return true
-        }
-
-    this.html = function ()
-        {
-
-            tagsection = `  <div class="filter-header" id="tagsec-%3-%1" data-target="#collapsesect%3_%4">
-                            <li class="list-group-item list-group-item-secondary p-1 my-1">%1
-                                <span id="chbadge-%3-%4" class="small badge badge-pill badge-primary mx-1">%2</span>
-                            </li>
-                            </div>
-                            <div id="collapsesect%3_%4" class="collapse">`
-
-            tagcheckbox = ` <div id="ch-div-%3-%4">
-
- 
- 
-                            <div class="float-right">
-                            <span id="chbadge-%3-%4" class="small badge badge-pill badge-primary">0</span>
-                            </div> 
-                            <span class="form-check-label small">
-                            <span id="chkt-%3-%5" data-value="%4" class="tag-filter option-1"> </span>
-                            %1</span>
-                            </div>`
-            endsection = `</div>`
-            html = ""
-            insection = false
-
-            for (l=0;l<this.colOption['lookup'].length;l++)
-            {
-                curlookup = this.colOption['lookup'][l]
-                if (curlookup[0]>=0x10000)
-                {
-                    if (insection) html += endsection
-                    insection = true
-                    html_source = tagsection
-                }
-                else
-                {
-                    html_source = tagcheckbox
-                }
-                textoptions =
-                {
-                    1: curlookup[1],
-                    4: curlookup[0],
-                    5: curlookup[1].replace(/\W/g,'')
-                }
-                html += rep_options( html_source, textoptions )
-            }
-            if (insection) html += endsection
-
-            return filter_helper.add_header(this, html, filter_helper.all_none)
-
-        }
-
-    this.checkall = function(data)
-        {
-            this_filter = data.data.filter
-            $("#filter_"+this_filter.html_title + ' .tag-filter').each(function ()
-            {
-                $(this).removeClass("option-2 option-3 option-4");
-                $(this).addClass("option-1");
-                }).promise().done(function()
-                {
-                    this_filter.buildfilter(data)
-                });
-        }
-
-    this.change_multi_input = function(data)
-    {
-        option_pos = this.className.indexOf('option-') + 7;
-        current_option = parseInt(this.className.substring(option_pos, option_pos + 1));
-        $(this).removeClass('option-' + current_option.toString());
-        current_option += 1;
-        if (current_option == 5) {
-            current_option = 1;
-        }
-        $(this).addClass('option-' + current_option.toString());
-        data.data.filter.buildfilter(data)
-    }
-    this.setup_events = function ()
-        {
-            $("#filter_"+this.html_title).find(".filtercheck").change( {filter: this} , this.buildfilter )
-            $("#filter_"+this.html_title).find(".all-check").click( {filter: this, checked: true} , this.checkall )
-            $("#filter_"+this.html_title).find(".none-check").click( {filter: this, checked: false} , this.checkall )
-            $("#filter_"+this.html_title +" .tag-filter").click(  {filter: this}, this.change_multi_input)
-        }
-
-}
-
-
 function numberWithCommas(x) {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-function pivot_totals(pTable, column, title)
-{
-    this.column = column
-    this.pTable = pTable
-    this.title = title
-    this.html_title = title.replace(/\W/g,'')
-    this.total = {}
-    this.filter_data = []
-    this.colOption = pTable.initsetup.colOptions[this.column]
-    this.sortkeys = []
-
-    for (j=0;j<pTable.initsetup.colDefs.length;j++)
-    {
-                if (pTable.initsetup.colDefs[j]['name']==this.colOption['sumRef'])
-                {
-                    this.sumcolumn = j
-                }
-            }
-    that = this
-    this.pTable.table.api().data().toArray().reduce(function (acc, current) {
-            add_to_sum( current[that.column], acc, parseInt(current[that.sumcolumn]));
-            return acc;
-            },  that.total )
-
-    this.buildfilter = function(data)
-        {
-            if (data!=undefined)
-            {
-                this_filter = data.data.filter
-                refresh = true
-            }
-            else
-            {
-                this_filter = this
-                refresh = false
-            }
-            this_filter.filter_data = []
-            $("#filter_"+this_filter.html_title).find(".filtercheck:checked").each(function (){
-                    this_filter.filter_data.push (decodeURI($(this).attr("data-value")))
-            }).promise().done( function ()
-                { if (refresh) this_filter.pTable.table.api().draw();
-                 saveFilter();
-                 })
-        }
-
-    this.filter = function ( data )
-        {
-            var col_data = data[this.column]
-            if (typeof(col_data) == 'number') col_data = col_data.toString();
-            if (this.filter_data.indexOf(col_data)<0)
-            {
-                if (col_data=="" | col_data==null)
-                {
-                    if (this.filter_data.indexOf("null")<0) return false
-                }
-            else return false
-            }
-            return true
-        }
-    this.refresh = function ()
-        {
-            reset_totals_single(this.total)
-            that = this
-            this.pTable.table.api().rows({ filter : 'applied'}).data().toArray().reduce(function (acc, current) {
-            add_to_sum( current[that.column], acc, parseInt(current[that.sumcolumn]));
-            return acc;
-            },  that.total )
-            graph_data = []
-            for (j=0;j<this.sortkeys.length;j++)
-            {
-                i = this.sortkeys[j]
-                graph_data.push({xaxis:i, yaxis:this.total[i][0]})
-                if (this.total[i][0] != this.total[i][2])
-                {
-                    partid = this.column + '-' + i.replace(/\W/g,'')
-                    $('#chfilteredtotal-' + partid).html(numberWithCommas(this.total[i][0]))
-                    if (this.total[i][0]!=this.total[i][1])
-                    {
-                        $('#chtotal-' + partid).html(numberWithCommas(this.total[i][1]));
-                    }
-                    else
-                    {
-                        $('#chtotal-' + partid).html('');
-
-                    }
-                }
-
-            }
-            if (typeof (chart)!='undefined') chart.data = graph_data;
-        }
-
-    this.html = function ()
-        {
-            htmlcheckbox = `<tr><td>
-                                    <div id="ch-div-%3-%5" class="form-check float-left">
-                                        <label class="form-check-label">
-                                        <input id="chkf-%3-%5" data-value="%6" type="checkbox" class="form-check-input filtercheck" checked>%1</label>
-                                    </div>
-                                </td>
-                                <td class="pr-1 text-right text-secondary" id="chtotal-%3-%5" >
-                                </td>
-                                <td class="text-right" id="chfilteredtotal-%3-%5">
-                                </td>
-                             </tr>`
-            htmldata = '<table class="small w-100"><tr><td></td><td class="text-right text-secondary">Total</td><td class="text-right">Filtered</td></tr>'
-            this.sortkeys = []
-            for (i in this.total)
-            {
-                if (this.total[i][0]>0) this.sortkeys.push(i)
-            }
-            this.sortkeys.sort()
-            for (j=0;j<this.sortkeys.length;j++)
-            {
-                i = this.sortkeys[j]
-                replace_options =
-                {
-                    1: i,
-                    5: i.replace(/\W/g,''),
-                    6: encodeURI(i)
-                }
-                htmldata += rep_options( htmlcheckbox, replace_options)
-            }
-            htmldata += '</table>'
-            return filter_helper.add_header(this, htmldata, filter_helper.all_none)
-        }
-    this.checkall = function(data)
-        {
-            this_filter = data.data.filter
-            $("#filter_"+this_filter.html_title).find(".filtercheck").each(function ()
-            {
-                $(this).prop('checked',data.data.checked)
-                }).promise().done(function()
-                {
-                    this_filter.buildfilter(data)
-                });
-        }
-
-    this.setup_events = function ()
-        {
-            $("#filter_"+this.html_title).find(".filtercheck").change( {filter: this} , this.buildfilter )
-            $("#filter_"+this.html_title).find(".all-check").click( {filter: this, checked: true} , this.checkall )
-            $("#filter_"+this.html_title).find(".none-check").click( {filter: this, checked: false} , this.checkall )
-        }
-}
 
 
 function filter_totals(pTable, column, title)
@@ -492,13 +173,8 @@ function filter_totals(pTable, column, title)
 }
 
 
-
-
-
-
 function filter_date(pTable, column, title)
 {
-
     this.column = column
     this.pTable = pTable
     this.title = title
@@ -517,7 +193,6 @@ function filter_date(pTable, column, title)
                 return null
             }
         }
-
 
     this.filter = function ( data )
         {
@@ -578,269 +253,6 @@ function filter_date(pTable, column, title)
 }
 
 
-
-function filter_pivot(pTable, column, title)
-{
-    this.column = column
-    this.pTable = pTable
-    this.title = title
-    this.html_title = title.replace(/\W/g,'')
-    this.total = {}
-    this.filter_data = []
-
-    this.pTable.table.api().column(this.column).data().reduce(function (acc, current) {
-            add_to_sum( current, acc, 1);
-            return acc;
-            },  this.total  )
-
-
-
-    this.buildfilter = function(data)
-        {
-            if (data!=undefined)
-            {
-                this_filter = data.data.filter
-                refresh = true
-            }
-            else
-            {
-                this_filter = this
-                refresh = false
-            }
-            this_filter.filter_data = []
-            $("#filter_" + this_filter.html_title).find(".filtercheck:checked").each(function (){
-                    this_filter.filter_data.push (decodeURI($(this).attr("data-value")))
-            }).promise().done( function ()
-                { if (refresh) this_filter.pTable.table.api().draw();
-                 saveFilter();
-                 })
-        }
-
-
-    this.filter = function ( data )
-        {
-            var col_data = data[this.column]
-            if (typeof(col_data) == 'number') col_data = col_data.toString();
-            if (this.filter_data.indexOf(col_data)<0)
-            {
-                if (col_data=="" | col_data==null)
-                {
-                    if (this.filter_data.indexOf("null")<0) return false
-                }
-            else return false
-            }
-            return true
-        }
-
-    this.refresh = function ()
-        {
-            reset_totals_single(this.total)
-            this.pTable.table.api().column(this.column, {"filter":"applied"}).data().reduce(function (acc, current)
-            {
-                add_to_sum( current, acc, 1);
-                return acc;
-            },  this.total  )
-            for (i in this.total)
-            {
-                if (this.total[i][0] != this.total[i][2]){
-                partid = this.column + '-' + i.replace(/\W/g,'')
-                badgeid = $('#chbadge-'+ partid)
-                set_badge( badgeid, this.total[i][0] , this.total[i][1])
-            }
-          /* remove items if none
-            if (this.total[i][0]==0)  $('#ch-div-' + partid).hide();      */
-            }
-        }
-
-
-    this.html = function ()
-        {
-            htmlcheckbox = `
-                           <div class="w-100 float-left">
-                                <div id="ch-div-%3-%5" class="form-check float-left">
-                                    <label class="form-check-label small">
-                                    <input id="chkf-%3-%5" data-value="%6" type="checkbox" class="form-check-input filtercheck" checked>%1</label>
-                                </div>
-                                <span id="chbadge-%3-%5" class="small badge badge-pill badge-primary float-right">-</span>
-                            </div>`
-            htmldata = ''
-            sortkeys = []
-            for (i in this.total)
-            {
-                if (this.total[i][0]>0) sortkeys.push(i)
-            }
-            sortkeys.sort()
-
-            for (j=0;j<sortkeys.length;j++)
-            {
-                i = sortkeys[j]
-                replace_options =
-                {
-                    1: i,
-                    5: i.replace(/\W/g,''),
-                    6: encodeURI(i)
-                }
-                htmldata += rep_options( htmlcheckbox, replace_options)
-            }
-            return filter_helper.add_header(this, htmldata, filter_helper.all_none)
-        }
-
-    this.checkall = function(data)
-        {
-            this_filter = data.data.filter
-            $("#filter_"+this_filter.html_title).find(".filtercheck").each(function ()
-            {
-                $(this).prop('checked',data.data.checked)
-                }).promise().done(function()
-                {
-                    this_filter.buildfilter(data)
-                });
-        }
-
-    this.setup_events = function ()
-        {
-            $("#filter_"+this.html_title).find(".filtercheck").change( {filter: this} , this.buildfilter )
-            $("#filter_"+this.html_title).find(".all-check").click( {filter: this, checked: true} , this.checkall )
-            $("#filter_"+this.html_title).find(".none-check").click( {filter: this, checked: false} , this.checkall )
-        }
-}
-
-
-
-function filter_select2(pTable, column, title)
-{
-    this.column = column
-    this.pTable = pTable
-    this.title = title
-    this.total = {}
-    this.filter_data = []
-
-    this.pTable.table.api().column(this.column).data().reduce(function (acc, current) {
-            add_to_sum( current, acc, 1);
-            return acc;
-            },  this.total  )
-
-
-
-    this.buildfilter = function(data)
-        {
-            if (data!=undefined)
-            {
-                this_filter = data.data.filter
-                refresh = true
-            }
-            else return
-            this_filter.filter_data = []
-            selected = $("#select2_"+this_filter.title).select2('data')
-            for (i=0;i<selected.length;i++)
-            {
-                this_filter.filter_data.push(selected[i].text)
-            }
-            this_filter.pTable.table.api().draw()
-        }
-
-
-    this.filter = function ( data )
-        {
-        col_data = data[this.column]
-            if (this.filter_data.length==0) return true
-            if (this.filter_data.indexOf(col_data)<0)
-            {
-                if (col_data=="" | data[this.column]==null)
-                {
-                    if (this.filter_data.indexOf("null")<0) return false
-                }
-            else return false
-            }
-            return true
-        }
-
-    this.refresh = function ()
-        {
-            reset_totals_single(this.total)
-            this.pTable.table.api().column(this.column, {"filter":"applied"}).data().reduce(function (acc, current)
-            {
-                add_to_sum( current, acc, 1);
-                return acc;
-            },  this.total  )
-            for (i in this.total)
-            {
-                if (this.total[i][0] != this.total[i][2]){
-                partid = this.column + '-' + i.replace(/\W/g,'')
-                badgeid = $('#chbadge-'+ partid)
-                set_badge( badgeid, this.total[i][0] , this.total[i][1])
-            }
-          /* remove items if none
-            if (this.total[i][0]==0)  $('#ch-div-' + partid).hide();      */
-            }
-        }
-
-
-    this.html = function ()
-        {
-            optionhtml = `<option value="%6">%1</option>`
-            htmldata = ''
-            sortkeys = []
-            for (i in this.total)
-            {
-                if (this.total[i][0]>0) sortkeys.push(i)
-            }
-            sortkeys.sort()
-
-            for (j=0;j<sortkeys.length;j++)
-            {
-                i = sortkeys[j]
-                replace_options =
-                {
-                    1: i,
-                    5: i.replace(/\W/g,''),
-                    6: encodeURI(i)
-                }
-                htmldata += rep_options( optionhtml, replace_options)
-            }
-
-            htmldata = '<select style="width:100%" multiple="multiple" id="select2_'+ this.title +  '">' + htmldata + '</select>'
-            return filter_helper.add_header(this, htmldata)
-        },
-
-
-    this.format_template = function(that) { return function (state)
-    {
-
-        if (state.loading) return
-        if (that.total[state.text][0]>0)
-        {
-            retstr = $('<span>' + state.text +'<span class="mx-1 small badge badge-pill badge-primary">' + that.total[state.text][0] + '/' + that.total[state.text][1] + '</span></span>')
-        }
-        else
-        {
-            retstr = $('<span>' + state.text +'<span class="mx-1 small badge badge-pill badge-secondary">' + that.total[state.text][0] + '/' + that.total[state.text][1] + '</span></span>')
-
-        }
-        return retstr
-    }
-    }
-    this.setup_events = function ()
-        {
-
-       //     this.format_template('',null,this.total)
-      //      console.log("#select2_"+this.title)
-
-
-             $("#select2_"+this.title).select2({
-              templateResult: this.format_template(this),
-              templateSelection: this.formattemplate,}).change({filter: this} , this.buildfilter);
-
-
-         //   $("#select2_"+this.title).select2().change({filter: this} , this.buildfilter);
-  //          $("#filter_"+this.title).find(".filtercheck").change( {filter: this} , this.buildfilter )
-   //         $("#filter_"+this.title).find(".all-check").click( {filter: this, checked: true} , this.checkall )
-    //        $("#filter_"+this.title).find(".none-check").click( {filter: this, checked: false} , this.checkall )
-        }
-}
-
-
-
 renderHelpers =
 {
 
@@ -885,15 +297,6 @@ renderHelpers =
     }
 
 
-}
-
-function testswitch(control)
-{
-    console.log(control)
-    console.log($(control).closest('tr'))
-    table_id = ($(control).closest('table')[0].id)
-    console.log(DataTables[table_id])
-    console.log(DataTables[table_id].table.api().row( $(control).closest('tr') ).data())
 }
 
 renderFunctions =
@@ -989,38 +392,6 @@ renderFunctions =
         }
         return null;
 
-    },
-
-
-    toggleRender : function (column, setup, title, tablesetup)
-    {
-        toggle = '<input onchange="testswitch(this)" class="checkboxinput" type="checkbox" data_toggle="toggle" data_size="small", data_on="YES", data_off="NO">'
-        renderHelpers.initUrl(this, column, setup)
-        renderHelpers.initColRef(this, column, setup, tablesetup)
-        this.js = setup['javascript']
-        this.css_class = ''
-        if (setup['css_class']!=undefined) this.css_class = ' class="' + setup['css_class'] + '"'
-        this.title = title
-        if (setup['text']!=undefined) this.globaltext = setup['text']; else this.globaltext = title
-        this.render = function (data, type, row, meta)
-        {
-            if (data === null || data === "") text = this.globaltext; else text = data;
-            if (text=='') return ''
-            js = this.js
-            if (this.url)
-            {
-                cell_url = this.url.replace ('999999',row[this.column].toString());
-                js = js.replace('%url%', "'" + cell_url + "'")
-            }
-            if (row[this.column]!=null)
-            {
-                js = js.replace('%ref%', row[this.column].toString())
-                js = js.replace('%id%', row[this.column].toString())
-            }
-            js = js.replace('%row%', meta.row)
-            return toggle
-            return '<a href="javascript:' + js + '"' + this.css_class +'">' + text + '</a>';
-        }
     },
 
 
@@ -1121,7 +492,6 @@ renderFunctions =
         }
 
         this.render = function (data, type, row, meta){
-            console.log('g')
             var y;
             html = this.setup.html.replace(/%row%/g, meta.row)
             for (y=0; y<this.setup.replace_list.length; y++){
@@ -1221,9 +591,8 @@ function PythonTable(html_id, tablesetup, ajax_url , options = {})
 {
     self = this
     self.initsetup = tablesetup
-    DataTables[html_id] = this
     self.filters = []
-    datatable_config[html_id.substring(1)] = {}
+    datatable_config[html_id] = {}
     col_defs = tablesetup.colDefs
     url_renderers = {}
     if (typeof(mobile)=='undefined') mobile=false;
@@ -1235,71 +604,43 @@ function PythonTable(html_id, tablesetup, ajax_url , options = {})
         }
         if (tablesetup.colOptions[i]['renderfn']!=undefined)
         {
-            datatable_config[html_id.substring(1)][i] = new renderFunctions[tablesetup.colOptions[i]['renderfn']](i, tablesetup.colOptions[i], tablesetup.titles[i], tablesetup)
+            datatable_config[html_id][i] = new renderFunctions[tablesetup.colOptions[i]['renderfn']](i, tablesetup.colOptions[i], tablesetup.titles[i], tablesetup)
             col_defs[i]['render'] = function ( data, type, row, meta ) {
                 return datatable_config[meta.settings.sTableId][meta.col].render( data, type, row, meta ) }
         }
     }
     self.columnRender = []
 
-    this.columnsearch = function( settings, data, dataIndex , rowdata ) {
-            for (f=0; f<self.filters.length;f++)
-            {
+    this.postInit = function (settings, json){
+        self.table = this
+        self.filters = django_datatables.setup[html_id].filters
+        self.filters.forEach(function (filter) {
+            filter.init(self);
+            filter.buildfilter();
+            filter.refresh();
+        })
+        columnsearch = function (settings, data, dataIndex, rowdata) {
+            if (settings.sTableId !== self.table_id) {
+                return true;
+            }
+            for (f = 0; f < self.filters.length; f++) {
                 if (!self.filters[f].filter(rowdata)) return false
             }
             return true
-    }
+        }
+        $.fn.dataTable.ext.search.push(columnsearch)
 
+        django_datatables.setup[html_id].plugins.forEach(function (plugin) {
+            plugin.init(self);
+        })
 
-    this.postInit = function (settings, json){
-            self.table = this
-            header = self.table.api().columns().header()
-            self.no_columns = header.length
-            for (o=0;o<self.no_columns;o++)
-            {
-                if (tablesetup.colOptions[o]['select2']==true) self.filters.push(new filter_select2(self, o, $(header[o]).html()))
-                if (tablesetup.colOptions[o]['pivot']==true) self.filters.push(new filter_pivot(self, o, $(header[o]).html()))
-                if (typeof(tablesetup.colOptions[o]['lookup'])=='object') self.filters.push(new filter_tags(self, o, $(header[o]).html()))
-                if (tablesetup.colOptions[o]['datefilter']==true) self.filters.push(new filter_date(self, o, $(header[o]).html()))
-                if (tablesetup.colOptions[o]['total']==true) self.filters.push(new filter_totals(self, o, $(header[o]).html()))
-                if (tablesetup.colOptions[o]['pivottotals']==true) self.filters.push(new pivot_totals(self, o, $(header[o]).html()))
-            }
-
-            a = self.table.api().data()
-            filterHtml = '<input id="search_'+ html_id.substring(1) +'" type="text" class="form-control" placeholder="Search">'
-            self.filters.forEach(function(filter){filterHtml += filter.html()})
-            $(self.filter_section_id).html(filterHtml)
-            restoreFilter()
-
-            $('#search_' + html_id.substring(1)).keyup(function() {
-                self.table.api().search( this.value ).draw();
-             });
-
-            $(self.filter_section_id).addClass('filtersection')
-
-            self.filters.forEach(function(filter){
-                filter.buildfilter()
-                filter.setup_events()
-                })
-            $('.'+ self.table_id.substring(1) + '-column-search').each(function (){
-                searchterm = this.value
-                if ($(this).attr('data-col')!='') {
-                    self.table.api().column($(this).attr('data-col') + ':name').search(searchterm, false, true, true)
-                }
-               })
-            this.api().draw()
-            self.filters.forEach(function(filter){
+        restoreFilter()
+        this.api().draw()
+        self.table.api().on('draw', function () {
+            self.filters.forEach(function (filter) {
                 filter.refresh()
-                })
-
-            $(".filter-header").click(function(){ $($(this).attr('data-target')).toggle(200) })
-
-            self.table.api().on('draw', function (){
-                self.filters.forEach(function(filter)
-                {filter.refresh()
-                })
-                    //$('.checkboxinput').bootstrapToggle();
-            });
+            })
+        });
     }
 
     if (ajax_url!=''){
@@ -1409,31 +750,7 @@ function PythonTable(html_id, tablesetup, ajax_url , options = {})
         }
     }
 
-    this.table = $(this.table_id).dataTable(dataTable_setup);
-
-    $.fn.dataTable.ext.search.push(this.columnsearch)
-
-    this.configureSelect = function ()
-    {
-        $(this.table_id + ' tbody').on( 'change', 'select', function () {
-            var cell = this.table.api().cell( $(this).parents('td') );
-            var row = this.table.api().row( $(this).parents('tr') );
-            var row_data = row.data();
-            var column = cell.index().column;
-            var url = geturl(cell, row_data, column);
-    	    var update_column = column + colOptions[column]['selected'];
-            $.post(
-                url,
-                { 'new_status': $("option:selected", this).text() },
-                function(result, status){
-                row_data[ update_column ] = result.new_status;
-                    this.table.api().row( row ).data( row_data ).draw();
-                }
-            );
-        });
-    }
-
-    this.configureSelect()
+    this.table = $('#' + this.table_id).dataTable(dataTable_setup);
 
     if (mobile)
     {
@@ -1444,34 +761,7 @@ function PythonTable(html_id, tablesetup, ajax_url , options = {})
         })
     }
 
-  //  $('#dt_search').val(this.table.api().search());
-/*    $(this.table_id + ' thead tr:eq(1) th').each( function () {
-        var title = $(this).text();
-        colnumber = $(this).attr('id').replace('colSearch','')-1
-        $(this).html( '<input type="text" class="form-control form-control-sm small ' + self.table_id.substring(1) + '-column-search" value="' + self.table.api().column(colnumber).search()+'" data-col="' + colnumber + '"/>' );
-    } );
-*/
 
-//    this.table.api().columns().every(function (index)
- //   {
-//        $(self.table_id + ' thead tr:eq(1) th:eq(' + index + ') input').on('keyup change', function ()
-        $('.'+ self.table_id.substring(1) + '-column-search').on('keyup change', function ()
-        {
-                if ($(this).is('select'))
-                {
-                    id = $(this).attr('id')
-                    searchterm = ($('#' + id +' option:selected').text())
-                }
-                else
-                {
-                    searchterm = this.value
-                }
-                 self.table.api().column($(this).attr('data-col') + ':name')
-                .search(searchterm, false ,true, true)
-                .draw();
-
-        })
-     //   })
 }
 
 
