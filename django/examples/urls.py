@@ -8,4 +8,6 @@ urlpatterns = [
     path('example-2/<int:pk>/', views.Example2.as_view(), name='example2'),
     path('example-2/', views.Example2.as_view(), name='example2'),
     path('example-3', views.Example3.as_view(), name='example3'),
+    path('example-4', views.Example4.as_view(), name='example4'),
+    path('example-5', views.Example5.as_view(), name='example5'),
 ]

@@ -1,0 +1,70 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+
+{% block content %}
+    <table class="table">
+        <tr>
+            <td>Total sum</td>
+            <td class="text-right" id="total_sum"></td>
+        </tr>
+        <tr>
+            <td>Filtered sum</td>
+            <td class="text-right" id="filtered_sum"></td>
+        </tr>
+        <tr>
+            <td>Filtered mean</td>
+            <td class="text-right" id="filtered_mean"></td>
+        </tr>
+        <tr>
+            <td>Filtered Standard Deviation</td>
+            <td class="text-right" id="filtered_sd"></td>
+        </tr>
+    </table>
+{% endblock %}
+
+
+{% block javascript %}
+    <script>
+        function filter(column_no) {
+            this.column_no = column_no
+            this.init = function (table) {
+            }
+            this.filter_calcs = {
+                calcs: {org_sum: 0},
+                init_calcs: function (row) {
+                    this.calcs.org_sum += row[0]
+                },
+                clear_calcs: function () {
+                    this.calcs.filtered_sum = 0
+                    this.calcs.mean = 0.0
+                    this.calcs.count = 0
+                    this.calcs.M2 = 0
+                },
+                add_calcs: function (data) {
+                    this.calcs.filtered_sum += data[0]
+                    this.calcs.count += 1
+                    let delta = (data[0] - this.calcs.mean)
+                    this.calcs.mean += delta / this.calcs.count
+                    let delta2 = data[0] - this.calcs.mean
+                    this.calcs.M2 += delta * delta2
+                }
+            }
+
+            this.filter = function (data) {
+                return true
+            }
+
+            this.refresh = function () {
+                $('#total_sum').html(this.filter_calcs.calcs.org_sum.toString())
+                $('#filtered_sum').html(this.filter_calcs.calcs.filtered_sum.toString())
+                $('#filtered_mean').html(this.filter_calcs.calcs.mean.toFixed(1))
+                $('#filtered_sd').html(Math.sqrt(this.filter_calcs.calcs.M2 / (this.filter_calcs.calcs.count - 1)).toFixed(1))
+            }
+        }
+    </script>
+
+{% endblock %}
+
+{% block remove_registration %}
+    var new_filter = new filter('{{ table.html_id }}')
+    django_datatables.add_filter('{{ table.html_id }}', new_filter)
+{% endblock %}

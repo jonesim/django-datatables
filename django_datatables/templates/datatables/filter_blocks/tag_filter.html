@@ -2,114 +2,93 @@
 {% load datatable_tags %}
 
 {% block content %}
-    <div class="row pb-2">
-        <div class="col-12 text-right">
-            <a class="small all-clear" href="javascript:void(0);">clear</a>
-        </div>
-    </div>
     <div class="filter-content">
     </div>
 {% endblock %}
 
+{% block header_icons %}
+    <a class="none-check" href="javascript:void(0)" title="Clear">
+        <i class="all-clear filter-header-icon fas fa-ban"></i></a>
+{% endblock %}
+
+
 {% block javascript %}
     <script>
-        filter = {
-            init: function (table) {
-                this.pTable = table
-                this.colOption = table.initsetup.colOptions[{{ column_no }}]
-                this.total = {}
-                this.pTable.table.api().column({{ column_no }}).data().reduce(function (acc, current) {
-                    for (v = 0; v < current.length; v++) {
-                        add_to_sum(current[v], acc, 1);
+        function filter (column_no, html_id, options) {
+
+            this.storage_key = 'tag_filter'
+            django_datatables.FilterBase.call(this, column_no, html_id, options)
+
+            this.load_state = function (state_data) {
+                $('.tag-filter', '#' + this.html_id).each(function () {
+                    saved_class = state_data[$(this).attr('data-value')]
+                    if (saved_class != 'option-1') {
+                        $(this).removeClass('option-1')
+                        $(this).addClass(saved_class)
                     }
-                    return acc;
-                }, this.total)
-                this.html();
-
-                // restore saved state
-                try {
-                    state_data = table.table.api().state.loaded().columns[{{ column_no }}].tag_filter
-                    $('#{{ html_id }} .tag-filter').each(function () {
-                        saved_class = state_data[$(this).attr('data-value')]
-                        if (saved_class != 'option-1') {
-                            $(this).removeClass('option-1')
-                            $(this).addClass(saved_class)
-                        }
-                    })
-                } catch (e) {
-                    console.log(e)
-                }
-            },
-
-            save_state: function (data) {
-                data.columns[{{ column_no }}].tag_filter = {}
-                $('#{{ html_id }} .tag-filter').each(function () {
-                    data.columns[{{ column_no }}].tag_filter[$(this).attr('data-value')] = this.className.match(/option-\d+/)[0];
                 })
-            },
+            }
 
-            buildfilter: function (data) {
-                if (data != undefined) {
-                    this_filter = data.data.filter
-                    refresh = true
-                } else {
-                    this_filter = this
-                    refresh = false
-                }
-                this_filter.filter_data = {
+            this.save_data = function (data) {
+                tag_filter = {}
+                $('.tag-filter', '#' + this.html_id).each(function () {
+                    tag_filter[$(this).attr('data-value')] = this.className.match(/option-\d+/)[0];
+                })
+                return tag_filter
+            }
+
+            this.buildfilter = function (refresh=false) {
+                this.filter_data = {
                     'required': [],
                     'include': [],
                     'exclude': [],
                 }
-                filter_section = $("#{{ html_id }} .tag-filter").each(function () {
-                    id = parseInt($(this).attr("data-value"))
-                    if ($(this).hasClass('option-3')) {
-                        this_filter.filter_data.required.push(id)
-                    } else if ($(this).hasClass('option-2')) {
-                        this_filter.filter_data.include.push(id)
-                    } else if ($(this).hasClass('option-4')) {
-                        this_filter.filter_data.exclude.push(id)
+                multi_checkboxes = $(".tag-filter", '#' + this.html_id)
+                for (m=0; m<multi_checkboxes.length; m++){
+                    id = parseInt($(multi_checkboxes[m]).attr("data-value"))
+                    if ($(multi_checkboxes[m]).hasClass('option-3')) {
+                        this.filter_data.required.push(id)
+                    } else if ($(multi_checkboxes[m]).hasClass('option-2')) {
+                        this.filter_data.include.push(id)
+                    } else if ($(multi_checkboxes[m]).hasClass('option-4')) {
+                        this.filter_data.exclude.push(id)
                     }
-                }).promise().done(function () {
-                    if (refresh) this_filter.pTable.table.api().draw();
-                })
-            },
+                }
+               if (this.filter_data.required.length === 0 && this.filter_data.include.length === 0 && this.filter_data.exclude.length === 0) {
+                   this.set_status_class('all')
+                } else{
+                   this.set_status_class('')
+                }
+                if (refresh) this.pTable.table.api().draw();
+            }
 
-            refresh: function () {
-                reset_totals_single(this.total)
-                this.pTable.table.api().column({{ column_no }}, {"filter": "applied"}).data().reduce(function (acc, current) {
-                    for (v = 0; v < current.length; v++) {
-                        add_to_sum(current[v], acc, 1)
-                    }
-                    return acc;
-                }, this.total)
-                totals = this.total
-                $("#{{ html_id }} .badge").each(function () {
-                    var result = totals[$(this).attr("data-value")]
-                    set_badge(this, result[0], result[1])
+            this.refresh= function () {
+                this_filter = this
+                $(".badge", '#' + this.html_id).each(function () {
+                    key = $(this).attr("data-value")
+                    this_filter.set_badge(this, key)
                 })
-            },
+            }
 
-            filter: function (data) {
-                if (this.filter_data.length == this.colOption.filter_len) return true
+            this.filter= function (data) {
                 notfound = true
                 for (req = 0; req < this.filter_data.required.length; req++) {
-                    if (data[{{ column_no }}].indexOf(this.filter_data.required[req]) < 0) {
+                    if (data[this.column_no].indexOf(this.filter_data.required[req]) < 0) {
                         return false
                     }
                     notfound = false
                 }
                 for (ex = 0; ex < this.filter_data.exclude.length; ex++) {
-                    if (data[{{ column_no }}].indexOf(this.filter_data.exclude[ex]) >= 0) {
+                    if (data[this.column_no].indexOf(this.filter_data.exclude[ex]) >= 0) {
                         return false
                     }
                 }
                 if (this.filter_data.include.length == 0) {
                     return true
                 }
-                for (itag = 0; itag < data[{{ column_no }}].length; itag++) {
-                    if (data[{{ column_no }}][itag] < 0x10000) {
-                        curtag = data[{{ column_no }}][itag]
+                for (itag = 0; itag < data[this.column_no].length; itag++) {
+                    if (data[this.column_no][itag] < 0x10000) {
+                        curtag = data[this.column_no][itag]
                         if (this.filter_data.include.indexOf(curtag) >= 0) {
                             notfound = false
                         }
@@ -117,10 +96,9 @@
                 }
                 if (notfound === true) return false
                 return true
-            },
+            }
 
-            html: function () {
-
+            this.html= function () {
                 tagsection = `  <div class="filter-header" id="tagsec-%3-%1" data-target="#collapsesect%3_%4">
                             <li class="list-group-item list-group-item-secondary p-1 my-1">%1
                                 <span id="chbadge-%3-%4" class="small badge badge-pill badge-primary mx-1">%2</span>
@@ -128,19 +106,18 @@
                             </div>
                             <div id="collapsesect%3_%4" class="collapse">`
 
-                tagcheckbox = `{% include 'datatables/filter_rows/checkbox_tag.html' %}`
                 endsection = `</div>`
                 html = ""
                 insection = false
-
-                for (l = 0; l < this.colOption['lookup'].length; l++) {
-                    curlookup = this.colOption['lookup'][l]
+                lookup = this.pTable.initsetup.colOptions[this.column_no].lookup
+                for (l = 0; l < lookup.length; l++) {
+                    curlookup = lookup[l]
                     if (curlookup[0] >= 0x10000) {
                         if (insection) html += endsection
                         insection = true
                         html_source = tagsection
                     } else {
-                        html_source = tagcheckbox
+                        html_source = this.options.tagcheckbox
                     }
                     textoptions =
                         {
@@ -151,30 +128,39 @@
                     html += rep_options(html_source, textoptions)
                 }
                 if (insection) html += endsection
-                $('#{{ html_id }} .filter-content').html(html)
-                $("#{{ html_id }} .all-clear").click({filter: this}, this.clearall)
-                $("#{{ html_id }} .tag-filter").click({filter: this}, this.change_multi_input)
-            },
+                let context = $('#' + this.html_id)
+                $('.filter-content', context).html(html)
+                $(".all-clear", context).click(this.this_fn('clearall'))
+                $(".tag-filter", context).click(this.this_fn('change_multi_input'))
+                this.restore_state()
+                this.buildfilter(true)
+            }
 
-            clearall: function (data) {
-                this_filter = data.data.filter
-                $("#{{ html_id }} .tag-filter").each(function () {
+            this.clearall = function () {
+                $(".tag-filter", '#' + this.html_id).each(function () {
                     $(this).removeClass("option-2 option-3 option-4");
                     $(this).addClass("option-1");
-                }).promise().done(function () {
-                    this_filter.buildfilter(data)
-                });
-            },
+                }).promise().done(this.this_fn('buildfilter',true));
+            }
 
-            change_multi_input: function (data) {
+            this.change_multi_input = function (dummy, checkbox) {
                 options = ['option-1', 'option-2', 'option-3', 'option-4']
-                option_class = this.className.match(/option-\d+/)[0];
-                $(this).removeClass(option_class);
+                option_class = checkbox.className.match(/option-\d+/)[0];
+                $(checkbox).removeClass(option_class);
                 next_option = options[(options.indexOf(option_class) + 1) % 4]
-                $(this).addClass(next_option);
-                data.data.filter.buildfilter(data)
-            },
+                $(checkbox).addClass(next_option);
+                this.buildfilter(true)
+            }
         }
+        filter.prototype = Object.create(django_datatables.FilterBase.prototype);
     </script>
 
 {% endblock %}
+
+    {% block remove_registration %}
+        options = {
+            tagcheckbox : `{% include 'datatables/filter_rows/checkbox_tag.html' %}`
+        }
+        var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
+        django_datatables.add_filter('{{ table.html_id }}', new_filter)
+    {% endblock %}

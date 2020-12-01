@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load datatable_tags %}
+
+{% block table %}
+    <div class="" style="display: flex">
+        <div class="pr-0" style="max-height: calc(100vh - 110px);overflow: auto;width: 280px;flex-shrink: 0">
+            {% filter_control datatable %}
+        </div>
+        <div class="mx-2 w-100" style="display: inline-block">
+            <div class="border rounded">
+                {{ datatable.javascript_setup|safe }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

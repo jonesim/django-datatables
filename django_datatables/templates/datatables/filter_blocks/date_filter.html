@@ -1,0 +1,83 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+
+{% block content %}
+     <div class="form-group row">
+         <label class="col-sm-3 col-form-label" for="{{ html_id }}-after">After</label>
+         <div class="col-sm-9">
+         <input type="text" class="form-control filtertext after">
+         </div>
+     </div>
+     <div class="form-group row">
+         <label class="col-sm-3 col-form-label" for="{{ html_id }}-before">Before</label>
+         <div class="col-sm-9">
+            <input type="text" class="form-control filtertext before">
+         </div>
+     </div>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        function filter(column_no, html_id, options) {
+            this.column_no = {{ column_no }}
+            this.storage_key = 'date_filter'
+            django_datatables.FilterBase.call(this, column_no, html_id, options)
+
+            this.load_state = function (state_data) {
+                $('.after', '#' + this.html_id).val(state_data['after'])
+                $('.before', '#' + this.html_id).val(state_data['before'])
+            }
+
+            this.save_data = function () {
+                return {after: $('.after', '#' + this.html_id).val()}
+                return {before: $('.before', '#' + this.html_id).val()}
+            }
+
+            this.str_to_date = function (date_str) {
+                try {
+                    parts = date_str.split('/')
+                    return new Date(parts[2], parts[1], parts[0])
+                } catch (err) {
+                    return null
+                }
+            }
+
+            this.buildfilter = function (refresh) {
+                this.dateafter = this.str_to_date($('.after', '#' + this.html_id).val())
+                this.datebefore = this.str_to_date($('.before', '#' + this.html_id).val())
+                if (refresh){
+                    this.pTable.table.api().draw()
+                }
+            }
+
+            this.filter = function (data) {
+                if (this.dateafter != null) {
+                    compdate = this.str_to_date(data[this.column_no])
+                    if (compdate != null) {
+                        if (this.dateafter >= compdate) return false
+                    }
+                }
+                if (this.datebefore != null) {
+                    compdate = this.str_to_date(data[this.column_no])
+                    if (compdate != null) {
+                        if (this.datebefore <= compdate) return false
+                    }
+                }
+                return true
+            }
+
+            this.html = function () {
+                $('input', '#' + this.html_id).change(this.this_fn('buildfilter', true))
+                this.restore_state()
+                this.buildfilter()
+            }
+        }
+
+        filter.prototype = Object.create(django_datatables.FilterBase.prototype);
+    </script>
+{% endblock %}
+
+    {% block remove_registration %}
+        options = {}
+        var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
+        django_datatables.add_filter('{{ table.html_id }}', new_filter)
+    {% endblock %}

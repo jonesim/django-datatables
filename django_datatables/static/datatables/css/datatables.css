@@ -5,6 +5,7 @@
     font-family: Arial;
     display: inline-block;
     user-select: none;
+    border-radius: .25rem;
 }
 
 .tag-filter:hover {
@@ -91,4 +92,25 @@
 
 .section-header-right {
     float: right;
+}
+
+.filter-none .filter-header {
+    border: 2px solid #dc354585;
+    margin: -2px -2px -1px -2px;
+}
+
+.filter-active .filter-header {
+    border: 2px solid #28a74554;
+    margin: -2px -2px -1px -2px;
+}
+
+.filter-header-icon {
+    font-size: large;
+    color: #303030d6;
+}
+
+.filter-all .all-check, .filter-none .none-check {
+    color: darkgray;
+    pointer-events: none;
+    cursor: not-allowed;
 }

@@ -2,11 +2,12 @@ from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnReplace, ColumnBase
 from django_datatables.datatables import DatatableView
 from . import models
+from django_datatables.filters import PivotFilter
 
 
 class Example1(DatatableView):
     model = models.Company
-    template_name = 'table.html'
+    template_name = 'table_calcs.html'
 
     def setup_table(self):
         self.add_columns(
@@ -18,7 +19,10 @@ class Example1(DatatableView):
         )
 
     def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__}
+        self.table.pivot('people')
+        # filter = PivotFilter(self.table, self.table.columns[1])
+
+        return {'title': type(self).__name__, 'filter': filter}
 
 
 class Example2(DatatableView):
@@ -39,7 +43,7 @@ class Example2(DatatableView):
         if 'pk' in self.kwargs:
             self.table.filter = {'company__id': self.kwargs['pk']}
         # self.table.pivot('company__name')
-        # self.table.columns[0].options['total'] = True
+        self.table.columns[0].options['total'] = True
         self.table.columns[2].options['select2'] = True
 
     def add_to_context(self, **kwargs):
@@ -99,3 +103,34 @@ class Example3(DatatableView):
         Row colours implemented with a hidden column.<br>
         Columns sorted by ColumnReplace
         '''}
+
+
+class Example4(DatatableView):
+    model = models.Person
+    template_name = 'table.html'
+
+    def setup_table(self):
+        self.add_columns(
+            'id',
+            'first_name',
+            'date_entered',
+        )
+        self.table.columns[2].options['date_filter'] = True
+
+
+class Example5(DatatableView):
+    model = models.Company
+    template_name = 'table2.html'
+
+    def setup_table(self):
+        self.add_columns(
+            'id',
+            'name',
+            'Tags',
+            ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
+            ColumnLink(column_name='view_company', field='name', url_name='example2'),
+        )
+
+    def add_to_context(self, **kwargs):
+        self.table.pivot('people')
+        return {'title': type(self).__name__, 'filter': filter}

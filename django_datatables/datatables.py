@@ -1,13 +1,14 @@
+from types import MethodType
 from inspect import isclass
 import json
-
+from django.db import models
 from abc import abstractmethod
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from .detect_device import detect_device
-from .columns import ColumnBase
+from .columns import ColumnBase, format_date_time
 from .model_def import DatatableModel
 from typing import TypeVar, Dict
 
@@ -378,9 +379,9 @@ class DatatableTable:
             if c.column_ref in column_ref:
                 c.setup_kwargs(options)
 
-    def find_column(self, field):
+    def find_column(self, column_name):
         for n, c in enumerate(self.columns):
-            if c.column_name == field:
+            if c.column_name == column_name:
                 return n
 
     def change_column(self, field, column_type, options):
@@ -400,9 +401,9 @@ class DatatableTable:
             # column = ColumnDef(start_field, *args)
             column = ColumnBase(field=start_field.split('__')[-1]).get_class_instance(column_name=start_field, **kwargs)
             if model_field:
-                pass
-                # column.setup_from_field(model_field)
-                # column.setup_args(args)
+                field_type = type(model_field)
+                if field_type == models.DateField:
+                    column.row_result =  MethodType(format_date_time, column)
             if isinstance(column_setup, dict):
                 column.column_name = start_field.split('__')[-1]
                 column.setup_kwargs(column_setup)

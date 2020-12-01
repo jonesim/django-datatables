@@ -19,7 +19,7 @@
                 catch (e){
                     console.log(e)
                 }
-                if ($(this).attr('data-col') != '') {
+                if ($(this).attr('data-col') != '' && this.value != '') {
                     table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
                 }
             })

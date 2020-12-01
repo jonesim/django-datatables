@@ -1,59 +1,41 @@
 {% extends 'datatables/filter_blocks/base_filter_block.html' %}
 
 {% block content %}
-        <select class="filter-content" style="width:100%" multiple="multiple">
-        </select>
+    <select class="filter-content" style="width:100%" multiple="multiple">
+    </select>
 {% endblock %}
 
 {% block javascript %}
     <script>
-        filter = {
-            init: function (table) {
-                this.pTable = table;
-                this.total = {};
-                this.filter_data = [];
-                this.pTable.table.api().column({{ column_no }}).data().reduce(function (acc, current) {
-                    add_to_sum(current, acc, 1);
-                    return acc;
-                }, this.total);
-                this.html();
+        function filter() {
+            this.column_no = {{ column_no }}
+            this.storage_key = 'select2_filter'
+            django_datatables.FilterBase.call(this)
 
-                try {
-                    state_data = table.table.api().state.loaded().columns[{{ column_no }}].select2_filter
-                    $("#{{ html_id }} select").val(state_data)
-                    $("#{{ html_id }} select").trigger('change')
-                }
-                catch (e) {
-                    console.log(e)
-                }
-            },
+            this.load_state = function () {
+                $("#{{ html_id }} select").val(this.state_data)
+                $("#{{ html_id }} select").trigger('change')
+            }
 
-            save_state: function (data) {
+            this.save_data = function (data) {
                 selected_ids = []
                 let selected = $("#{{ html_id }} select").select2('data');
                 for (let i = 0; i < selected.length; i++) {
                     selected_ids.push(selected[i].id)
                 }
-                try{
-                    data.columns[{{ column_no }}].select2_filter = selected_ids
-                }
-                catch (e) {
-                    console.log(e)
-                }
-            },
+                return selected_ids
+            }
 
-            buildfilter: function (data) {
-                if (typeof (data) == 'undefined') return;
-                let this_filter = data.data.filter;
-                this_filter.filter_data = [];
+            this.buildfilter = function () {
+                this.filter_data = [];
                 let selected = $("#{{ html_id }} select").select2('data');
                 for (let i = 0; i < selected.length; i++) {
-                    this_filter.filter_data.push(selected[i].text)
+                    this.filter_data.push(selected[i].text)
                 }
-                this_filter.pTable.table.api().draw();
-            },
+                this.pTable.table.api().draw();
+            }
 
-            filter: function (data) {
+            this.filter = function (data) {
                 let col_data = data[{{ column_no }}].toString();
                 if (this.filter_data.length === 0) return true;
                 if (this.filter_data.indexOf(col_data) < 0) {
@@ -62,50 +44,28 @@
                     } else return false;
                 }
                 return true;
-            },
+            }
 
-            refresh: function () {
-                reset_totals_single(this.total);
-                this.pTable.table.api().column({{ column_no }}, {"filter": "applied"}).data().reduce(function (acc, current) {
-                    add_to_sum(current, acc, 1);
-                    return acc;
-                }, this.total);
-            },
-
-            html: function () {
+            this.html = function () {
                 const optionhtml = `<option value="%6">%1</option>`
                 let htmldata = '';
-                let sortkeys = [];
-                for (let i in this.total) {
-                    if (this.total[i][0] > 0) sortkeys.push(i)
-                }
-                sortkeys.sort();
-                for (let j = 0; j < sortkeys.length; j++) {
-                    htmldata += optionhtml.replace(/%1/g, sortkeys[j]).replace(/%6/g, encodeURI(sortkeys[j]))
+                for (k of this.filter_calcs.sort_keys()) {
+                    htmldata += optionhtml.replace(/%1/g, k).replace(/%6/g, encodeURI(k))
                 }
                 $('#{{ html_id }} .filter-content').html(htmldata);
                 $("#{{ html_id }} select").select2({
-                    templateResult: this.format_template(this)
-                }).change({filter: this}, this.buildfilter);
-            },
+                    templateResult: this.this_fn_parameter('format_template')
+                }).change(this.this_fn('buildfilter'))
+                this.load_state()
+            }
 
-            format_template: function (that) {
-                return function (state) {
-                    let dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill badge-%3">%2</span></span>';
-                    if (state.loading) return;
-                    let numbers = that.total[state.text];
-                    let numbers_text;
-                    if (numbers[0]===numbers[1]){
-                        numbers_text = numbers[0].toString()
-                    } else{
-                        numbers_text = numbers[0].toString() + '/' + numbers[1].toString()
-                    }
-                    let colour;
-                    if (numbers[0] > 0) colour = 'primary'; else colour = 'secondary';
-                    return $(dropdown_item.replace('%1', state.text).replace('%2', numbers_text).replace('%3', colour));
-                }
+            this.format_template = function (state) {
+                const dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill %3">%2</span></span>';
+                if (state.loading) return;
+                return $(dropdown_item.replace('%1', state.text).replace('%2', this.filter_calcs.badge_string(state.text)).replace('%3', this.filter_calcs.badge_colour(state.text)[0]));
             }
         }
 
+        filter.prototype = Object.create(django_datatables.FilterBase.prototype);
     </script>
 {% endblock %}

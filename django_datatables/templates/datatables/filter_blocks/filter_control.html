@@ -1,0 +1,34 @@
+{% load datatable_tags %}
+
+<div id="{{ html_id }}" class="card">
+    <div class="card-header py-1 px-2 filter-header">{{ filter_title }}
+        <div class="float-right">
+            <a class="filter-header-icon collapse-all" href="javascript:collapse_all('{{ datatable.html_id }}')">
+                <i class="fas fa-caret-square-up"></i>
+            </a>
+            <a class="expand-all" href="javascript:show_all('{{ datatable.html_id }}')">
+                <i class="filter-header-icon select-none fas fa-caret-square-down"></i></a>
+        </div>
+    </div>
+    <div class="card-body p-2">
+        <div id="{{ datatable.html_id }}-filter-block">
+            {% table_search datatable %}
+            {% for c in datatable.columns %}
+                {% filter_block datatable forloop.counter0 %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% block javascript %}
+    <script>
+        function collapse_all(html_id) {
+            $("#" + html_id + "-filter-block .card-body").collapse('hide')
+        }
+        function show_all(html_id) {
+            $("#" + html_id + "-filter-block .card-body").collapse('show')
+        }
+    </script>
+{% endblock %}
+
+{% block remove_registration %}{% endblock %}

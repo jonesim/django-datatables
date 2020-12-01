@@ -316,3 +316,11 @@ class ModalButtonColumn(ColumnReplace):
     def post_init(self):
         pass
 '''
+
+def format_date_time(self, data, page_data):
+    try:
+        date = data[self.field].strftime('%d/%m/%Y')
+        time_str = data[self.field].strftime('%H:%M')
+        return date
+    except AttributeError:
+        return ""
