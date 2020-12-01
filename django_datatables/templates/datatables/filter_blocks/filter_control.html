@@ -13,8 +13,8 @@
     <div class="card-body p-2">
         <div id="{{ datatable.html_id }}-filter-block">
             {% table_search datatable %}
-            {% for c in datatable.columns %}
-                {% filter_block datatable forloop.counter0 %}
+            {% for f in datatable.js_filter_list %}
+                {{ f.render }}
             {% endfor %}
         </div>
     </div>
@@ -25,6 +25,7 @@
         function collapse_all(html_id) {
             $("#" + html_id + "-filter-block .card-body").collapse('hide')
         }
+
         function show_all(html_id) {
             $("#" + html_id + "-filter-block .card-body").collapse('show')
         }

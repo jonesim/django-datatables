@@ -7,19 +7,20 @@
 
 {% block javascript %}
     <script>
-        function filter() {
-            this.column_no = {{ column_no }}
-            this.storage_key = 'select2_filter'
-            django_datatables.FilterBase.call(this)
+        function Select2Filter(column_no, html_id, options) {
 
-            this.load_state = function () {
-                $("#{{ html_id }} select").val(this.state_data)
-                $("#{{ html_id }} select").trigger('change')
+            this.storage_key = 'select2_filter'
+            django_datatables.FilterBase.call(this, column_no, html_id, options)
+
+            this.load_state = function (state_data) {
+                var context = $('#' + this.html_id)
+                $("select", context).val(state_data)
+                $("select", context).trigger('change')
             }
 
             this.save_data = function (data) {
                 selected_ids = []
-                let selected = $("#{{ html_id }} select").select2('data');
+                let selected = $("#" + this.html_id + " select").select2('data');
                 for (let i = 0; i < selected.length; i++) {
                     selected_ids.push(selected[i].id)
                 }
@@ -28,7 +29,7 @@
 
             this.buildfilter = function () {
                 this.filter_data = [];
-                let selected = $("#{{ html_id }} select").select2('data');
+                let selected = $("#" + this.html_id + " select").select2('data');
                 for (let i = 0; i < selected.length; i++) {
                     this.filter_data.push(selected[i].text)
                 }
@@ -36,10 +37,10 @@
             }
 
             this.filter = function (data) {
-                let col_data = data[{{ column_no }}].toString();
+                let col_data = data[this.column_no].toString();
                 if (this.filter_data.length === 0) return true;
                 if (this.filter_data.indexOf(col_data) < 0) {
-                    if (col_data === "" || data[{{ column_no }}] === null) {
+                    if (col_data === "" || data[this.column_no] === null) {
                         if (this.filter_data.indexOf("null") < 0) return false
                     } else return false;
                 }
@@ -52,8 +53,9 @@
                 for (k of this.filter_calcs.sort_keys()) {
                     htmldata += optionhtml.replace(/%1/g, k).replace(/%6/g, encodeURI(k))
                 }
-                $('#{{ html_id }} .filter-content').html(htmldata);
-                $("#{{ html_id }} select").select2({
+                context = $('#' + this.html_id)
+                $('.filter-content', context).html(htmldata);
+                $("select", context).select2({
                     templateResult: this.this_fn_parameter('format_template')
                 }).change(this.this_fn('buildfilter'))
                 this.load_state()
@@ -66,6 +68,12 @@
             }
         }
 
-        filter.prototype = Object.create(django_datatables.FilterBase.prototype);
+        Select2Filter.prototype = Object.create(django_datatables.FilterBase.prototype);
     </script>
 {% endblock %}
+
+    {% block remove_registration %}
+        options = {}
+        var new_filter = new Select2Filter({{ column_no }}, '{{ html_id }}', options)
+        django_datatables.add_filter('{{ table.html_id }}', new_filter)
+    {% endblock %}

@@ -2,7 +2,6 @@ from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnReplace, ColumnBase
 from django_datatables.datatables import DatatableView
 from . import models
-from django_datatables.filters import PivotFilter
 
 
 class Example1(DatatableView):
@@ -19,8 +18,8 @@ class Example1(DatatableView):
         )
 
     def add_to_context(self, **kwargs):
-        self.table.pivot('people')
-        # filter = PivotFilter(self.table, self.table.columns[1])
+        self.table.add_js_filters('tag', 'Tags')
+        self.table.add_js_filters('pivot', 'people', filter_title='XYZ', collapsed=False)
 
         return {'title': type(self).__name__, 'filter': filter}
 
@@ -42,9 +41,8 @@ class Example2(DatatableView):
         )
         if 'pk' in self.kwargs:
             self.table.filter = {'company__id': self.kwargs['pk']}
-        # self.table.pivot('company__name')
-        self.table.columns[0].options['total'] = True
-        self.table.columns[2].options['select2'] = True
+        self.table.add_js_filters('select2', 'company__name')
+        self.table.add_js_filters('totals', 'id')
 
     def add_to_context(self, **kwargs):
         context = {'description': '''
@@ -115,7 +113,7 @@ class Example4(DatatableView):
             'first_name',
             'date_entered',
         )
-        self.table.columns[2].options['date_filter'] = True
+        self.table.add_js_filters('date', 'date_entered')
 
 
 class Example5(DatatableView):
@@ -130,7 +128,7 @@ class Example5(DatatableView):
             ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
             ColumnLink(column_name='view_company', field='name', url_name='example2'),
         )
+        self.table.add_js_filters('tag', 'Tags')
 
     def add_to_context(self, **kwargs):
-        self.table.pivot('people')
         return {'title': type(self).__name__, 'filter': filter}

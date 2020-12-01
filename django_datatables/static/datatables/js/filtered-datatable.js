@@ -3,8 +3,6 @@ if (typeof django_datatables === 'undefined') {
         var setup = {}
         var DataTables = {}
 
-        console.log('init_django_datatables')
-
         columnsearch = function (settings, data, dataIndex, rowdata) {
             if (settings.sTableId in DataTables) {
                 for (var f = 0; f < DataTables[settings.sTableId].filters.length; f++) {
@@ -152,7 +150,6 @@ if (typeof django_datatables === 'undefined') {
         }
 
         FilterBase.prototype.save_state = function (data) {
-            console.log('save sate')
             try {
                 data.columns[this.column_no][this.storage_key] = this.save_data()
             } catch (e) {
@@ -603,7 +600,6 @@ function PythonTable(html_id, tablesetup, ajax_url, options = {}) {
     }
 
     this.postInit = function (settings, json) {
-        console.log('postinit')
         var p_table = self
         p_table.table.api().on('stateSaveParams.dt', function (e, settings, data) {
             django_datatables.exec_filter(p_table, 'save_state', data)

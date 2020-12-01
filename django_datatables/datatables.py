@@ -1,8 +1,9 @@
+import json
 from types import MethodType
 from inspect import isclass
-import json
-from django.db import models
+from typing import TypeVar, Dict
 from abc import abstractmethod
+from django.db import models
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.http import HttpResponse
@@ -10,7 +11,7 @@ from django.template.loader import render_to_string
 from .detect_device import detect_device
 from .columns import ColumnBase, format_date_time
 from .model_def import DatatableModel
-from typing import TypeVar, Dict
+from .filters import DatatableFilter
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
@@ -330,14 +331,29 @@ class DatatableTable:
 
         self.orgdata = None
         self.model = None
+
+        # django query attibutes
         self.filter = {}
         self.exclude = {}
-        self.order_by = []
         self.distinct = []
+
+        # javascript datatable attributes
+        self.order_by = []
+        self.js_filter_list = []
+
         self.max_records = None
         self.table_classes = ['display', 'compact', 'smalltext', 'table-sm', 'table', 'w-100']
         self.table_options['pageLength'] = self.page_length
         self.omit_columns = []
+
+    def add_js_filters(self, name_or_template, column_ids, **kwargs):
+        if type(column_ids) == str:
+            column_ids = [column_ids]
+        for c in column_ids:
+            self.js_filter_list.append(DatatableFilter(name_or_template, self, column=self.find_column(c)[0], **kwargs))
+
+    def js_filter(self, name_or_template, column_id, **kwargs):
+        return DatatableFilter(name_or_template, self, column=self.find_column(column_id)[0], **kwargs)
 
     def get_query(self, **kwargs):
         annotations = {}
@@ -356,9 +372,6 @@ class DatatableTable:
             query = query[:self.max_records]
         return query
 
-    def pivot(self, *columns):
-        self.add_column_options(columns, {'pivot': True})
-
     def sort(self, *columns):
         self.table_options['order'] = []
         for c in columns:
@@ -366,7 +379,7 @@ class DatatableTable:
             if c[0] == '-':
                 sort_order = 'desc'
                 c = c[1:]
-            self.table_options.setdefault('order', []).append([self.find_column(c), sort_order])
+            self.table_options.setdefault('order', []).append([self.find_column(c)[1], sort_order])
 
     def row_color(self, column, *option_colors):
         self.table_options.setdefault('rowColor', []).append(
@@ -382,7 +395,7 @@ class DatatableTable:
     def find_column(self, column_name):
         for n, c in enumerate(self.columns):
             if c.column_name == column_name:
-                return n
+                return c, n
 
     def change_column(self, field, column_type, options):
         for c in self.columns:
