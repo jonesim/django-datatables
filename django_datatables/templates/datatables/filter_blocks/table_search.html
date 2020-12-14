@@ -1,5 +1,4 @@
 <input id="search_{{ table.html_id }}" type="text" class="form-control" placeholder="Search">
-
 <script>
     filter = {
         init: function (table) {
@@ -11,6 +10,12 @@
             } catch (e) {
                 console.log(e)
             }
+        },
+
+        clear: function () {
+            table = django_datatables.DataTables['{{ table.html_id }}'].table
+            table.api().search('');
+            $('#search_{{ table.html_id }}').val('')
         }
     }
     django_datatables.add_plugin('{{ table.html_id }}', filter)

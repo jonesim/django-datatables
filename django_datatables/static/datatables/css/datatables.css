@@ -107,10 +107,28 @@
 .filter-header-icon {
     font-size: large;
     color: #303030d6;
+    text-decoration: none;
+}
+
+.filter-header-icon:hover {
+    text-decoration: none;
 }
 
 .filter-all .all-check, .filter-none .none-check {
     color: darkgray;
     pointer-events: none;
     cursor: not-allowed;
+}
+
+.row_select{
+    width: 6.5em;
+    padding: .1rem;
+    font-size: 0.8rem;
+    line-height: 1;
+    color: #495057;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: .25rem;
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
 }

@@ -1,0 +1,27 @@
+{% spaceless %}
+<table id="{{ datatable.html_id }}" class="display compact smalltext table-sm table w-100">
+    <thead>
+    <tr{% if datatable.table_options.no_titles %} class="d-none"{% endif %}>
+        {% for t in datatable.all_titles %}
+            <th>{{ t }}</th>{% endfor %}
+    </tr>
+    {% include 'datatables/search_boxes.html' with table=datatable %}
+    </thead>
+    {% if not datatable.table_options.nofooter %}
+        <tfoot>
+        <tr>
+            {% for t in datatable.all_titles %}
+                <th>{{ t }}</th>{% endfor %}
+        </tr>
+        </tfoot>
+    {% endif %}
+</table>
+
+<script>
+    local_colDefs_{{ datatable.html_id }} = {{ datatable.col_def_str|safe }}
+        {% if datatable.orgdata %}
+            local_colDefs_{{ datatable.html_id }}.org_data = {{ datatable.orgdata|safe }}
+        {% endif %}
+        new PythonTable("{{ datatable.html_id }}", local_colDefs_{{ datatable.html_id }})
+</script>
+{% endspaceless %}

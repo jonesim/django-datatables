@@ -1,0 +1,18 @@
+<a id="{{ datatable.html_id }}-reset" class="filter-header-icon collapse-all"
+   href="javascript:django_datatables.DataTables['{{ datatable.html_id }}'].reset_table()">
+    <i class="fas fa-minus-circle"></i>
+</a>
+
+<script>
+    var plugin = {
+        refresh: function (table) {
+            var page_info = table.table.api().page.info()
+            if (page_info.recordsTotal !== page_info.recordsDisplay) {
+                $('#{{ datatable.html_id }}-reset').addClass('text-warning')
+            } else {
+                $('#{{ datatable.html_id }}-reset').removeClass('text-warning')
+            }
+        }
+    }
+    django_datatables.add_plugin('{{ datatable.html_id }}', plugin)
+</script>

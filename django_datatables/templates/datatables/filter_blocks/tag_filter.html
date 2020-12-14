@@ -11,10 +11,9 @@
         <i class="all-clear filter-header-icon fas fa-ban"></i></a>
 {% endblock %}
 
-
 {% block javascript %}
     <script>
-        function filter (column_no, html_id, options) {
+        function filter(column_no, html_id, options) {
 
             this.storage_key = 'tag_filter'
             django_datatables.FilterBase.call(this, column_no, html_id, options)
@@ -37,14 +36,14 @@
                 return tag_filter
             }
 
-            this.buildfilter = function (refresh=false) {
+            this.buildfilter = function (refresh = false) {
                 this.filter_data = {
                     'required': [],
                     'include': [],
                     'exclude': [],
                 }
                 multi_checkboxes = $(".tag-filter", '#' + this.html_id)
-                for (m=0; m<multi_checkboxes.length; m++){
+                for (m = 0; m < multi_checkboxes.length; m++) {
                     id = parseInt($(multi_checkboxes[m]).attr("data-value"))
                     if ($(multi_checkboxes[m]).hasClass('option-3')) {
                         this.filter_data.required.push(id)
@@ -54,15 +53,15 @@
                         this.filter_data.exclude.push(id)
                     }
                 }
-               if (this.filter_data.required.length === 0 && this.filter_data.include.length === 0 && this.filter_data.exclude.length === 0) {
-                   this.set_status_class('all')
-                } else{
-                   this.set_status_class('')
+                if (this.filter_data.required.length === 0 && this.filter_data.include.length === 0 && this.filter_data.exclude.length === 0) {
+                    this.set_status_class('all')
+                } else {
+                    this.set_status_class('')
                 }
                 if (refresh) this.pTable.table.api().draw();
             }
 
-            this.refresh= function () {
+            this.refresh = function () {
                 this_filter = this
                 $(".badge", '#' + this.html_id).each(function () {
                     key = $(this).attr("data-value")
@@ -70,7 +69,7 @@
                 })
             }
 
-            this.filter= function (data) {
+            this.filter = function (data) {
                 notfound = true
                 for (req = 0; req < this.filter_data.required.length; req++) {
                     if (data[this.column_no].indexOf(this.filter_data.required[req]) < 0) {
@@ -98,7 +97,7 @@
                 return true
             }
 
-            this.html= function () {
+            this.html = function () {
                 tagsection = `  <div class="filter-header" id="tagsec-%3-%1" data-target="#collapsesect%3_%4">
                             <li class="list-group-item list-group-item-secondary p-1 my-1">%1
                                 <span id="chbadge-%3-%4" class="small badge badge-pill badge-primary mx-1">%2</span>
@@ -130,17 +129,17 @@
                 if (insection) html += endsection
                 let context = $('#' + this.html_id)
                 $('.filter-content', context).html(html)
-                $(".all-clear", context).click(this.this_fn('clearall'))
+                $(".all-clear", context).click(this.this_fn('clear'))
                 $(".tag-filter", context).click(this.this_fn('change_multi_input'))
                 this.restore_state()
                 this.buildfilter(true)
             }
 
-            this.clearall = function () {
+            this.clear = function () {
                 $(".tag-filter", '#' + this.html_id).each(function () {
                     $(this).removeClass("option-2 option-3 option-4");
                     $(this).addClass("option-1");
-                }).promise().done(this.this_fn('buildfilter',true));
+                }).promise().done(this.this_fn('buildfilter', true));
             }
 
             this.change_multi_input = function (dummy, checkbox) {
@@ -154,13 +153,12 @@
         }
         filter.prototype = Object.create(django_datatables.FilterBase.prototype);
     </script>
-
 {% endblock %}
 
-    {% block remove_registration %}
-        options = {
-            tagcheckbox : `{% include 'datatables/filter_rows/checkbox_tag.html' %}`
-        }
-        var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
-        django_datatables.add_filter('{{ table.html_id }}', new_filter)
-    {% endblock %}
+{% block remove_registration %}
+    options = {
+    tagcheckbox : `{% include 'datatables/filter_rows/checkbox_tag.html' %}`
+    }
+    var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
+    django_datatables.add_filter('{{ table.html_id }}', new_filter)
+{% endblock %}

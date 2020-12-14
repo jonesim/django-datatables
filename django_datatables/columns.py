@@ -8,6 +8,23 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 
+def row_button(command, button_text, *, function='Html', button_classes='btn btn-sm', **kwargs):
+    rb = {
+        'html': (f'<button data-command="{command}" onclick="django_datatables.b_r(this)" '
+                 f'class="{button_classes}">{button_text}</button>'),
+        'function': function,
+    }
+    rb.update(kwargs)
+    return rb
+
+
+def render_replace(*, column, var='%1%', html=None):
+    if html:
+        return {'var': var, 'column': column, 'html': html, 'function': 'Replace'}
+    else:
+        return {'var': var, 'column': column, 'function': 'Replace'}
+
+
 class ColumnNameError(Exception):
     pass
 
@@ -26,7 +43,7 @@ class ColumnBase:
         if not hasattr(self, 'initialised'):
             self.kwargs = self.merge_kwargs_locals(local_vars)
             # noinspection PyAttributeOutsideInit
-            self.initialised = 'column_name' in self.kwargs
+            self.initialised = 'column_name' in self.kwargs or hasattr(self, 'column_name')
         return self.initialised
 
     def get_class_instance(self, column_name, **kwargs):
@@ -102,6 +119,7 @@ class ColumnBase:
         if fields is None:
             self._field = None
         elif isinstance(fields, (list, tuple)):
+            self.options['field_array'] = True
             self._field = [self.model_path + o for o in fields]
         else:
             self._field = self.model_path + fields
@@ -138,6 +156,8 @@ class ColumnBase:
 
     @staticmethod
     def __row_result(self, data_dict, page_results):
+        if isinstance(self.field, (list, tuple)):
+            return [data_dict.get(f) for f in self.field]
         return data_dict.get(self.field)
 
     def style(self):
@@ -189,7 +209,7 @@ class DatatableColumn(ColumnBase):
     def __init__(self, **kwargs):
         if not self.initialise(locals()):
             return
-        super().__init__( **kwargs)
+        super().__init__(**kwargs)
         self.col_setup()
 
     def col_setup(self):
@@ -224,24 +244,7 @@ class TextFieldColumn(ColumnBase):
             self.kwargs['max_chars'] = int(self.args[0])
 
 
-class ColumnReplace(ColumnBase):
-
-    def add_column_reference(self, field, replace_str=None):
-        if not replace_str:
-            replace_str = f'%r{len(self.replace_list)}%'
-        self.replace_list_append(replace_str, field)
-        self.additional_columns = [{'field': self.model_path + field,
-                                    'column_name': field,
-                                    'hidden': True}]
-        return replace_str
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.options['renderfn'] = 'universalRender'
-        self.options['replace_list'] = self.replace_list
-
-
-class ColumnLink(ColumnReplace):
+class ColumnLink(ColumnBase):
 
     @property
     def url(self):
@@ -262,9 +265,35 @@ class ColumnLink(ColumnReplace):
             return
         super().__init__(**self.kwargs)
         self.url = url_name
-        self.replace_list_append('%1%', self.column_name)
-        self.add_column_reference(link_ref_column, replace_str='999999')
-        self.options['html'] = f'<a href="{self.url}">{link_html}</a>'
+        self.options['render'] = [render_replace(column=self.column_name, html=f'<a href="{self.url}">{link_html}</a>',
+                                                 var=link_html),
+                                  render_replace(column=link_ref_column, var='999999')]
+
+
+class ManyToManyColumn(DatatableColumn):
+
+    def setup_results(self, request, all_results):
+        tags = self.m2m_model.objects.values_list(self.connecting_field + '__id', 'id')
+        tag_dict = {}
+        for t in tags:
+            tag_dict.setdefault(t[0], []).append(t[1])
+        all_results['m2m' + self.column_name] = tag_dict
+
+    def proc_result(self, data_dict, page_results):
+        return page_results['m2m' + self.column_name].get(data_dict['id'], [])
+
+    def __init__(self, *, m2m_model, connecting_field, display_field, html=' %1% ', **kwargs):
+        if not self.initialise(locals()):
+            return
+        super().__init__(**self.kwargs)
+        self.m2m_model = self.options.pop('m2m_model')
+        self.connecting_field = connecting_field
+        self.display_field = display_field
+        self.options['lookup'] = list(m2m_model.objects.values_list('id', display_field))
+        self.row_result = self.proc_result
+        self.options['render'] = [
+            {'var': '%1%', 'html': html, 'function': 'ReplaceLookup'},
+        ]
 
 
 '''
@@ -316,6 +345,7 @@ class ModalButtonColumn(ColumnReplace):
     def post_init(self):
         pass
 '''
+
 
 def format_date_time(self, data, page_data):
     try:

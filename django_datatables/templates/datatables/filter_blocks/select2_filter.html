@@ -14,8 +14,7 @@
 
             this.load_state = function (state_data) {
                 var context = $('#' + this.html_id)
-                $("select", context).val(state_data)
-                $("select", context).trigger('change')
+                $("select", context).val(state_data).trigger('change')
             }
 
             this.save_data = function (data) {
@@ -58,9 +57,13 @@
                 $("select", context).select2({
                     templateResult: this.this_fn_parameter('format_template')
                 }).change(this.this_fn('buildfilter'))
-                this.load_state()
+                this.restore_state()
             }
 
+            this.clear = function () {
+                var context = $('#' + this.html_id)
+                $("select", context).val('').trigger('change')
+            }
             this.format_template = function (state) {
                 const dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill %3">%2</span></span>';
                 if (state.loading) return;
@@ -72,8 +75,8 @@
     </script>
 {% endblock %}
 
-    {% block remove_registration %}
-        options = {}
-        var new_filter = new Select2Filter({{ column_no }}, '{{ html_id }}', options)
-        django_datatables.add_filter('{{ table.html_id }}', new_filter)
-    {% endblock %}
+{% block remove_registration %}
+    options = {}
+    var new_filter = new Select2Filter({{ column_no }}, '{{ html_id }}', options)
+    django_datatables.add_filter('{{ table.html_id }}', new_filter)
+{% endblock %}

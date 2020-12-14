@@ -25,3 +25,18 @@ def filter_group(datatable):
     for f in datatable.js_filter_list:
         filters.append(f.render())
     return mark_safe(''.join(filters))
+
+
+@register.inclusion_tag('datatables/no_of_rows.html')
+def no_of_rows(table):
+    return {'datatable': table}
+
+
+@register.inclusion_tag('datatables/clear_table.html')
+def clear_table(table):
+    return {'datatable': table}
+
+
+@register.inclusion_tag('datatables/no_of_results.html')
+def no_of_results(table):
+    return {'datatable': table}

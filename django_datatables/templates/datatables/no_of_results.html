@@ -1,0 +1,15 @@
+<small id="{{ datatable.html_id }}-result-no"></small>
+
+<script>
+    var plugin = {
+        refresh: function (table) {
+            var page_info = table.table.api().page.info()
+            if (page_info.recordsTotal !== page_info.recordsDisplay) {
+                $('#{{ datatable.html_id }}-result-no').html(page_info.recordsDisplay.toString() + '/' + page_info.recordsTotal.toString() + ' results')
+            } else {
+                $('#{{ datatable.html_id }}-result-no').html(page_info.recordsTotal.toString() + ' results')
+            }
+        }
+    }
+    django_datatables.add_plugin('{{ datatable.html_id }}', plugin)
+</script>

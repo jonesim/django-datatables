@@ -392,8 +392,10 @@ class DatatableTable:
             if c.column_ref in column_ref:
                 c.setup_kwargs(options)
 
-    def find_column(self, column_name):
+    def find_column(self, column_name, by_field=False):
         for n, c in enumerate(self.columns):
+            if by_field and c.field == column_name:
+                return c, n
             if c.column_name == column_name:
                 return c, n
 
@@ -416,7 +418,7 @@ class DatatableTable:
             if model_field:
                 field_type = type(model_field)
                 if field_type == models.DateField:
-                    column.row_result =  MethodType(format_date_time, column)
+                    column.row_result = MethodType(format_date_time, column)
             if isinstance(column_setup, dict):
                 column.column_name = start_field.split('__')[-1]
                 column.setup_kwargs(column_setup)
@@ -478,30 +480,23 @@ class DatatableTable:
     def tag_array(array, tag_str):
         return ''.join([tag_str.format(e) for e in array])
 
-    def search_boxes(self):
-        return render_to_string('datatables/search_boxes.html', {'table': self})
-
-    def html_setup(self):
-        footer = ''
-        title_class = ''
-        if self.table_options.get('no_titles', False):
-            title_class = ' class="d-none"'
-        titles = ''.join([f'<th>{t}</th>' for t in self.all_titles()])
-        if not self.table_options.get('nofooter', False):
-            footer = f'<tfoot><tr>{titles}</tr></tfoot>'
-        return (
-            f'<table id="{self.html_id}" class="{" ".join(self.table_classes)}">'
-            f'<thead><tr{title_class}>{titles}</tr>{self.search_boxes()}</thead>{footer}</table>'
-        )
-
     def javascript_setup(self):
-        return self.html_setup() + '<script>' + self.javascript() + '</script>'
+        return render_to_string('datatables/table.html', {'datatable': self})
 
-    def javascript(self):
+    def setup_column_id(self):
+        if 'column_id' not in self.table_options:
+            id = self.find_column('id', True)
+            if id:
+                self.table_options['column_id'] = id[1]
+                return self.columns[id[1]]
+        else:
+            return self.columns[self.table_options['column_id']]
+
+    def col_def_str(self):
         col_def_array = []
         col_options = []
-
         count = 0
+        self.setup_column_id()
         for c in self.columns:
             col_def = c.style()
             col_def['targets'] = count
@@ -531,15 +526,7 @@ class DatatableTable:
         col_def_str = json.dumps(table_vars)
         col_def_str = col_def_str.replace('"&', "")
         col_def_str = col_def_str.replace('&"', "")
-
-        if self.orgdata is not None:
-            orgdata = ',' + self.orgdata
-        else:
-            orgdata = ''
-        inittable = (f'django_datatables.DataTables.{self.html_id}= new PythonTable("{self.html_id}", '
-                     f'local_colDefs_{self.html_id}, "{self.ajax}" {orgdata});')
-
-        return 'local_colDefs_' + self.html_id + '=' + col_def_str + ";" + inittable
+        return col_def_str
 
     def get_table_array(self, request, results, show_hidden=True):
         json_list = []
@@ -566,6 +553,18 @@ class DatatableTable:
             return_data['set_vars'] = set_vars
         return json.dumps(return_data, indent=None, default=str)
 
+    def refresh_row(self, request, row_id):
+        id_column = self.setup_column_id()
+        if id_column:
+            self.filter[id_column.field] = int(row_id[1:])
+            results = self.get_table_array(request, self.get_query())[0]
+            commands = [{'command': 'refresh_row', 'row': row_id, 'data': results, 'table': self.html_id}]
+            return HttpResponse(json.dumps(commands), content_type='application/json')
+
+    def delete_row(self, request, row_id):
+        commands = [{'command': 'delete_row', 'row': row_id, 'table': self.html_id}]
+        return HttpResponse(json.dumps(commands), content_type='application/json')
+
 
 class DatatableView(TemplateView):
     model = None
@@ -581,7 +580,6 @@ class DatatableView(TemplateView):
         return self.table.get_query(**kwargs)
 
     def dispatch(self, request, *args, **kwargs):
-        self.table.ajax = request.get_full_path() + '?json'
         self.dispatch_context = detect_device(request)
         self.setup_table()
         return super(DatatableView, self).dispatch(request, *args, **kwargs)
@@ -604,7 +602,6 @@ class DatatableView(TemplateView):
 
     def post(self, request, *args, **kwargs):
 
-        self.table.ajax = request.get_full_path()+'?json'
         if request.GET.get('json', None) is not None:
             results = self.post_table_json(**kwargs)
             if self.locked():
@@ -617,10 +614,21 @@ class DatatableView(TemplateView):
                                 r[f] = '<i class="fas fa-key"></i>'
             return HttpResponse(self.table.get_json(request, results, self.graph_data(**kwargs)),
                                 content_type='application/json')
+
+        for t in ['row', 'column']:
+            if 'datatable-' + t in request.GET:
+                self.table.setup_column_id()
+                if hasattr(self, t + '_' + request.POST['command']):
+                    column_values = json.loads(request.POST[t])
+                    extra_data = {k: request.POST[k] for k in request.POST if k != t}
+                    return getattr(self, t + '_' + request.POST['command'])(request, column_values, extra_data)
+
         return None
+
+    def sent_column(self, column_values, extra_data):
+        pass
     """
     def get(self, request, *args, **kwargs):
-        self.table.ajax = request.get_full_path()+'?json'
         if request.GET.get('json', None) is not None:
             '''
             # ***************************************************

@@ -1,8 +1,7 @@
 {% for c in table.columns %}
     <th>
         {% if not c.options.no_col_search %}
-            <input name="{{ c.column_name }}" type="text"
-                   class="form-control form-control-sm small column-search"
+            <input name="{{ c.column_name }}" type="text" class="form-control form-control-sm small column-search"
                    data-col="{{ c.column_name }}"/>
         {% endif %}
     </th>
@@ -10,13 +9,11 @@
 
 <script>
     var plugin = {
-        init: function (table) {
-            state_data = table.table.api().state.loaded()
+        init: function (table, state_data) {
             $('#{{ table.html_id }} .column-search').each(function () {
                 try {
-                    $(this).val(state_data.columns[table.table.api().column($(this).attr('data-col')+ ':name').index()].search.search)
-                }
-                catch (e){
+                    $(this).val(state_data.columns[table.table.api().column($(this).attr('data-col') + ':name').index()].search.search)
+                } catch (e) {
                     console.log(e)
                 }
                 if ($(this).attr('data-col') != '' && this.value != '') {
@@ -27,6 +24,15 @@
                 table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
                     .draw();
             })
+        },
+
+        clear: function () {
+            var table = django_datatables.DataTables['{{ table.html_id }}'].table
+            var search_boxes = $('#{{ table.html_id }} .column-search')
+            for (var s = 0; s < search_boxes.length; s++) {
+                search_boxes[s].value = ''
+                table.api().column($(search_boxes[s]).attr('data-col') + ':name').search('', false, true, true);
+            }
         }
     }
     django_datatables.add_plugin('{{ table.html_id }}', plugin)

@@ -3,23 +3,84 @@ if (typeof django_datatables === 'undefined') {
         var setup = {}
         var DataTables = {}
 
-        columnsearch = function (settings, data, dataIndex, rowdata) {
+        function b_r(button){
+            var command = $(button).attr('data-command')
+            var row_id = $(button).closest('tr').attr('id')
+            var table_id = $(button).closest('table').attr('id')
+            DataTables[table_id].send_row(command, row_id)
+        }
+
+        utilities = {
+
+            getCookie: function (name) {
+                var cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    var cookies = document.cookie.split(';');
+                    for (var i = 0; i < cookies.length; i++) {
+                        var cookie = jQuery.trim(cookies[i]);
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            },
+
+            process_commands: function(commands){
+                for (var c = 0; c < commands.length; c++){
+                    dt_api = django_datatables.DataTables[commands[c].table].table.api()
+                    switch (commands[c].command) {
+                        case 'delete_row':
+                            dt_api.row('#' + commands[c].row).remove()
+                            dt_api.draw(false)
+                            break;
+                        case 'refresh_row':
+                            dt_api.row('#' + commands[c].row).data(commands[c].data).invalidate()
+                    break;
+                    }
+                }
+            },
+
+            post_data: function (url, data) {
+                $.ajax({
+                    url: url,
+                    method: 'post',
+                    data: data,
+                    beforeSend: function (xhr) {
+                        xhr.setRequestHeader("X-CSRFToken", utilities.getCookie('csrftoken'));
+                    },
+                    cache: false,
+                    success: function (form_response, status, jqXHR) {
+                        content_disposition = jqXHR.getResponseHeader('Content-Disposition')
+                        if (typeof (content_disposition) == 'string' && content_disposition.indexOf('attachment') > -1) {
+                            blob = new Blob([form_response], {type: "octet/stream"})
+                            download_url = window.URL.createObjectURL(blob);
+                            a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = download_url;
+                            a.download = content_disposition.split('"')[1];
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(download_url);
+                            alert('your file has downloaded');
+                        } else if (typeof (form_response) == 'object') {
+                            utilities.process_commands(form_response)
+                        }
+                    }
+                })
+            }
+        }
+
+        columnsearch = function (settings, data, dataIndex, row_data) {
             if (settings.sTableId in DataTables) {
                 for (var f = 0; f < DataTables[settings.sTableId].filters.length; f++) {
-                    if (!self.filters[f].filter(rowdata)) return false
+                    if (!DataTables[settings.sTableId].filters[f].filter(row_data)) return false
                 }
                 return true
             }
         }
         $.fn.dataTable.ext.search.push(columnsearch)
-
-        function exec_filter(table, function_name, data) {
-            for (var i = 0; i < table.filters.length; i++) {
-                if (function_name in table.filters[i]) {
-                    table.filters[i][function_name](data)
-                }
-            }
-        }
 
         function init_setup(table_id) {
             if (typeof (setup[table_id]) === 'undefined')
@@ -32,6 +93,14 @@ if (typeof django_datatables === 'undefined') {
                 setup[table_id][setup_type] = []
             }
             setup[table_id][setup_type].push(value)
+        }
+
+        function add_to_setup(table_id, setup_key, value) {
+            init_setup(table_id)
+            if (typeof (setup[table_id].datatable_setup) === "undefined") {
+                setup[table_id].datatable_setup = {}
+            }
+            setup[table_id].datatable_setup[setup_key] = value
         }
 
         function add_filter(table_id, filter) {
@@ -106,7 +175,7 @@ if (typeof django_datatables === 'undefined') {
             }
 
             this.add_calcs = function (row, value = 1) {
-                item = this.get_val(row)
+                var item = this.get_val(row)
                 if (Array.isArray(item)) {
                     for (var i = 0; i < item.length; i++) {
                         this.calcs[item[i]][0] += value
@@ -116,30 +185,6 @@ if (typeof django_datatables === 'undefined') {
                 }
             }
         }
-
-
-        this.filters = {
-            init_filters: function (p_table) {
-
-                p_table.table.api().rows().data().each(function (row) {
-                    p_table.filters.forEach(function (filter) {
-                        filter.filter_calcs.init_calcs(row)
-                    })
-                })
-            },
-
-            proc_filters: function (p_table) {
-                p_table.filters.forEach(function (filter) {
-                    filter.filter_calcs.clear_calcs()
-                })
-                p_table.table.api().rows({"filter": "applied"}).data().each(function (row) {
-                    p_table.filters.forEach(function (filter) {
-                        filter.filter_calcs.add_calcs(row)
-                    })
-                })
-            },
-        }
-
 
         function FilterBase(column_no, html_id, options) {
             this.column_no = column_no
@@ -273,7 +318,7 @@ if (typeof django_datatables === 'undefined') {
             }
 
             this.html = function () {
-                htmldata = ''
+                var htmldata = ''
                 for (k of this.filter_calcs.sort_keys()) {
                     htmldata += this.options.htmlcheckbox.replace(/%1/g, k).replace(/%6/g, encodeURI(k))
                 }
@@ -291,20 +336,170 @@ if (typeof django_datatables === 'undefined') {
                     $(this).prop('checked', checked)
                 }).promise().done(this.this_fn('buildfilter', true));
             }
+
+            this.clear = function () {
+                this.checkall(true)
+            }
         }
 
         PivotFilter.prototype = Object.create(FilterBase.prototype);
 
+        var column_render = function (column, render_functions, tablesetup) {
+            var rf = []
+            for (var r = 0; r < render_functions.length; r++) {
+                rf.push(new django_datatables.data_processing[render_functions[r].function](column, render_functions[r], tablesetup))
+            }
+            return function (data, type, row, meta) {
+                data = rf[0].process(data, type, row, meta)
+                for (r = 1; r < rf.length; r++) {
+                    data = rf[r].process(data, type, row, meta)
+                }
+                return data
+            }
+        }
+
+        BaseProcessAjaxData = function (column, params, table) {
+            this.column = column
+            if (table.initsetup.colOptions[column].field_array == true){
+                this.field_array = true
+            }
+            if (typeof params.column === 'string'){
+                var column_index = params.column.split(':')
+                params.column =  table.find_column(column_index[0])
+                if (column_index.length > 1){
+                    params.index = parseInt(column_index[1])
+                } else {
+                    params.index = 0
+                }
+            }
+            this.params = params
+        }
+
+        BaseProcessAjaxData.prototype.process = function (column_data, type, row, meta) {
+            if (Array.isArray(column_data) && !this.field_array) {
+                column_val = []
+                for (var a = 0; a < column_data.length; a++) {
+                    if (this.params.column === meta.col) {
+                        column_val[a] = this.convert(column_data[a], row[this.params.column][a], meta, row)
+                    } else {
+                        column_val[a] = this.convert(column_data[a], row[this.params.column], meta, row)
+                    }
+                }
+                return column_val.join(' ')
+            } else {
+                return this.convert(column_data, row[this.params.column], meta, row)
+            }
+        }
+
+        data_processing = {
+            Row: function (column, params, table) {
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+                this.reg_exp = RegExp(params.var, 'g')
+                if (params.html == undefined) {
+                    this.convert = function (current, value, meta, row) {
+                        return current.replace(params.var, meta.settings.rowId(row))
+                    }
+                } else {
+                    this.convert = function (current, value, meta, row) {
+                        return params.html.replace(params.var, meta.setup.rowId(row))
+                    }
+                }
+            },
+
+            Replace: function (column, params, table) {
+                this.reg_exp = RegExp(params.var, 'g')
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+
+                this.convert = function (current, value) {
+                    if (params.html == undefined) {
+                        if (this.field_array){
+                            return current.replace(params.var, value[params.index])
+                        } else{
+                            return current.replace(params.var, value)
+                        }
+
+                    } else {
+                        if (this.field_array) {
+                            return params.html.replace(params.var, current[params.index])
+                        } else {
+                            return params.html.replace(params.var, current)
+                        }
+                    }
+                }.bind(this)
+            },
+
+            ReplaceLookup: function (column, params, table) {
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+                this.reg_exp = RegExp(params.var, 'g')
+                if (params.column == undefined){
+                    params.column = column
+                }
+                params.lookup = {}
+                for (var lv=0; lv<table.initsetup.colOptions[params.column].lookup.length; lv++ ){
+                    params.lookup[table.initsetup.colOptions[params.column].lookup[lv][0]] = table.initsetup.colOptions[params.column].lookup[lv][1]
+                }
+                if (params.html == undefined){
+                    this.convert = function (current, value) {
+                        return this.params.lookup[value]
+                    }.bind(this)
+                }else{
+                    this.convert = function (current, value) {
+                        return this.params.html.replace(this.reg_exp, this.params.lookup[value])
+                    }.bind(this)
+                }
+            },
+
+            Html: function(column, params, table){
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+                this.convert = function (current, value) {
+                    return params.html
+                }
+            },
+            ValueInColumn: function(column, params, table){
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+                var new_value
+                this.convert = function (current, value) {
+                    if (value.includes(params.value)){
+                        new_value = params.choices[0]
+                    } else {
+                        new_value = params.choices[1]
+                    }
+                    if (params.html == undefined) {
+                        return current.replace(params.var, new_value)
+                    } else {
+                        return params.html.replace(params.var, new_value)
+                    }
+                }.bind(this)
+
+            },
+
+            MergeArray: function (column, params) {
+                this.column = column
+                this.process = function (new_row, row) {
+                    console.log(new_row)
+                    new_row[this.column] = new_row[this.column].join(' ')
+                }
+            }
+        }
+
+        for (var dp in data_processing){
+            data_processing[dp].prototype = Object.create(BaseProcessAjaxData.prototype);
+        }
+
         return {
+            BaseProcessAjaxData,
+            data_processing,
             setup,
             add_filter,
             add_plugin,
             DataTables,
-            exec_filter,
             FilterCalcs,
-            filters,
             FilterBase,
             PivotFilter,
+            column_render,
+            utilities,
+            add_to_setup,
+            b_r,
         }
     }()
 }
@@ -324,33 +519,6 @@ function make_lookup_dict(lookup_data) {
 }
 
 
-function getCookie(name) {
-    var cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        var cookies = document.cookie.split(';');
-        for (var i = 0; i < cookies.length; i++) {
-            var cookie = jQuery.trim(cookies[i]);
-            // Does this cookie string begin with the name we want?
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-function geturl(cell, row, column) {
-    if (row[column + colOptions[column]['link']]) {
-        return urls[column].replace('999999', row[column + colOptions[column]['link']].toString());
-    }
-    if (row[column + colOptions[column]['javascript']]) {
-        return urls[column].replace('999999', row[column + colOptions[column]['javascript']].toString());
-    }
-
-    return null;
-}
-
 function rep_options(html, option_dict) {
     for (o in option_dict) {
         option = new RegExp('%' + o, 'g')
@@ -365,212 +533,6 @@ function numberWithCommas(x) {
 }
 
 
-renderHelpers =
-    {
-
-        initUrl: function (renderer, column, setup) {
-            renderer.url = setup['url']
-
-            if (!renderer.url) {
-                renderer.url = setup['rawurl']
-                renderer.column = 0
-            } else {
-                renderer.column = column + setup['link']
-            }
-        },
-
-        find_column: function (id, tablesetup) {
-            for (j = 0; j < tablesetup.colDefs.length; j++) {
-                if (tablesetup.colDefs[j]['name'] == id) {
-                    return j
-                }
-            }
-        },
-
-        initColRef: function (renderer, column, setup, tablesetup) {
-            if (typeof (setup['colRef']) != 'undefined') {
-                for (j = 0; j < tablesetup.colDefs.length; j++) {
-                    if (tablesetup.colDefs[j]['name'] == setup['colRef']) {
-                        renderer.column = j
-                        return
-                    }
-                }
-            }
-        }
-
-
-    }
-
-renderFunctions =
-    {
-
-        mouseOver: function (column, setup, title, tablesetup) {
-
-            renderHelpers.initUrl(this, column, setup)
-            this.js = setup['mouseover']
-            this.css_class = ''
-            if (setup['css_class'] != undefined) this.css_class = ' class="' + setup['css_class'] + '"'
-            this.title = title
-            if (setup['text'] != undefined) this.globaltext = setup['text']; else this.globaltext = title
-            this.render = function (data, type, row, meta) {
-                if (data === null || data === "") text = this.globaltext; else text = data;
-                js = this.js
-                if (this.url) {
-                    cell_url = this.url.replace('999999', row[this.column].toString());
-                    js = js.replace('%url%', "'" + cell_url + "'")
-                }
-                js = js.replace('%row%', meta.row)
-                return '<button href=# onmouseover="' + js + '"' + this.css_class + '">' + text + '</button>';
-            }
-        },
-
-        lookupRender: function (column, setup, title, tablesetup) {
-            make_lookup_dict(tablesetup.colOptions[column])
-            this.dict = tablesetup.colOptions[column].dict
-            this.tagbadge = '<span class="small badge badge-pill badge-info m-1">%1</span>'
-            this.groupbadge = '<span class="small badge badge-pill badge-secondary m-1">%1</span>'
-            this.render = function (data, type, row, meta) {
-                html = ''
-                for (count = 0; count < data.length; count++) {
-                    if (data[count] >= 0x10000) {
-                        html += this.groupbadge.replace('%1', this.dict[data[count]])
-                    } else {
-                        html += this.tagbadge.replace('%1', this.dict[data[count]])
-                    }
-                }
-                return html
-            }
-        },
-
-        BadgeList: function (column, setup, title, tablesetup) {
-            this.tagbadge = '<span class="small badge badge-pill badge-info m-1">%1</span>'
-            this.render = function (data, type, row, meta) {
-                html = ''
-                for (count = 0; count < data.length; count++) {
-                    html += this.tagbadge.replace('%1', data[count])
-                }
-                return html
-            }
-        },
-
-        imageRender: function (column, setup, title, tablesetup) {
-            this.render = function (data, type, row, meta) {
-                if (data === null || data === "") return '';
-                else return '<img src="' + tablesetup.tableOptions.media + data + '" height="50" class="img-zoom">'
-            }
-        },
-
-        iconRender: function (column, setup, title, tablesetup) {
-            renderHelpers.initUrl(this, column, setup)
-            renderHelpers.initColRef(this, column, setup, tablesetup)
-            this.linktag = '<img'
-            if (setup['css_class'] != undefined) this.linktag += ' class="' + setup['css_class'] + '"'
-            if (setup['target'] != undefined) this.linktag += ' target="' + setup['target'] + '"'
-            this.title = title
-            this.render = function (data, type, row, meta) {
-                if (data === null || data === "") text = this.title; else text = data;
-                if (typeof (row[this.column]) != 'undefined' & row[this.column] != null) {
-                    cell_url = this.url.replace('999999', row[this.column].toString().replace(/\ /g, '-'));
-                    return this.linktag + ' src="' + cell_url + '" title="' + row[this.column] + '">';
-                } else return ''
-            }
-            return null;
-        },
-
-        universalRender: function (column, setup, title, tablesetup) {
-
-            if (Array.isArray(setup.replace_list)) {
-                for (r = 0; r < setup.replace_list.length; r++) {
-                    if (typeof (setup.replace_list[r].column) == 'string') {
-                        setup.replace_list[r].column = renderHelpers.find_column(setup.replace_list[r].column, tablesetup)
-                    }
-                }
-            }
-            this.setup = setup
-
-            function replace_data(row_data, col_def) {
-                column_data = row_data[col_def.column]
-                var x;
-                for (x = 0; x < col_def.comparisons.length; x++) {
-                    if (column_data == col_def.comparisons[x][0]) {
-                        return col_def.comparisons[x][1]
-                    }
-                }
-                return col_def.default
-            }
-
-            this.render = function (data, type, row, meta) {
-                var y;
-                html = this.setup.html.replace(/%row%/g, meta.row)
-                for (y = 0; y < this.setup.replace_list.length; y++) {
-                    if (typeof (this.setup.replace_list[y].comparisons) != 'undefined') {
-                        if (typeof (replace_data(row, this.setup.replace_list[y])) == 'undefined' || replace_data(row, this.setup.replace_list[y]) == '') {
-                            html = ''
-                        } else {
-                            html = html.replace(RegExp(this.setup.replace_list[y].var, 'g'), replace_data(row, this.setup.replace_list[y]))
-                        }
-                    } else if (typeof (this.setup.replace_list[y].in) != 'undefined') {
-                        if (row[this.setup.replace_list[y].column].includes(this.setup.replace_list[y].in)) {
-                            html = html.replace(RegExp(this.setup.replace_list[y].var, 'g'), this.setup.replace_list[y].values[0])
-                        } else {
-                            html = html.replace(RegExp(this.setup.replace_list[y].var, 'g'), this.setup.replace_list[y].values[1])
-                        }
-                    } else {
-                        if (typeof (row[this.setup.replace_list[y].column]) === 'undefined' || row[this.setup.replace_list[y].column] === '' || row[this.setup.replace_list[y].column] === null) {
-                            html = ''
-                        } else {
-                            html = html.replace(RegExp(this.setup.replace_list[y].var, 'g'), row[this.setup.replace_list[y].column])
-                        }
-                    }
-                }
-                return html
-            }
-        },
-
-        tagToggleRender: function (column, setup, title, tablesetup) {
-            renderHelpers.initColRef(this, column, setup, tablesetup);
-            this.tagid = setup.tagid;
-            this.tag = setup.tag;
-            if (typeof (setup.tag_ref) != 'undefined') {
-                this.tag_ref = renderHelpers.find_column(setup.tag_ref, tablesetup);
-            }
-
-            if (typeof (setup.disabled) == 'undefined') {
-                this.disabled = this.tag
-            } else {
-                this.disabled = setup.disabled
-            }
-
-            if (typeof (setup.modal) == 'undefined') {
-                this.modalform = 'modaltag'
-            } else {
-                this.modalform = setup.modal
-            }
-            this.render = function (data, type, row, meta) {
-                start = ''
-                if (data != 1) {
-                    btn_class = 'btn-outline-secondary'
-                    button_text = this.disabled
-                } else {
-                    btn_class = 'btn-success'
-                    button_text = this.tag
-                    //   start = '&zwnj;'
-                }
-                if (typeof (this.tag_ref) != 'undefined') {
-                    button_text = row[this.tag_ref]
-                }
-                json_data = {
-                    col: row[this.column].toString(),
-                    row: meta.row,
-                    tagid: this.tagid
-                }
-                return (start + "<button onclick='modal.send_inputs(" + JSON.stringify(json_data) + ")' class='btn " + btn_class + " btn-sm'>" + button_text + "</button>")
-            }
-        },
-    }
-
-datatable_config = {}
-
 function setRowClass(row, data, dataIndex, rowDefn) {
     rowclass = rowDefn.values[data[rowDefn.column]]
     if (typeof (rowclass) != 'undefined') {
@@ -579,65 +541,57 @@ function setRowClass(row, data, dataIndex, rowDefn) {
 }
 
 
-function PythonTable(html_id, tablesetup, ajax_url, options = {}) {
-    self = this
-    self.initsetup = tablesetup
-    self.filters = []
-    datatable_config[html_id] = {}
+function PythonTable(html_id, tablesetup, options) {
+    // tablesetup.html_id = html_id
+    this.initsetup = tablesetup
+    this.filters = []
+    this.table_id = html_id
+
     col_defs = tablesetup.colDefs
 
+    django_datatables.DataTables[html_id] = this
     if (typeof (mobile) == 'undefined') mobile = false;
     for (i = 0; i < tablesetup.colOptions.length; i++) {
         if (mobile && (col_defs[i]['mobile'] == false)) {
             col_defs[i].visible = false
         }
-        if (tablesetup.colOptions[i]['renderfn'] != undefined) {
-            datatable_config[html_id][i] = new renderFunctions[tablesetup.colOptions[i]['renderfn']](i, tablesetup.colOptions[i], tablesetup.titles[i], tablesetup)
-            col_defs[i]['render'] = function (data, type, row, meta) {
-                return datatable_config[meta.settings.sTableId][meta.col].render(data, type, row, meta)
-            }
+        if (tablesetup.colOptions[i]['render'] != undefined) {
+            col_defs[i].render = new django_datatables.column_render(i, tablesetup.colOptions[i]['render'], this)
         }
     }
+
 
     this.postInit = function (settings, json) {
-        var p_table = self
-        p_table.table.api().on('stateSaveParams.dt', function (e, settings, data) {
-            django_datatables.exec_filter(p_table, 'save_state', data)
-        })
+        this.table =  $('#' + html_id).dataTable()
+
+        this.table.api().on('stateSaveParams.dt', function (e, settings, data) {
+            this.exec_filter('save_state', data)
+        }.bind(this))
         if (typeof (django_datatables.setup[html_id].filters) !== 'undefined') {
-            p_table.filters = django_datatables.setup[html_id].filters
+            this.filters = django_datatables.setup[html_id].filters
         }
-        django_datatables.exec_filter(p_table, 'init', p_table)
-        django_datatables.filters.init_filters(p_table)
-        django_datatables.exec_filter(p_table, 'html')
-        django_datatables.setup[html_id].plugins.forEach(function (plugin) {
-            plugin.init(p_table);
-        })
-        p_table.table.api().on('draw', function () {
-            django_datatables.filters.proc_filters(p_table)
-            django_datatables.exec_filter(p_table, 'refresh')
-            }
-        );
-        p_table.table.api().draw()
-    }
+        if (typeof (django_datatables.setup[html_id].plugins) !== 'undefined') {
+            this.plugins = django_datatables.setup[html_id].plugins
+        }
+        this.exec_filter('init', this)
+        this.init_filters()
+        this.exec_filter('html')
+        var state_data = this.table.api().state.loaded()
+        this.exec_plugins('init', this, state_data)
 
-    if (ajax_url != '') {
-        csrf = getCookie('csrftoken');
-        ajax_dict = {'url': ajax_url, "type": "POST", "data": {"csrfmiddlewaretoken": csrf},}
-        tabledata = null
-    } else {
-        ajax_dict = null
-        tabledata = options['data']
-    }
+        this.table.api().on('draw', function () {
+            this.proc_filters(this)
+            this.exec_filter( 'refresh')
+            this.exec_plugins('refresh', this)
+        }.bind(this));
+        this.table.api().draw()
+    }.bind(this)
 
-    this.table_id = html_id
 
-    buttons = tablesetup.tableOptions['buttons']
-    if (buttons == null) buttons = ['csv']
     dom_options = tablesetup.tableOptions.domOptions
     if (dom_options == null) dom_options = 'rtip'
 
-    dataTable_setup = {
+    var dataTable_setup = {
         /*  stripeClasses:['a', 'a'], */
 
         rowReorder: tablesetup.tableOptions.rowReorder,
@@ -646,19 +600,32 @@ function PythonTable(html_id, tablesetup, ajax_url, options = {}) {
         fixedHeader: true,
         orderClasses: false,
         stateSave: true,
-        ajax: ajax_dict,
-        data: tabledata,
         deferRender: true,
         order: tablesetup.tableOptions.order,
         dom: dom_options,
-        buttons: buttons,
         columnDefs: col_defs,
         initComplete: this.postInit,
     }
+    if (tablesetup.org_data != undefined){
+        dataTable_setup.data = tablesetup.org_data['data']
+        dataTable_setup.ajax = null
+    } else {
+        csrf = django_datatables.utilities.getCookie('csrftoken');
+        dataTable_setup.ajax = {'url': '?json', "type": "POST", "data": {"csrfmiddlewaretoken": csrf},}
+    }
+    if (tablesetup.tableOptions.column_id != undefined && tablesetup.tableOptions.column_id != null){
+        dataTable_setup.rowId = function(row) {
+            return 'i' + row[tablesetup.tableOptions.column_id];
+            }
+    }
+
+    Object.assign(dataTable_setup, django_datatables.setup[html_id].datatable_setup)
+
     if (typeof (tablesetup.tableOptions.rowGroup) != 'undefined') {
         dataTable_setup['rowGroup'] =
             {
                 dataSrc: tablesetup.field_ids.indexOf(tablesetup.tableOptions.rowGroup.dataSrc),
+                /*
                 endRender: function (rows, group) {
                     sums = Array(rows.data()[0].length).fill('')
                     tablesetup.tableOptions.rowGroup.sumColumns.forEach(
@@ -685,6 +652,7 @@ function PythonTable(html_id, tablesetup, ajax_url, options = {}) {
                 },
                 startClassName: 'table-info font-weight-bold',
                 endClassName: 'font-weight-bold white text-right'
+                */
             }
     }
     if (typeof (tablesetup.tableOptions.rowColor) != 'undefined') {
@@ -699,7 +667,7 @@ function PythonTable(html_id, tablesetup, ajax_url, options = {}) {
         }
     }
 
-    this.table = $('#' + this.table_id).dataTable(dataTable_setup);
+    $('#' + this.table_id).dataTable(dataTable_setup);
 
     if (mobile) {
         that = this
@@ -708,6 +676,80 @@ function PythonTable(html_id, tablesetup, ajax_url, options = {}) {
         })
     }
 }
+
+PythonTable.prototype.exec_filter = function (function_name, data) {
+    for (var i = 0; i < this.filters.length; i++) {
+        if (function_name in this.filters[i]) {
+            this.filters[i][function_name](data)
+        }
+    }
+}
+
+PythonTable.prototype.exec_plugins = function (function_name, data, extra_data) {
+    for (var i = 0; i < this.plugins.length; i++) {
+        if (function_name in this.plugins[i]) {
+            this.plugins[i][function_name](data, extra_data)
+        }
+    }
+}
+
+PythonTable.prototype.init_filters = function () {
+    this.table.api().rows().data().each(function (row) {
+        this.filters.forEach(function (filter) {
+            filter.filter_calcs.init_calcs(row)
+        })
+    }.bind(this))
+}
+
+PythonTable.prototype.proc_filters = function () {
+    this.filters.forEach(function (filter) {
+        filter.filter_calcs.clear_calcs()
+    })
+    this.table.api().rows({"filter": "applied"}).data().each(function (row) {
+        this.filters.forEach(function (filter) {
+            filter.filter_calcs.add_calcs(row)
+        })
+    }.bind(this))
+}
+
+PythonTable.prototype.find_column = function (id) {
+    for (var j = 0; j < this.initsetup.colDefs.length; j++) {
+        if (this.initsetup.colDefs[j]['name'] === id) {
+            return j
+        }
+    }
+}
+
+PythonTable.prototype.reset_table = function () {
+    this.exec_filter('clear')
+    this.exec_plugins('clear')
+    if (this.initsetup.tableOptions.order !== undefined) {
+        this.table.api().order(this.initsetup.tableOptions.order)
+    } else {
+        this.table.api().order([])
+    }
+    this.table.api().draw()
+}
+
+PythonTable.prototype.send_row = function (command, row_id) {
+    var row_data = this.table.api().row('#' + row_id).data()
+    var data = {
+        'row': JSON.stringify(row_data), 'command': command, 'row_no': row_id, table_id: this.table_id
+    }
+    django_datatables.utilities.post_data('?datatable-row=true', data)
+}
+
+PythonTable.prototype.send_column = function (command, column) {
+    var acc = this.table.api().column(this.find_column(column), {"filter": "applied"}).data().reduce(function (acc, current) {
+        acc.push(current)
+        return acc
+    }, [])
+    var data = {
+        'column': JSON.stringify(acc), 'command': command
+    }
+    django_datatables.utilities.post_data('?datatable-column=true', data)
+}
+
 
 $(document).ready(function () {
     $.fn.dataTable.moment("DD/MM/YYYY");
