@@ -81,7 +81,8 @@ class ColumnBase:
         self.additional_columns = []
         self.kwargs = kwargs
         self.replace_list = []
-        self.row_result = MethodType(self.__row_result, self)
+        if not hasattr(self, 'row_result'):
+            self.row_result = MethodType(self.__row_result, self)
         self.setup_kwargs(kwargs)
 
     @property
@@ -155,7 +156,7 @@ class ColumnBase:
         return
 
     @staticmethod
-    def __row_result(self, data_dict, page_results):
+    def __row_result(self, data_dict, _page_results):
         if isinstance(self.field, (list, tuple)):
             return [data_dict.get(f) for f in self.field]
         return data_dict.get(self.field)
@@ -169,8 +170,6 @@ class ColumnBase:
         if self.options.get('hidden'):
             col_def_str['visible'] = False
             col_def_str['searchable'] = False
-        if 'type' in self.options:
-            col_def_str['type'] = self.options['type']
         return col_def_str
 
     def replace_list_append(self, replace, column, in_column=None, values=None):
@@ -224,13 +223,13 @@ class LambdaColumn(ColumnBase):
         super().__init__(**kwargs)
         self.lambda_function = lambda_function
 
-    def row_result(self, data_dict, page_results):
+    def row_result(self, data_dict, _page_results):
         return self.lambda_function(data_dict.get(self.field))
 
 
 class TextFieldColumn(ColumnBase):
 
-    def row_result(self, data_dict, page_results):
+    def row_result(self, data_dict, _page_results):
         result = data_dict.get(self.field, '')
         if len(result) > self.kwargs.get('max_chars'):
             result = result[:self.kwargs.get('max_chars')] + '...'
@@ -296,61 +295,33 @@ class ManyToManyColumn(DatatableColumn):
         ]
 
 
-'''
-class ModalButton(ColumnReplace):
+class DateColumn(ColumnBase):
 
-    def __init__(self, *, modal_name,
-                 link_ref_column='id',
-                 button_text='Edit',
-                 row_modify=False,
-                 modal_args=(),
-                 **kwargs):
-        field = link_ref_column
-        if not self.initialise(locals()):
-            return
-        super().__init__(**self.kwargs)
-        self.replace_list_append('%ref%', kwargs.get('column_name'))
-        self.options['no-col-search'] = True
-        self.post_init()
-
-    def post_init(self):
-        modal_kwargs = {}
-        if self.kwargs.get('row_modify'):
-            modal_kwargs['row'] = True
-        modal_call = show_modal(self.kwargs['modal_name'], "datatable2", *self.kwargs['modal_args'], **modal_kwargs)
-        self.options['html'] = f'<a href="javascript:{modal_call}">{self.kwargs["button_text"]}</a>'
+    def row_result(self, data, _page_data):
+        try:
+            date = data[self.field].strftime('%d/%m/%Y')
+            return date
+        except AttributeError:
+            return ""
 
 
-class ModalButtonColumn(ColumnReplace):
+class DateTimeColumn(ColumnBase):
 
-    def __init__(self, *, modal_name,
-                 text_column,
-                 link_column='id',
-                 row_modify=False,
-                 modal_args=(),
-                 **kwargs):
-        field = text_column
-        if not self.initialise(locals()):
-            return
-        super().__init__(**self.kwargs)
-        self.add_column_reference(link_column, '%ref%')
-        self.replace_list_append('%1%', kwargs.get('column_name'))
-        modal_kwargs = {}
-        if row_modify:
-            modal_kwargs['row'] = True
- #       modal_call = show_modal(modal_name, "datatable2", *modal_args, **modal_kwargs)
-        self.options['html'] = f'<a href="javascript:{modal_call}">%1%</a>'
-        self.post_init()
-
-    def post_init(self):
-        pass
-'''
+    def row_result(self, data, _page_data):
+        try:
+            date = data[self.field].strftime('%d/%m/%Y')
+            time_str = data[self.field].strftime('%H:%M')
+            return date + ' ' + time_str
+        except AttributeError:
+            return ""
 
 
-def format_date_time(self, data, page_data):
-    try:
-        date = data[self.field].strftime('%d/%m/%Y')
-        time_str = data[self.field].strftime('%H:%M')
-        return date
-    except AttributeError:
-        return ""
+class ChoiceColumn(ColumnBase):
+
+    def setup_kwargs(self, kwarg_dict):
+        choices = kwarg_dict.pop('choices')
+        self.options = {c[0]: c[1] for c in choices}
+        super().setup_kwargs(kwarg_dict)
+
+    def row_result(self, data, _page_data):
+        return self.options.get(data[self.field], '')

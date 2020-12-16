@@ -7,7 +7,7 @@ from django.views.generic import TemplateView
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from .detect_device import detect_device
-from .columns import ColumnBase, format_date_time
+from .columns import ColumnBase, DateColumn, ChoiceColumn
 from .model_def import DatatableModel
 from .filters import DatatableFilter
 
@@ -412,14 +412,23 @@ class DatatableTable:
             return column_setup.get_class_instance(column_name=start_field, **kwargs)
         else:
             # create a column from model field
-            column = ColumnBase(field=start_field.split('__')[-1]).get_class_instance(column_name=start_field, **kwargs)
+            field = start_field.split('__')[-1]
             if model_field:
                 field_type = type(model_field)
                 if field_type == models.DateField:
-                    column.row_result = MethodType(format_date_time, column)
+                    # column.row_result = MethodType(format_date_time, column)
+                    column = DateColumn(field=field)
+                elif (field_type in [models.IntegerField, models.PositiveSmallIntegerField, models.PositiveIntegerField]
+                      and len(model_field.choices) > 0):
+                    column = ChoiceColumn(field=field, choices=model_field.choices)
+                else:
+                    column = ColumnBase(field=field)
+                column = column.get_class_instance(column_name=start_field, **kwargs)
                 column.title = model_field.verbose_name.title()
+            else:
+                column = ColumnBase(field=field).get_class_instance(column_name=start_field, **kwargs)
             if isinstance(column_setup, dict):
-                column.column_name = start_field.split('__')[-1]
+                column.column_name = field
                 column.setup_kwargs(column_setup)
         return column
 
