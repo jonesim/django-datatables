@@ -2,12 +2,6 @@
 {% load datatable_tags %}
 
 {% block table %}
-    <div class="form-inline">
-        <button class="btn m-2" onclick="django_datatables.DataTables['{{ datatable.table_id }}'].send_column('get_csv', 'id')">
-            <i style="font-size: 28px" class="filter-header-icon fas fa-file-csv"></i>
-        </button>
-    </div>
-
     <div class="" style="display: flex">
         <div class="pr-0" style="max-height: calc(100vh - 110px);overflow: auto;width: 280px;flex-shrink: 0">
             {% filter_control datatable %}

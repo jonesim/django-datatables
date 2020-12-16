@@ -19,12 +19,15 @@ class Company(models.Model):
                     tag_dict.setdefault(t[0], []).append(t[1])
                 all_results['tags'] = tag_dict
 
-            def proc_result(self, data_dict, page_results):
-                return page_results['tags'][data_dict['id']]
+            @staticmethod
+            def proc_result(data_dict, page_results):
+                return page_results['tags'].get(data_dict['id'])
 
             def col_setup(self):
+                self.options['render'] = [
+                    {'var': '%1%', 'html': '%1%', 'function': 'ReplaceLookup'},
+                ]
                 self.options['lookup'] = list(Tags.objects.values_list('id', 'tag'))
-                self.options['renderfn'] = 'lookupRender'
                 self.row_result = self.proc_result
 
 

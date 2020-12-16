@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
+
 {% load datatable_tags %}
 {% block table %}
     <div class="d-block float-left" style="width:400px">
         {% filter_control datatable %}
     </div>
     <div class="px-4 d-block float-left">
-        {{ datatable.javascript_setup|safe }}
+        {{ datatable.render|safe }}
     </div>
-
 {% endblock %}

@@ -65,6 +65,6 @@
 {% endblock %}
 
 {% block remove_registration %}
-    var new_filter = new filter('{{ table.html_id }}')
-    django_datatables.add_filter('{{ table.html_id }}', new_filter)
+    var new_filter = new filter('{{ table.table_id }}')
+    django_datatables.add_filter('{{ table.table_id }}', new_filter)
 {% endblock %}
