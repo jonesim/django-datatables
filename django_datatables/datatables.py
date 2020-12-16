@@ -2,10 +2,8 @@ import json
 from types import MethodType
 from inspect import isclass
 from typing import TypeVar, Dict
-from abc import abstractmethod
 from django.db import models
 from django.views.generic import TemplateView
-from django.conf import settings
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from .detect_device import detect_device
@@ -324,27 +322,34 @@ class DatatableTable:
 
     page_length = 100
 
-    def __init__(self):
+    def __init__(self, table_id, model=None):
         self.columns = []
-        self.html_id = ''
+        self.table_id = table_id
         self.table_options: Dict[KT, VT] = {}
 
-        self.orgdata = None
-        self.model = None
+        self.ajax_data = True
+        self.model = model
 
-        # django query attibutes
+        # django query attributes
         self.filter = {}
         self.exclude = {}
         self.distinct = []
+        self.max_records = None
 
         # javascript datatable attributes
         self.order_by = []
         self.js_filter_list = []
+        self.plugins = []
 
-        self.max_records = None
         self.table_classes = ['display', 'compact', 'smalltext', 'table-sm', 'table', 'w-100']
         self.table_options['pageLength'] = self.page_length
         self.omit_columns = []
+
+    def table_class(self):
+        return ' '.join(self.table_classes)
+
+    def column(self, column_name):
+        return self.find_column(column_name)[0]
 
     def add_js_filters(self, name_or_template, column_ids, **kwargs):
         if type(column_ids) == str:
@@ -355,14 +360,14 @@ class DatatableTable:
     def js_filter(self, name_or_template, column_id, **kwargs):
         return DatatableFilter(name_or_template, self, column=self.find_column(column_id)[0], **kwargs)
 
+    def add_plugin(self, plugin, *args, **kwargs):
+        self.plugins.append(plugin(self, *args, **kwargs))
+
     def get_query(self, **kwargs):
         annotations = {}
         for c in self.columns:
             if c.annotations:
                 annotations.update(c.annotations)
-        if 'single' in kwargs and 'pk' in kwargs:
-            self.filter['pk'] = kwargs['pk']
-
         query = (self.model.objects.annotate(**annotations).filter(**self.filter)
                  .exclude(**self.exclude).values(*self.fields())
                  .order_by(*self.order_by))
@@ -385,11 +390,11 @@ class DatatableTable:
         self.table_options.setdefault('rowColor', []).append(
             {'colRef': column, 'values': {o[0]: o[1] for o in option_colors}})
 
-    def add_column_options(self, column_ref, options):
-        if type(column_ref) == str:
-            column_ref = [column_ref]
+    def add_column_options(self, column_names, options):
+        if type(column_names) == str:
+            column_names = [column_names]
         for c in self.columns:
-            if c.column_ref in column_ref:
+            if c.column_name in column_names:
                 c.setup_kwargs(options)
 
     def find_column(self, column_name, by_field=False):
@@ -399,13 +404,6 @@ class DatatableTable:
             if c.column_name == column_name:
                 return c, n
 
-    def change_column(self, field, column_type, options):
-        for c in self.columns:
-            if c.field == field:
-                c.column_type = column_type
-                c.add_options(options)
-                return
-
     @staticmethod
     def generate_column(column_setup, start_field, model_field, **kwargs):
         if isclass(column_setup):
@@ -413,18 +411,20 @@ class DatatableTable:
         elif isinstance(column_setup, ColumnBase):
             return column_setup.get_class_instance(column_name=start_field, **kwargs)
         else:
-            # column = ColumnDef(start_field, *args)
+            # create a column from model field
             column = ColumnBase(field=start_field.split('__')[-1]).get_class_instance(column_name=start_field, **kwargs)
             if model_field:
                 field_type = type(model_field)
                 if field_type == models.DateField:
                     column.row_result = MethodType(format_date_time, column)
+                column.title = model_field.verbose_name.title()
             if isinstance(column_setup, dict):
                 column.column_name = start_field.split('__')[-1]
                 column.setup_kwargs(column_setup)
         return column
 
     def create_columns(self, start_model, start_field, **kwargs):
+        # Could get multiple columns from a definition in a model
         field_str, options = ColumnBase.extract_options(start_field)
         model, field, setup = DatatableModel.get_setup_data(start_model, field_str)
         if type(setup) != list:
@@ -451,8 +451,6 @@ class DatatableTable:
             new_columns = self.get_columns(c, **kwargs)
             for add_col in new_columns:
                 self.columns.append(add_col)
-                # if add_col.additional_columns:
-                #    self.add_columns(*add_col.additional_columns, **kwargs)
 
     def fields(self):
         fields = []
@@ -470,99 +468,66 @@ class DatatableTable:
     def all_names(self):
         return [c.column_name for c in self.columns]
 
-    def all_refs(self):
-        return [c.column_ref for c in self.columns]
-
     def all_titles(self):
         return [str(c.title) for c in self.columns]
 
-    @staticmethod
-    def tag_array(array, tag_str):
-        return ''.join([tag_str.format(e) for e in array])
-
-    def javascript_setup(self):
-        return render_to_string('datatables/table.html', {'datatable': self})
+    def render(self):
+        rendered_strings = []
+        for p in self.plugins:
+            rendered_strings.append(p.render())
+        rendered_strings.append(render_to_string('datatables/table.html', {'datatable': self}))
+        return ''.join(rendered_strings)
 
     def setup_column_id(self):
         if 'column_id' not in self.table_options:
-            id = self.find_column('id', True)
-            if id:
-                self.table_options['column_id'] = id[1]
-                return self.columns[id[1]]
+            column_id = self.find_column('id', True)
+            if column_id:
+                self.table_options['column_id'] = column_id[1]
+                return self.columns[column_id[1]]
         else:
             return self.columns[self.table_options['column_id']]
 
     def col_def_str(self):
-        col_def_array = []
-        col_options = []
-        count = 0
         self.setup_column_id()
-        for c in self.columns:
-            col_def = c.style()
-            col_def['targets'] = count
-            col_def['name'] = c.column_name
-            col_def_array.append(col_def)
-            count += 1
-            col_options.append(dict(c.options))
-
-        if 'rowColor' in self.table_options:
-            if isinstance(self.table_options['rowColor'], list):
-                for rc in self.table_options['rowColor']:
-                    if 'colRef' in rc:
-                        rc['column'] = self.all_refs().index(rc['colRef'])
-            if 'colRef' in self.table_options['rowColor']:
-                self.table_options['rowColor']['column'] = self.all_refs().index(self.table_options['rowColor']
-                                                                                 ['colRef'])
-
-        self.table_options['media'] = settings.MEDIA_URL
+        options = dict(self.table_options)
+        if not self.ajax_data:
+            options['data'] = self.get_table_array(None, self.get_query())
+        options['columnDefs'] = [dict({'targets': i, 'name': c.column_name}, **c.style())
+                                 for i, c in enumerate(self.columns)]
         table_vars = {
-            'colDefs': col_def_array,
             'field_ids': self.all_names(),
-            'colOptions': col_options,
-            'tableOptions': self.table_options,
-            'titles': self.all_titles(),
+            'colOptions': [c.options for c in self.columns],
+            'tableOptions': options,
         }
-
-        col_def_str = json.dumps(table_vars)
-        col_def_str = col_def_str.replace('"&', "")
-        col_def_str = col_def_str.replace('&"', "")
+        col_def_str = json.dumps(table_vars, separators=(',', ':'))
+        # legacy modifications to col_def_str
+        # col_def_str = col_def_str.replace('"&', "")
+        # col_def_str = col_def_str.replace('&"', "")
         return col_def_str
 
-    def get_table_array(self, request, results, show_hidden=True):
+    def get_table_array(self, request, results):
         json_list = []
         page_results = {}
         for c in self.columns:
             c.setup_results(request, page_results)
         for data_dict in results:
-            new_list = []
-            for c in self.columns:
-                if show_hidden or not c.options.get('hidden'):
-                    try:
-                        new_list.append(c.row_result(data_dict, page_results))
-                    except KeyError:
-                        new_list.append('')
-            json_list.append(new_list)
+            json_list.append([c.row_result(data_dict, page_results) for c in self.columns])
         return json_list
 
-    def get_json(self, request, results, set_vars=None):
-        if len(results) > 0 and isinstance(results[0], tuple):
-            return_data = {'data': results}
-        else:
-            return_data = {'data': self.get_table_array(request, results)}
-        if set_vars is not None:
-            return_data['set_vars'] = set_vars
-        return json.dumps(return_data, indent=None, default=str)
+    def get_json(self, request, results):
+        return_data = {'data': self.get_table_array(request, results)}
+        return json.dumps(return_data, separators=(',', ':'), default=str)
 
     def refresh_row(self, request, row_id):
         id_column = self.setup_column_id()
         if id_column:
             self.filter[id_column.field] = int(row_id[1:])
             results = self.get_table_array(request, self.get_query())[0]
-            commands = [{'command': 'refresh_row', 'row': row_id, 'data': results, 'table': self.html_id}]
+            commands = [{'command': 'refresh_row', 'row': row_id, 'data': results, 'table': self.table_id}]
             return HttpResponse(json.dumps(commands), content_type='application/json')
 
     def delete_row(self, request, row_id):
-        commands = [{'command': 'delete_row', 'row': row_id, 'table': self.html_id}]
+        commands = [{'command': 'delete_row', 'row': row_id, 'table': self.table_id}]
         return HttpResponse(json.dumps(commands), content_type='application/json')
 
 
@@ -571,30 +536,41 @@ class DatatableView(TemplateView):
 
     def __init__(self, *args, **kwargs):
         super(DatatableView, self).__init__(*args, **kwargs)
-        self.table = DatatableTable()
-        self.table.model = self.model
-        self.table.html_id = type(self).__name__.lower()
+        self.tables = {}
+        self.add_tables()
+
         self.dispatch_context = None
 
-    def post_table_json(self, **kwargs):
-        return self.table.get_query(**kwargs)
+    def add_table(self, table_id, **kwargs):
+        self.tables[table_id] = DatatableTable(table_id, **kwargs)
+
+    def add_tables(self):
+        self.add_table(type(self).__name__.lower(), model=self.model)
+
+    def setup_tables(self, table_id=None):
+        for t_id, table in self.tables.items():
+            if not table_id or t_id == table_id:
+                if t_id == type(self).__name__.lower():
+                    self.setup_table(table)
+                else:
+                    getattr(self, 'setup_' + t_id)(table)
 
     def dispatch(self, request, *args, **kwargs):
         self.dispatch_context = detect_device(request)
-        self.setup_table()
         return super(DatatableView, self).dispatch(request, *args, **kwargs)
 
-    def add_options(self, new_options):
-        self.table.table_options.update(new_options)
+    def get(self, request, *args, **kwargs):
+        self.setup_tables()
+        return super().get(request, *args, **kwargs)
 
-    def render_to_response(self, context, **response_kwargs):
-        if self.template_name is None:
-            return HttpResponse(self.table.javascript_setup())
-        return super(DatatableView, self).render_to_response(context, **response_kwargs)
+    # def render_to_response(self, context, **response_kwargs):
+    #    if self.template_name is None:
+    #        return HttpResponse(self.table.javascript_setup())
+    #    return super(DatatableView, self).render_to_response(context, **response_kwargs)
 
-    @staticmethod
-    def graph_data(**kwargs):
-        return None
+    # @staticmethod
+    # def graph_data(**kwargs):
+    #    return None
 
     @staticmethod
     def locked():
@@ -602,27 +578,29 @@ class DatatableView(TemplateView):
 
     def post(self, request, *args, **kwargs):
 
-        if request.GET.get('json', None) is not None:
-            results = self.post_table_json(**kwargs)
+        if 'datatable-data' in request.GET:
+            table = self.tables[request.POST['table_id']]
+            self.setup_tables(table_id=table.table_id)
+            results = table.get_query(**kwargs)
             if self.locked():
-                secure_fields = [c.field for c in self.table.columns if c.options.get('secure')]
+                secure_fields = [c.field for c in table.columns if c.options.get('secure')]
                 if secure_fields:
                     for r in results:
                         for f in secure_fields:
                             data = r.get(f)
                             if data:
                                 r[f] = '<i class="fas fa-key"></i>'
-            return HttpResponse(self.table.get_json(request, results, self.graph_data(**kwargs)),
+            return HttpResponse(table.get_json(request, results),
                                 content_type='application/json')
 
         for t in ['row', 'column']:
             if 'datatable-' + t in request.GET:
-                self.table.setup_column_id()
+                table = self.tables[request.POST['table_id']]
+                self.setup_tables(table_id=table.table_id)
                 if hasattr(self, t + '_' + request.POST['command']):
                     column_values = json.loads(request.POST[t])
                     extra_data = {k: request.POST[k] for k in request.POST if k != t}
-                    return getattr(self, t + '_' + request.POST['command'])(request, column_values, extra_data)
-
+                    return getattr(self, t + '_' + request.POST['command'])(request, column_values, table, extra_data)
         return None
 
     def sent_column(self, column_values, extra_data):
@@ -645,24 +623,21 @@ class DatatableView(TemplateView):
             return self.render_to_response(context)
     """
     def get_context_data(self, **kwargs):
-        context = super(DatatableView, self).get_context_data(**kwargs)
-        context['datatable'] = self.table
+        context = super().get_context_data(**kwargs)
+        if len(self.tables) == 1:
+            context['datatable'] = self.tables[list(self.tables.keys())[0]]
+        else:
+            context['datatables'] = self.tables
         context.update(self.add_to_context(**kwargs))
         return context
 
     def add_to_context(self, **kwargs):
         return {}
 
-    def add_columns(self, *columns, **kwargs):
-        self.table.add_columns(*columns, **kwargs)
 
-    @abstractmethod
-    def setup_table(self):
-        pass
-
-
-def simple_table(table):
-    table.table_options['domOptions'] = 't'
-    table.table_options['no-col-search'] = True
-    table.table_options['nofooter'] = True
-    table.table_options['pageLength'] = 400
+simple_table = {
+    'dom': 't',
+    'no_col_search': True,
+    'nofooter': True,
+    'pageLength': 400,
+}

@@ -1,0 +1,13 @@
+<script>
+    django_datatables.add_to_setup('{{ datatable.table_id }}', 'createdRow',
+        function (row, data) {
+            var colour_dict = {{ colour_dict|safe }}
+            for (var rc = 0; rc < colour_dict.length; rc++) {
+                var rowclass = colour_dict[rc].values[data[colour_dict[rc].column]]
+                if (typeof (rowclass) != 'undefined') {
+                    $(row).addClass(rowclass)
+                }
+            }
+        }
+    )
+</script>

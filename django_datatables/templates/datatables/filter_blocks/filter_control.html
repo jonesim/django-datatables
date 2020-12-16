@@ -1,20 +1,20 @@
 {% load datatable_tags %}
 
-<div id="{{ html_id }}" class="ml-2 card">
+<div id="{{ html_id }}" class="card">
     <div class="card-header py-1 px-2 filter-header">{{ filter_title }}
         <div class="float-right">
             {% clear_table datatable %}
-            <a class="filter-header-icon collapse-all" href="javascript:collapse_all('{{ datatable.html_id }}')">
+            <a class="filter-header-icon collapse-all" href="javascript:collapse_all('{{ datatable.table_id }}')">
                 <i class="fas fa-caret-square-up"></i>
             </a>
-            <a class="expand-all" href="javascript:show_all('{{ datatable.html_id }}')">
+            <a class="expand-all" href="javascript:show_all('{{ datatable.table_id }}')">
                 <i class="filter-header-icon select-none fas fa-caret-square-down"></i></a>
         </div>
         {% no_of_results datatable %}
         {% no_of_rows datatable %}
     </div>
     <div class="card-body p-2">
-        <div id="{{ datatable.html_id }}-filter-block">
+        <div id="{{ datatable.table_id }}-filter-block">
             {% table_search datatable %}
             {% for f in datatable.js_filter_list %}
                 {{ f.render }}
@@ -25,8 +25,8 @@
 
 {% block javascript %}
     <script>
-        $("#{{ datatable.html_id }}-filter-block").sortable();
-        $("#{{ datatable.html_id }}-filter-block").disableSelection();
+        $("#{{ datatable.table_id }}-filter-block").sortable();
+        $("#{{ datatable.table_id }}-filter-block").disableSelection();
         function collapse_all(html_id) {
             $("#" + html_id + "-filter-block .card-body").collapse('hide')
         }

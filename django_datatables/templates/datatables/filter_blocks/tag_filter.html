@@ -152,13 +152,10 @@
             }
         }
         filter.prototype = Object.create(django_datatables.FilterBase.prototype);
+        options = {
+            tagcheckbox : `{% include 'datatables/filter_rows/checkbox_tag.html' %}`
+        };
+        var new_filter = new filter({{ column_no }}, '{{ html_id }}', options);
     </script>
 {% endblock %}
 
-{% block remove_registration %}
-    options = {
-    tagcheckbox : `{% include 'datatables/filter_rows/checkbox_tag.html' %}`
-    }
-    var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
-    django_datatables.add_filter('{{ table.html_id }}', new_filter)
-{% endblock %}

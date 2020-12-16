@@ -1,22 +1,22 @@
-<input id="search_{{ table.html_id }}" type="text" class="form-control" placeholder="Search">
+<input id="search_{{ table.table_id }}" type="text" class="form-control" placeholder="Search">
 <script>
     filter = {
         init: function (table) {
-            $('#search_{{ table.html_id }}').keyup(function () {
+            $('#search_{{ table.table_id }}').keyup(function () {
                 table.table.api().search(this.value).draw();
             });
             try {
-                $('#search_{{ table.html_id }}').val(table.table.api().state.loaded().search.search);
+                $('#search_{{ table.table_id }}').val(table.table.api().state.loaded().search.search);
             } catch (e) {
                 console.log(e)
             }
         },
 
         clear: function () {
-            table = django_datatables.DataTables['{{ table.html_id }}'].table
+            table = django_datatables.DataTables['{{ table.table_id }}'].table
             table.api().search('');
-            $('#search_{{ table.html_id }}').val('')
+            $('#search_{{ table.table_id }}').val('')
         }
     }
-    django_datatables.add_plugin('{{ table.html_id }}', filter)
+    django_datatables.add_plugin('{{ table.table_id }}', filter)
 </script>

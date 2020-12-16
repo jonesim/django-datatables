@@ -13,11 +13,7 @@
 
 {% block javascript %}
     <script>
+        options = {'htmlcheckbox': `{% include 'datatables/filter_rows/checkbox_filter.html' %}`}
+        var new_filter = new django_datatables.PivotFilter({{ column_no }}, '{{ html_id }}', options)
     </script>
-{% endblock %}
-
-{% block remove_registration %}
-    options = {'htmlcheckbox': `{% include 'datatables/filter_rows/checkbox_filter.html' %}`}
-    var new_filter = new django_datatables.PivotFilter({{ column_no }}, '{{ html_id }}', options)
-    django_datatables.add_filter('{{ table.html_id }}', new_filter)
 {% endblock %}

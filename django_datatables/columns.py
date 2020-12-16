@@ -69,11 +69,11 @@ class ColumnBase:
         # Remove  ._$ characters from beginning of name and set appropriate options
         self._column_name = None
         self.options: Dict[KT, VT] = {}
+        self.column_defs = {}
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
         self.options: Dict[KT, VT] = options
         self.args = self.extract_args()
         self.model_path = self.get_model_path(self.column_name)
-        self.column_ref = self.column_name
         self.field = field
         self.title = self.title_from_name(self.column_name)
         self.column_type = 0
@@ -106,7 +106,7 @@ class ColumnBase:
 
     @column_name.setter
     def column_name(self, value):
-        if not re.match('^[A-Za-z0-9\._]+$', value):
+        if not re.match('^[A-Za-z0-9._]+$', value):
             raise ColumnNameError('Invalid column_name: ' + value)
         self._column_name = value
 
@@ -161,7 +161,7 @@ class ColumnBase:
         return data_dict.get(self.field)
 
     def style(self):
-        col_def_str = self.options.get('columnDefs', {})
+        col_def_str = self.column_defs
 #        if self.column_type == ColumnDef.COL_CURRENCY or self.column_type == ColumnDef.COL_CURRENCY_PENCE:
 #            colDefStr['className'] = 'dt-body-right pr-4'
         if 'mobile' in self.options and not (self.options['mobile']):

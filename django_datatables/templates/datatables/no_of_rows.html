@@ -1,5 +1,5 @@
 {% spaceless %}
-<select style="" class="row_select" id="{{ datatable.html_id }}-dt-length">
+<select style="" class="row_select" id="{{ datatable.table_id }}-dt-length">
     <option value="10">10 Rows</option>
     <option value="25">25 Rows</option>
     <option value="50">50 Rows</option>
@@ -9,13 +9,13 @@
 <script>
     var plugin = {
         init: function (table, state_data) {
-            $('#{{ datatable.html_id }}-dt-length').val(table.table.api().page.len())
-            $('#{{ datatable.html_id }}-dt-length').change(function (select) {
+            $('#{{ datatable.table_id }}-dt-length').val(table.table.api().page.len())
+            $('#{{ datatable.table_id }}-dt-length').change(function (select) {
                 table.table.api().page.len($(this).val())
                 table.table.api().draw()
             })
         },
     }
-    django_datatables.add_plugin('{{ datatable.html_id }}', plugin)
+    django_datatables.add_plugin('{{ datatable.table_id }}', plugin)
 </script>
 {% endspaceless %}

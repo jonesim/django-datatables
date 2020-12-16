@@ -72,11 +72,7 @@
         }
 
         Select2Filter.prototype = Object.create(django_datatables.FilterBase.prototype);
+        options = {};
+        var new_filter = new Select2Filter({{ column_no }}, '{{ html_id }}', options);
     </script>
-{% endblock %}
-
-{% block remove_registration %}
-    options = {}
-    var new_filter = new Select2Filter({{ column_no }}, '{{ html_id }}', options)
-    django_datatables.add_filter('{{ table.html_id }}', new_filter)
 {% endblock %}

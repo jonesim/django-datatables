@@ -71,13 +71,8 @@
                 this.buildfilter()
             }
         }
-
         filter.prototype = Object.create(django_datatables.FilterBase.prototype);
-    </script>
-{% endblock %}
-
-    {% block remove_registration %}
         options = {}
         var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
-        django_datatables.add_filter('{{ table.html_id }}', new_filter)
-    {% endblock %}
+    </script>
+{% endblock %}

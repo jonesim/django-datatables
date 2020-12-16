@@ -1,5 +1,5 @@
-<a id="{{ datatable.html_id }}-reset" class="filter-header-icon collapse-all"
-   href="javascript:django_datatables.DataTables['{{ datatable.html_id }}'].reset_table()">
+<a id="{{ datatable.table_id }}-reset" class="filter-header-icon collapse-all"
+   href="javascript:django_datatables.DataTables['{{ datatable.table_id }}'].reset_table()">
     <i class="fas fa-minus-circle"></i>
 </a>
 
@@ -8,11 +8,11 @@
         refresh: function (table) {
             var page_info = table.table.api().page.info()
             if (page_info.recordsTotal !== page_info.recordsDisplay) {
-                $('#{{ datatable.html_id }}-reset').addClass('text-warning')
+                $('#{{ datatable.table_id }}-reset').addClass('text-warning')
             } else {
-                $('#{{ datatable.html_id }}-reset').removeClass('text-warning')
+                $('#{{ datatable.table_id }}-reset').removeClass('text-warning')
             }
         }
     }
-    django_datatables.add_plugin('{{ datatable.html_id }}', plugin)
+    django_datatables.add_plugin('{{ datatable.table_id }}', plugin)
 </script>
