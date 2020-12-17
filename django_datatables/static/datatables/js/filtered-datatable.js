@@ -419,9 +419,9 @@ if (typeof django_datatables === 'undefined') {
 
                     } else {
                         if (this.field_array) {
-                            return params.html.replace(params.var, current[params.index])
+                            return params.html.replace(params.var, value[params.index])
                         } else {
-                            return params.html.replace(params.var, current)
+                            return params.html.replace(params.var, value)
                         }
                     }
                 }.bind(this)
@@ -626,10 +626,13 @@ function PythonTable(html_id, tablesetup) {
 
     $('#' + this.table_id).dataTable(dataTable_setup);
 
-    if (mobile) {
-        that = this
-        $(html_id + ' tbody').on('click', 'tr', function () {
-            window.location.href = that.initsetup.tableOptions.columnDefs[0].url.replace('999999', that.table.api().row(this).data()[0])
+    if (this.initsetup.tableOptions.row_href) {
+        $('#' + html_id + ' tbody').on('click', 'tr', function () {
+            p_table = django_datatables.DataTables[html_id]
+            var row_id = $(this).attr('id')
+            var row_data = p_table.table.api().row('#' + row_id).data()
+            var href_render  = new django_datatables.column_render(0, p_table.initsetup.tableOptions.row_href, p_table)
+            window.location.href = href_render('',null, row_data)
         })
     }
 }

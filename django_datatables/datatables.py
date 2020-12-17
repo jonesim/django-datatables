@@ -3,11 +3,12 @@ from types import MethodType
 from inspect import isclass
 from typing import TypeVar, Dict
 from django.db import models
+from django.urls import reverse
 from django.views.generic import TemplateView
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from .detect_device import detect_device
-from .columns import ColumnBase, DateColumn, ChoiceColumn
+from .columns import ColumnBase, DateColumn, ChoiceColumn, render_replace
 from .model_def import DatatableModel
 from .filters import DatatableFilter
 
@@ -20,6 +21,18 @@ def options_to_dict(options):
 
 
 DUMMY_ID = 999999
+
+
+def row_link(url_name, column_id):
+    if type(url_name) == tuple:
+        url = reverse(url_name[0], args=[*url_name[1:]])
+    else:
+        if url_name.find('999999') == -1:
+            url = reverse(url_name, args=[999999])
+        else:
+            url = url_name
+    return [render_replace(column=column_id, html=url, var='999999')]
+
 
 '''
 class ColumnDef:
