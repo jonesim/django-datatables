@@ -1,8 +1,8 @@
 import csv
 from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, row_button, render_replace, \
-    ManyToManyColumn
-from django_datatables.datatables import DatatableView, simple_table
+    ManyToManyColumn, DateColumn
+from django_datatables.datatables import DatatableView, simple_table, row_link
 from django.http import HttpResponse
 from . import models
 from django_datatables.colour_rows import ColourRows
@@ -28,6 +28,8 @@ class Example1(DatatableView):
         table.ajax_data = False
         table.add_js_filters('tag', 'Tags')
         table.add_js_filters('pivot', 'people', filter_title='Number of People', collapsed=False)
+
+        table.table_options['row_href'] = row_link('example2', 'id')
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
@@ -139,6 +141,9 @@ class Example4(DatatableView):
             'id',
             'first_name',
             'date_entered',
+            'title',
+            'title_model',
+            DateColumn('date_entered', column_name='Date'),
             'surname'
         )
         table.add_js_filters('date', 'date_entered')

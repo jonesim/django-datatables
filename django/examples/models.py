@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models import Count
 from django_datatables.model_def import DatatableModel
-from django_datatables.columns import ColumnLink, DatatableColumn
+from django_datatables.columns import ColumnLink, DatatableColumn, ChoiceColumn
 
 
 class Company(models.Model):
@@ -32,6 +32,12 @@ class Company(models.Model):
 
 
 class Person(models.Model):
+
+    class Datatable(DatatableModel):
+        title_model = ChoiceColumn('title', choices=((0, 'Mr'), (1, 'Mrs'), (2, 'Miss')))
+
+    title_choices = ((0, 'Mr'), (1, 'Mrs'), (2, 'Miss'))
+    title = models.IntegerField(choices=title_choices, null=True)
     company = models.ForeignKey(Company,  on_delete=models.CASCADE)
     first_name = models.CharField(max_length=80)
     surname = models.CharField(max_length=80)
