@@ -259,14 +259,19 @@ class ColumnLink(ColumnBase):
             else:
                 self._url = url_name
 
-    def __init__(self, *, url_name, link_ref_column='id', link_html='%1%', **kwargs):
+    def __init__(self, *, url_name, link_ref_column='id', link_html='%1%', var='%1%', **kwargs):
         if not self.initialise(locals()):
             return
         super().__init__(**self.kwargs)
         self.url = url_name
-        self.options['render'] = [render_replace(column=self.column_name, html=f'<a href="{self.url}">{link_html}</a>',
-                                                 var=link_html),
-                                  render_replace(column=link_ref_column, var='999999')]
+        if var not in link_html:
+            self.options['render'] = [render_replace(column=link_ref_column,
+                                                     html=f'<a href="{self.url}">{link_html}</a>',
+                                                     var='999999')]
+        else:
+            self.options['render'] = [render_replace(column=self.column_name,
+                                                     html=f'<a href="{self.url}">{link_html}</a>',
+                                                     var=var), render_replace(column=link_ref_column, var='999999')]
 
 
 class ManyToManyColumn(DatatableColumn):
