@@ -11,6 +11,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/jonesim/django-datatables",
+    include_package_data = True,
     packages=['django_datatables'],
     classifiers=[
         "Programming Language :: Python :: 3",
