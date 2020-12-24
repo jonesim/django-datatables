@@ -11,18 +11,21 @@ class DatatableFilter:
         'totals': 'datatables/filter_blocks/pivot_totals.html',
         'select2': 'datatables/filter_blocks/select2_filter.html',
         'date': 'datatables/filter_blocks/date_filter.html',
+        'expand': 'datatables/filter_blocks/row_tree.html',
     }
 
-    def __init__(self, name_or_template, datatable, column=None, collapsed=False, filter_title=None, html_id=None):
+    def __init__(self, name_or_template, datatable, column=None, collapsed=False, filter_title=None, html_id=None,
+                 **kwargs):
         self.template = ""
         self.column = column
         self.datatable = datatable
         self.collapsed = collapsed
+        self.kwargs = kwargs
         if html_id:
             self.html_id = html_id
         else:
             letters = string.ascii_lowercase
-            self.html_id = ''.join(random.choice(letters) for i in range(10))
+            self.html_id = ''.join(random.choice(letters) for _i in range(10))
 
         if filter_title:
             self.filter_title = filter_title
@@ -42,6 +45,7 @@ class DatatableFilter:
             'filter_title': self.filter_title,
             'table': self.datatable,
             'collapsed': self.collapsed,
+            'kwargs': self.kwargs
         }
         if self.column:
             context['column_no'] = self.datatable.find_column(self.column.column_name)[1]

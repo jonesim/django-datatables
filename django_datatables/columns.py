@@ -72,9 +72,12 @@ class ColumnBase:
         self.column_defs = {}
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
         self.options: Dict[KT, VT] = options
-        self.args = self.extract_args()
         self.model_path = self.get_model_path(self.column_name)
-        self.field = field
+        if kwargs.get('column_name') == field:
+            self.field = self.column_name
+        else:
+            self.field = field
+        self.args = self.extract_args()
         self.title = self.title_from_name(self.column_name)
         self.column_type = 0
         self._annotations = None
@@ -91,14 +94,15 @@ class ColumnBase:
 
     @annotations.setter
     def annotations(self, value):
-        if self.field is None:
-            self._field = value
-        elif type(self.field) == str:
-            if value != self.field:
-                self._field = [self.field, value]
-        else:
-            if value not in self.field:
-                self._field.append(value)
+        for f in value:
+            if self.field is None:
+                self._field = f
+            elif type(self.field) == str:
+                if f != self.field:
+                    self._field = [self.field, f]
+            else:
+                if f not in self.field:
+                    self._field.append(f)
         self._annotations = value
 
     @property
@@ -195,8 +199,12 @@ class ColumnBase:
     def setup_kwargs(self, kwargs):
 
         for a, value in kwargs.items():
+            if a in ['field', 'column_name']:
+                continue
             if a == 'row_result':
                 self.row_result = MethodType(value, self)
+            elif a == 'width':
+                self.column_defs['width'] = value
             elif hasattr(self, a):
                 setattr(self, a, value)
             else:
@@ -330,3 +338,33 @@ class ChoiceColumn(ColumnBase):
 
     def row_result(self, data, _page_data):
         return self.options.get(data[self.field], '')
+
+
+class CurrencyPenceColumn(ColumnBase):
+
+    def row_result(self, data, _page_data):
+        try:
+            return '{:.2f}'.format(data[self.field] / 100.0)
+        except KeyError:
+            return
+
+
+class CurrencyColumn(ColumnBase):
+
+    def row_result(self, data, _page_data):
+        try:
+            return '{:.2f}'.format(data[self.field])
+        except KeyError:
+            return
+
+
+class BooleanColumn(ColumnBase):
+
+    def row_result(self, data, _page_data):
+        try:
+            if data[self.field]:
+                return 'true'
+            else:
+                return 'false'
+        except KeyError:
+            return

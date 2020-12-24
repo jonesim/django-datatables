@@ -147,15 +147,20 @@ if (typeof django_datatables === 'undefined') {
                 }
             }
 
-            this.get_val = function (row) {
+            this.get_key = function (row) {
                 var value = row[this.column]
                 if (value === "") value = 'null'
                 return value
             }
 
-            this.init_calcs = function (row, value = 1) {
+            this.get_value = function(row){
+                return 1;
+            }
+
+            this.init_calcs = function (row) {
+                var value = this.get_value(row)
                 this.count += 1
-                let key = this.get_val(row);
+                let key = this.get_key(row);
                 if (!Array.isArray(key)) {
                     key = [key]
                 }
@@ -174,8 +179,9 @@ if (typeof django_datatables === 'undefined') {
                 }
             }
 
-            this.add_calcs = function (row, value = 1) {
-                var item = this.get_val(row)
+            this.add_calcs = function (row) {
+                var value = this.get_value(row)
+                var item = this.get_key(row)
                 if (Array.isArray(item)) {
                     for (var i = 0; i < item.length; i++) {
                         this.calcs[item[i]][0] += value
@@ -520,21 +526,16 @@ function numberWithCommas(x) {
 
 
 function PythonTable(html_id, tablesetup) {
-    // tablesetup.html_id = html_id
+
     this.initsetup = tablesetup
     this.filters = []
     this.table_id = html_id
 
-    col_defs = tablesetup.tableOptions.columnDefs
-
     django_datatables.DataTables[html_id] = this
     if (typeof (mobile) == 'undefined') mobile = false;
     for (i = 0; i < tablesetup.colOptions.length; i++) {
-        if (mobile && (col_defs[i]['mobile'] == false)) {
-            col_defs[i].visible = false
-        }
         if (tablesetup.colOptions[i]['render'] != undefined) {
-            col_defs[i].render = new django_datatables.column_render(i, tablesetup.colOptions[i]['render'], this)
+            tablesetup.tableOptions.columnDefs[i].render = new django_datatables.column_render(i, tablesetup.colOptions[i]['render'], this)
         }
     }
 
@@ -555,12 +556,16 @@ function PythonTable(html_id, tablesetup) {
         this.exec_filter('html')
         var state_data = this.table.api().state.loaded()
         this.exec_plugins('init', this, state_data)
+        this.table.api().on('search', function () {
+            this.exec_filter('reset')
+        }.bind(this));
 
         this.table.api().on('draw', function () {
             this.proc_filters(this)
-            this.exec_filter( 'refresh')
+            this.exec_filter('refresh')
             this.exec_plugins('refresh', this)
         }.bind(this));
+        this.exec_filter('reset')
         this.table.api().draw()
     }.bind(this)
 

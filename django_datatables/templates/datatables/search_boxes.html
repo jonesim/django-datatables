@@ -19,6 +19,7 @@
                     console.log(e)
                 }
                 if ($(this).attr('data-col') != '' && this.value != '') {
+                    table.table.api().draw(false)
                     table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
                 }
             })

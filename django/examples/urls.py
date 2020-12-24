@@ -11,5 +11,6 @@ urlpatterns = [
     path('example-4', views.Example4.as_view(), name='example4'),
     path('example-5', views.Example5.as_view(), name='example5'),
     path('example-6', views.Example6.as_view(), name='example6'),
-    path('example-7',views.Example7.as_view(), name='example7' ),
+    path('example-7', views.Example7.as_view(), name='example7'),
+    path('example-8', views.Example8.as_view(), name='example8'),
 ]

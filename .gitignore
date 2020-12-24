@@ -1,0 +1,7 @@
+/django_datatables/django_datatable_link.egg-info/
+*.pyc
+.idea/
+build/
+dist/
+/django/db.sqlite3
+/django_filtered_datatables.egg-info/

@@ -1,5 +1,4 @@
 import json
-from types import MethodType
 from inspect import isclass
 from typing import TypeVar, Dict
 from django.db import models
@@ -8,7 +7,7 @@ from django.views.generic import TemplateView
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from .detect_device import detect_device
-from .columns import ColumnBase, DateColumn, ChoiceColumn, render_replace
+from .columns import ColumnBase, DateColumn, ChoiceColumn, render_replace, BooleanColumn
 from .model_def import DatatableModel
 from .filters import DatatableFilter
 
@@ -32,303 +31,6 @@ def row_link(url_name, column_id):
         else:
             url = url_name
     return [render_replace(column=column_id, html=url, var='999999')]
-
-
-'''
-class ColumnDef:
-    COL_DEFAULT = -1
-    COL_TEXT = 0
-    COL_DATE_OF_DATETIME = 1
-    COL_DICT_LOOKUP = 3
-    COL_BUTTON = 4
-    COL_COUNT = 5
-    COL_LINK = 7
-    COL_DROP_DOWN = 8
-    COL_LOOKUP = 9
-    COL_IMAGE = 10
-    COL_CURRENCY = 11
-    COL_ICON = 12
-    COL_DATETIME = 13
-    COL_ANOTHER_COLUMN = 14
-    COL_DATE_STR = 15
-    COL_CURRENCY_PENCE = 16
-    COL_BOOLEAN = 17
-
-    JS_RENDER_LOOKUP = 'lookupRender'
-
-    @staticmethod
-    def get_model_path(field):
-        if '__' in field:
-            return '__'.join(field.split('__')[:-1]) + '__'
-        else:
-            return ''
-
-    def title_from_field(self):
-        if type(self.field) == str and len(self.field) > 0:
-            field_no_path = self.field.split('__')[-1]
-            if field_no_path.find('_') > 0:
-                self.title = field_no_path.replace('_', ' ').title()
-            else:
-                self.title = field_no_path[0]
-                for letter in field_no_path[1:]:
-                    if letter.isupper():
-                        self.title += ' '
-                    self.title += letter
-
-    @staticmethod
-    def generate_column(column_setup, start_field, model_field, **kwargs):
-        if isclass(column_setup):
-            column = column_setup(start_field, **kwargs)
-        elif isinstance(column_setup, ColumnClassWrapper):
-            return column_setup.get_class_instance(column_name=start_field, **kwargs)
-        else:
-            # column = ColumnDef(start_field, *args)
-            column = ColumnBase(field=start_field.split('__')[-1]).get_class_instance(column_name=start_field, **kwargs)
-            if model_field:
-                pass
-                # column.setup_from_field(model_field)
-                # column.setup_args(args)
-            if isinstance(column_setup, dict):
-                column.column_name = start_field.split('__')[-1]
-                column.setup_kwargs(column_setup)
-        return column
-
-    @classmethod
-    def create_columns(cls, start_model, start_field, **kwargs):
-        field_str, options = cls.extract_options(start_field)
-        model, field, setup = DatatableModel.get_setup_data(start_model, field_str)
-        if type(setup) != list:
-            return [cls.generate_column(setup, start_field, field,  **kwargs)]
-        columns = []
-        for s in setup:
-            columns.append(cls.generate_column(s, start_field, field, **kwargs))
-        return columns
-
-    def setup_from_field(self, field):
-        self.title = field.verbose_name.title()
-        field_type = type(field)
-        self.column_type = ColumnDef.COL_TEXT
-        if field_type == models.DateField:
-            self.column_type = ColumnDef.COL_DATE_OF_DATETIME
-        elif field_type == models.DateTimeField:
-            self.column_type = ColumnDef.COL_DATE_OF_DATETIME
-        elif (field_type == models.IntegerField or
-              field_type == models.PositiveSmallIntegerField or
-              field_type == models.PositiveIntegerField) and len(field.choices) > 0:
-            self.column_type = ColumnDef.COL_DICT_LOOKUP
-            self.options['optionText'] = {c[0]: c[1] for c in field.choices}
-        elif field_type == models.BooleanField:
-            self.column_type = ColumnDef.COL_BOOLEAN
-
-    @staticmethod
-    def extract_options(field):
-        attributes = re.search('^[._$]+', field)
-        options = {}
-        if attributes:
-            field = field[attributes.end():]
-            if '_' in attributes.group():
-                options['calculated'] = True
-            if '.' in attributes.group():
-                options['hidden'] = True
-            if '$' in attributes.group():
-                options['secure'] = True
-        return field, options
-
-    def __init__(self, name, *args, **kwargs):
-
-        self.kwargs = kwargs
-        self.model = None
-        self.model_field = None
-
-        name_args = name.split('|')
-        if len(name_args) > 1:
-            self.args = name_args[1:]
-        else:
-            self.args = []
-        self.column_name, self.options = self.extract_options(name_args[0])
-
-        self.model_path = self.get_model_path(self.column_name)
-        self.field = self.column_name
-        self.column_type = ColumnDef.COL_DEFAULT
-        self.model_definitions = None
-        self.annotations = None
-        self.additional_columns = None
-        self.column_ref = self.field
-        if not hasattr(self, 'title'):
-            self.title = ''
-            self.title_from_field()
-        self.setup_results_fn = self.setup_results
-        self.data_from_results_fn = self.data_from_results
-        self.setup_args(args)
-        self.post_init()
-
-    def row_result(self, data_dict, page_results):
-        return self.data_from_results_fn(self, data_dict, page_results)
-
-    def post_init(self):
-        return
-
-    def set_fields(self, field):
-        if isinstance(field, (list, tuple)):
-            self.field = [self.model_path + o for o in field]
-        else:
-            self.field = self.model_path + field
-
-    def f(self, field):
-        return F(self.model_path + field)
-
-    def set_results_function(self, function):
-        if callable(function):
-            self.data_from_results_fn = function
-        else:
-            self.data_from_results_fn = getattr(self.model.Datatable, function)
-
-    def url_option(self, url_name):
-        if type(url_name) == tuple:
-            self.options['url'] = reverse(url_name[0], args=[*url_name[1:]])
-        else:
-            if url_name.find('999999') == -1:
-                self.options['url'] = reverse(url_name, args=[999999])
-            else:
-                self.options['url'] = url_name
-        if self.column_type == ColumnDef.COL_DEFAULT:
-            self.column_type = self.COL_LINK
-
-    kwarg_functions = {
-        'fields': set_fields,
-        'results_fn': set_results_function,
-        'url': url_option,
-    }
-
-    def setup_kwargs(self, kwargs):
-        for a, value in kwargs.items():
-            if a in self.kwarg_functions:
-                self.kwarg_functions[a](self, value)
-            elif hasattr(self, a):
-                setattr(self, a, value)
-            else:
-                self.options[a] = value
-        return self
-
-    def setup_args(self, args):
-        for a in args:
-            if type(a) == dict:
-                self.setup_kwargs(a)
-            elif isinstance(a, str):
-                self.title = a
-            elif type(a) == int:
-                self.column_type = a
-
-    def setup_results(self, request, all_results):
-        return
-
-    @staticmethod
-    def no_process(self, data, page_data):
-        return data.get(self.field, '')
-
-    @staticmethod
-    def col_dict_lookup(self, data, page_data):
-        return self.options['optionText'].get(data.get(self.field), '')
-
-    @staticmethod
-    def tuple_field(self, data, page_data):
-        return ' '.join(str(data.get(f)) for f in self.field if data.get(f))
-
-    @staticmethod
-    def currency_field(self, data, page_data):
-        try:
-            return '{:.2f}'.format(data[self.field])
-        except KeyError:
-            return
-
-    @staticmethod
-    def currency_pence_field(self, data, page_data):
-        try:
-            return '{:.2f}'.format(data[self.field] / 100.0)
-        except KeyError:
-            return
-
-    @staticmethod
-    def format_date_time(self, data, page_data):
-        try:
-            date = data[self.field].strftime('%d/%m/%Y')
-            time_str = data[self.field].strftime('%H:%M')
-            if self.column_type == ColumnDef.COL_DATETIME and time_str != '00:00' and time_str != '01:00':
-                return date + ' ' + time_str
-            return date
-        except AttributeError:
-            return ""
-
-    @staticmethod
-    def boolean_field(self, data, page_data):
-        try:
-            if data[self.field]:
-                return 'true'
-            else:
-                return 'false'
-        except KeyError:
-            return
-
-    def col_date_str(self, data, page_data):
-        field_data = data.get(self.field)
-        if not field_data:
-            return None
-        return '{}/{}/{}'.format(*field_data[:10].split('-')[::-1])
-
-    def set_row_function(self, column_type):
-        render_functions = {
-            ColumnDef.COL_DATE_STR: ColumnDef.col_date_str,
-            ColumnDef.COL_DICT_LOOKUP: ColumnDef.col_dict_lookup,
-            ColumnDef.COL_CURRENCY: ColumnDef.currency_field,
-            ColumnDef.COL_CURRENCY_PENCE: ColumnDef.currency_pence_field,
-            ColumnDef.COL_BOOLEAN: ColumnDef.boolean_field,
-            ColumnDef.COL_DATETIME: ColumnDef.format_date_time,
-            ColumnDef.COL_DATE_OF_DATETIME: ColumnDef.format_date_time,
-        }
-        self.data_from_results_fn = render_functions.get(column_type, ColumnDef.no_process)
-
-    @staticmethod
-    def data_from_results(self, result_dictionary, page_data):
-        if isinstance(self.field, tuple):
-            self.data_from_results_fn = ColumnDef.tuple_field
-        else:
-            self.set_row_function(self.column_type)
-        return self.data_from_results_fn(self, result_dictionary, page_data)
-
-    def style(self):
-        if self.options and 'columnDefs' in self.options:
-            colDefStr = self.options['columnDefs']
-        else:
-            colDefStr = {}
-        if self.column_type == ColumnDef.COL_CURRENCY or self.column_type == ColumnDef.COL_CURRENCY_PENCE:
-            colDefStr['className'] = 'dt-body-right pr-4'
-        if 'mobile' in self.options and not(self.options['mobile']):
-            colDefStr['mobile'] = False
-        if 'hidden' in self.options and self.options['hidden']:
-            colDefStr['visible'] = False
-            colDefStr['searchable'] = False
-        if 'pivot' in self.options and self.options['pivot']:
-            colDefStr['searchable'] = True
-        if 'mouseover' in self.options:
-            self.options['renderfn'] = 'mouseOver'
-        elif 'javascript' in self.options:
-            self.options['renderfn'] = 'jsRender'
-        elif self.column_type == ColumnDef.COL_LINK:
-            self.options['renderfn'] = 'urlRender'
-        elif self.column_type == ColumnDef.COL_ICON:
-            self.options['renderfn'] = 'iconRender'
-        if 'type' in self.options:
-            colDefStr['type'] = self.options['type']
-        if self.column_type == ColumnDef.COL_DATETIME:
-            colDefStr['sType'] = 'crmdate'
-        if self.column_type == ColumnDef.COL_IMAGE:
-            self.options['renderfn'] = 'imageRender'
-        if self.column_type == ColumnDef.COL_ANOTHER_COLUMN:
-            self.options['renderfn'] = 'anotherColumn'
-        if self.column_type == ColumnDef.COL_LOOKUP:
-            self.options['renderfn'] = 'lookupRender'
-        return colDefStr
-'''
 
 
 class DatatableTable:
@@ -376,7 +78,7 @@ class DatatableTable:
     def add_plugin(self, plugin, *args, **kwargs):
         self.plugins.append(plugin(self, *args, **kwargs))
 
-    def get_query(self, **kwargs):
+    def get_query(self, **_kwargs):
         annotations = {}
         for c in self.columns:
             if c.annotations:
@@ -428,12 +130,14 @@ class DatatableTable:
             field = start_field.split('__')[-1]
             if model_field:
                 field_type = type(model_field)
-                if field_type == models.DateField:
+                if field_type in [models.DateField, models.DateTimeField]:
                     # column.row_result = MethodType(format_date_time, column)
                     column = DateColumn(field=field)
                 elif (field_type in [models.IntegerField, models.PositiveSmallIntegerField, models.PositiveIntegerField]
                       and len(model_field.choices) > 0):
                     column = ChoiceColumn(field=field, choices=model_field.choices)
+                elif field_type == models.BooleanField:
+                    column = BooleanColumn(field=field)
                 else:
                     column = ColumnBase(field=field)
                 column = column.get_class_instance(column_name=start_field, **kwargs)
@@ -548,7 +252,7 @@ class DatatableTable:
             commands = [{'command': 'refresh_row', 'row': row_id, 'data': results, 'table': self.table_id}]
             return HttpResponse(json.dumps(commands), content_type='application/json')
 
-    def delete_row(self, request, row_id):
+    def delete_row(self, _request, row_id):
         commands = [{'command': 'delete_row', 'row': row_id, 'table': self.table_id}]
         return HttpResponse(json.dumps(commands), content_type='application/json')
 
@@ -593,17 +297,24 @@ class DatatableView(TemplateView):
     # @staticmethod
     # def graph_data(**kwargs):
     #    return None
+    @staticmethod
+    def setup_table(table):
+        pass
 
     @staticmethod
     def locked():
         return False
+
+    @staticmethod
+    def get_table_query(table, **kwargs):
+        return table.get_query(**kwargs)
 
     def post(self, request, *args, **kwargs):
 
         if 'datatable-data' in request.GET:
             table = self.tables[request.POST['table_id']]
             self.setup_tables(table_id=table.table_id)
-            results = table.get_query(**kwargs)
+            results = self.get_table_query(table, **kwargs)
             if self.locked():
                 secure_fields = [c.field for c in table.columns if c.options.get('secure')]
                 if secure_fields:

@@ -2,10 +2,12 @@
 
 {% load datatable_tags %}
 {% block table %}
-    <div class="d-block float-left" style="width:400px">
-        {% filter_control datatable %}
-    </div>
-    <div class="px-4 d-block float-left">
-        {{ datatable.render|safe }}
+    <div class="d-flex">
+        <div style="min-width:320px">
+            {% filter_control datatable %}
+        </div>
+        <div class="px-4 d-block float-left">
+            {{ datatable.render|safe }}
+        </div>
     </div>
 {% endblock %}

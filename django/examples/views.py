@@ -2,7 +2,7 @@ import csv
 from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, row_button, render_replace, \
     ManyToManyColumn, DateColumn
-from django_datatables.datatables import DatatableView, simple_table, row_link
+from django_datatables.datatables import DatatableView, simple_table
 from django.http import HttpResponse
 from . import models
 from django_datatables.colour_rows import ColourRows
@@ -20,16 +20,19 @@ class Example1(DatatableView):
             ('id', {'column_defs': {'width': '30px'}}),
             'name',
             'Tags',
-            ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}, hidden=True),
+            ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
             ColumnLink(column_name='view_company', field='name', url_name='example2'),
+            ColumnLink(column_name='view_company_icon', link_ref_column='id', url_name='example2', width='10px',
+                       link_html='<button class="btn btn-sm btn-outline-dark"><i class="fas fa-building"></i></button>'
+                       ),
         )
         table.column('name').column_defs['orderable'] = False
         table.add_plugin(ColourRows, [{'column': 0, 'values': {'1': 'table-danger'}}])
         table.ajax_data = False
         table.add_js_filters('tag', 'Tags')
-        table.add_js_filters('pivot', 'people', filter_title='Number of People', collapsed=False)
+        table.add_js_filters('totals', 'people', filter_title='Number of People', collapsed=False)
 
-        table.table_options['row_href'] = row_link('example2', 'id')
+#        table.table_options['row_href'] = row_link('example2', 'id')
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
@@ -40,7 +43,7 @@ class Example2(DatatableView):
     template_name = 'table2.html'
 
     @staticmethod
-    def column_get_csv(request, column_values, table, extra_data):
+    def column_get_csv(request, column_values, table, _extra_data):
 
         # Does not filter out hidden columns but can easily be modified
 
@@ -99,11 +102,11 @@ class Example3(DatatableView):
     template_name = 'table.html'
 
     @staticmethod
-    def badge(column, data_dict, page_results):
+    def badge(_column, data_dict, _page_results):
         return f'<span class="badge badge-secondary">{data_dict.get("people")}</span>'
 
     @staticmethod
-    def range(column, data_dict, page_results):
+    def range(_column, data_dict, _page_results):
         if data_dict.get('people') > 2:
             return 'GT1'
         else:
@@ -115,13 +118,13 @@ class Example3(DatatableView):
             ColumnBase(column_name='CustomResultFunction', field='people', row_result=self.badge,
                        annotations={'people': Count('person__id')}, title='Send HTML'),
             ColumnBase(column_name='Range', field='people', row_result=self.range, hidden=True),
-            ColumnBase(column_name='column_replace', title='HTML generated in JS', field='people', render=[
+            ColumnBase(column_name='people', title='HTML generated in JS', field='people', render=[
                 {'var': '%1%', 'column': 'people', 'html': '<span class="badge badge-primary">%1%</span>',
                  'function': 'Replace'},
                ]),
         )
         table.row_color('Range', ('GT1', 'table-danger'), ('LT1', 'table-warning'))
-        table.sort('-column_replace')
+        table.sort('-people')
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'description': '''
@@ -200,7 +203,7 @@ class Example7(DatatableView):
     template_name = 'table7.html'
 
     @staticmethod
-    def row_delete(request, row, table, extra_data):
+    def row_delete(request, _row, table, extra_data):
         # Could delete from database here but for demo don't remove
         return table.delete_row(request, extra_data['row_no'])
 
@@ -265,7 +268,69 @@ class Example7(DatatableView):
             ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
         )
         table.ajax_data = False
-        table.add_js_filters('tag', 'tags_raw')
+        table.add_js_filters('tag', 'CompanyTags')
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
+
+
+class CollapseButton(DatatableColumn):
+
+    plus = 'fas fa-plus-circle'
+    minus = 'fas fa-minus-circle'
+    expand_button = '<a onclick="show_tree(this)"><i class="{}"></i></a>'
+
+    def col_setup(self):
+        self.options['render'] = [
+            {'var': '%1%', 'html': '%1%', 'function': 'ReplaceLookup'},
+        ]
+        self.options['lookup'] = (('+', self.expand_button.format(self.plus)),
+                                  ('-', self.expand_button.format(self.minus)),
+                                  (' ', ' '))
+        self.options['no_col_search'] = True
+        self.title = ''
+
+
+class Example8(DatatableView):
+    model = models.Company
+    template_name = 'table.html'
+
+    @staticmethod
+    def setup_table(table):
+        table.add_columns(
+            CollapseButton(column_name='collapsed', field='collapsed'),
+            '.level',
+            '.id',
+            '.person_id',
+            'name',
+            'first_name',
+            'surname',
+        )
+        table.sort('id', 'level')
+        table.add_js_filters('expand', 'level', id_column='id')
+        table.column('name').column_defs['orderable'] = False
+        table.column('first_name').column_defs['orderable'] = False
+        table.column('surname').column_defs['orderable'] = False
+        table.column('collapsed').column_defs['orderable'] = False
+        # table.table_options['ordering'] = False
+
+    def add_to_context(self, **kwargs):
+        return {'title': type(self).__name__, 'filter': filter}
+
+    @staticmethod
+    def get_table_query(table, **kwargs):
+        query = list(table.model.objects.values('id', 'name'))
+        people = list(models.Person.objects.values('id', 'company_id', 'first_name', 'surname', 'company__name'))
+        for q in query:
+            q['level'] = 0
+            q['collapsed'] = '+'
+
+        for p in people:
+            p['person_id'] = p['id']
+            p['id'] = p['company_id']
+            p['level'] = 1
+            p['collapsed'] = ' '
+            p['name'] = '<span class="text-secondary pl-2">' + p['company__name'] + '</span>'
+
+        query += people
+        return query

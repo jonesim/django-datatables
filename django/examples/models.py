@@ -21,7 +21,7 @@ class Company(models.Model):
 
             @staticmethod
             def proc_result(data_dict, page_results):
-                return page_results['tags'].get(data_dict['id'])
+                return page_results['tags'].get(data_dict['id'], [])
 
             def col_setup(self):
                 self.options['render'] = [
@@ -47,4 +47,3 @@ class Person(models.Model):
 class Tags(models.Model):
     tag = models.CharField(max_length=40)
     company = models.ManyToManyField(Company)
-

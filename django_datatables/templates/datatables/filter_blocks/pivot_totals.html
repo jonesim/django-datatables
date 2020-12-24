@@ -12,8 +12,8 @@
     <table class="small w-100">
         <tr>
             <td></td>
-            <td class="text-right text-secondary">Total</td>
-            <td class="text-right">Filtered</td>
+            <td class="text-right text-secondary">Filtered</td>
+            <td class="text-right">Total</td>
         </tr>
         <tbody class="filter-content">
         </tbody>
@@ -25,6 +25,9 @@
     <script>
         function filter(column_no, html_id, options) {
             django_datatables.PivotFilter.call(this, column_no, html_id, options)
+            this.filter_calcs.get_value = function(row){
+                return row[column_no];
+            }
             this.storage_key = 'pivot_totals'
             this.refresh = function () {
                 totals = this.filter_calcs.calcs
@@ -36,8 +39,14 @@
                     var result = totals[decodeURI($(this).attr("data-value"))]
                     $(this).html(numberWithCommas(result[1]))
                 })
-                if (typeof (chart) != 'undefined') chart.data = graph_data;
             }
+            this.init_filters = function () {
+                this.table.api().rows().data().each(function (row) {
+                    this.filters.forEach(function (filter) {
+                        filter.filter_calcs.init_calcs(row, row[column_no])
+                    })
+                })
+            }.bind(this)
         }
         filter.prototype = Object.create(django_datatables.PivotFilter.prototype);
         options = {

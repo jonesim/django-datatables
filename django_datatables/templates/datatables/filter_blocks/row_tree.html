@@ -1,0 +1,73 @@
+{% block javascript %}
+    <script>
+        function show_tree(button) {
+            var p_table = django_datatables.DataTables[$(button).closest('table').attr('id')]
+            var row = p_table.table.api().row($(button).closest('tr'))
+            var column = p_table.table.api().column($(button).closest('td')).index()
+            for (var f=0; f<p_table.filters.length; f++){
+                if ('{{ html_id }}' ===  p_table.filters[f].html_id){
+                    var tree_filter = p_table.filters[f]
+                    break
+                }
+            }
+            var row_data = row.data()
+            var id = row_data[tree_filter.id_column]
+            if (tree_filter.show_rows[id]) {
+                delete tree_filter.show_rows[id]
+                row_data[column] = '+'
+            } else {
+                tree_filter.show_rows[id] = true
+                row_data[column] = '-'
+            }
+            row.invalidate()
+            p_table.table.api().draw(false)
+        }
+
+        function filter(column_no, html_id, options) {
+            this.show_rows = {}
+            this.column_no = {{ column_no }}
+            django_datatables.FilterBase.call(this, column_no, html_id, options)
+
+            this.init = function (table) {
+                django_datatables.FilterBase.prototype.init.call(this, table)
+                this.id_column = table.find_column('{{ kwargs.id_column }}')
+            }
+
+            this.refresh = function () {
+                this.reset()
+            }
+
+            this.save_data = function(){
+            }
+
+            this.reset = function () {
+                var search_boxes = $('#' + this.pTable.table_id + ' .column-search')
+                for (var s = 0; s < search_boxes.length; s++) {
+                    if (search_boxes[s].value != '') {
+                        this.no_filter = true
+                        return
+                    }
+                }
+                if ($('#search_' + this.pTable.table_id).val() !=''){
+                        this.no_filter = true
+                        return;
+                }
+                this.no_filter = false
+            }.bind(this)
+
+            this.filter = function (data) {
+                if (this.no_filter) {
+                    return true;
+                }
+
+                return !!(data[this.column_no] == 0 || this.show_rows[data[this.id_column]]);
+            }
+        }
+
+        filter.prototype = Object.create(django_datatables.FilterBase.prototype);
+        options = {}
+        var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
+        django_datatables.add_filter('{{ table.table_id }}', new_filter)
+    </script>
+{% endblock %}
+
