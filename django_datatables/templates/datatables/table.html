@@ -20,7 +20,7 @@
     <script>
     $( document ).ready(function() {
         {{ datatable.table_id }}_configuration = {{ datatable.col_def_str|safe }};
-        new PythonTable("{{ datatable.table_id }}", {{ datatable.table_id }}_configuration);
+        new django_datatables.PythonTable("{{ datatable.table_id }}", {{ datatable.table_id }}_configuration);
     })
     </script>
 {% endspaceless %}
