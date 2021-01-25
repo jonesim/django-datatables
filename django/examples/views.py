@@ -2,7 +2,7 @@ import csv
 from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, row_button, render_replace, \
     ManyToManyColumn, DateColumn
-from django_datatables.datatables import DatatableView, simple_table
+from django_datatables.datatables import DatatableView, simple_table, row_link
 from django.http import HttpResponse
 from . import models
 from django_datatables.colour_rows import ColourRows
@@ -25,6 +25,9 @@ class Example1(DatatableView):
             ColumnLink(column_name='view_company_icon', link_ref_column='id', url_name='example2', width='10px',
                        link_html='<button class="btn btn-sm btn-outline-dark"><i class="fas fa-building"></i></button>'
                        ),
+            'reverse_tag',
+            ManyToManyColumn(column_name='DirectTag', field='direct_tag__tag_direct', model=models.Company,
+                             html='<span class="badge badge-primary"> %1% </span>'),
         )
         table.column('name').column_defs['orderable'] = False
         table.add_plugin(ColourRows, [{'column': 0, 'values': {'1': 'table-danger'}}])
@@ -32,7 +35,8 @@ class Example1(DatatableView):
         table.add_js_filters('tag', 'Tags')
         table.add_js_filters('totals', 'people', filter_title='Number of People', collapsed=False)
 
-#        table.table_options['row_href'] = row_link('example2', 'id')
+        table.table_options['row_href'] = row_link('example2', 'id')
+        # table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
@@ -259,12 +263,8 @@ class Example7(DatatableView):
                                                               function='ValueInColumn')]),
             ColumnBase(column_name='Delete', render=[row_button('delete', 'Delete Row')]),
             self.TagsY(column_name='tags_raw'),
-            ManyToManyColumn(column_name='CompanyTags',
-                             m2m_model=models.Tags,
-                             connecting_field='company',
-                             display_field='tag',
+            ManyToManyColumn(column_name='CompanyTags', field='tags__tag', model=models.Company,
                              html='<span class="badge badge-primary"> %1% </span>'),
-
             ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
         )
         table.ajax_data = False
@@ -302,13 +302,13 @@ class Example8(DatatableView):
             '.level',
             '.id',
             '.person_id',
-            'name',
+            ColumnBase(column_name='name', field='name', column_defs={'orderable': False}),
             'first_name',
             'surname',
         )
         table.sort('id', 'level')
         table.add_js_filters('expand', 'level', id_column='id')
-        table.column('name').column_defs['orderable'] = False
+        # table.column('name').column_defs['orderable'] = False
         table.column('first_name').column_defs['orderable'] = False
         table.column('surname').column_defs['orderable'] = False
         table.column('collapsed').column_defs['orderable'] = False
@@ -334,3 +334,26 @@ class Example8(DatatableView):
 
         query += people
         return query
+
+
+class Example9(DatatableView):
+    model = models.Company
+    template_name = 'table.html'
+
+    @staticmethod
+    def setup_table(table):
+        table.add_columns(
+            ('id', {'column_defs': {'width': '30px'}}),
+            'name',
+            ColumnBase(column_name='title', field='person__title',
+                       choices=dict(models.Person._meta.get_field('title').choices),
+                       render=[render_replace(html='ABC -%1%- DFG', column='title')]),
+            ColumnBase(column_name='Title', field=['person__title', 'person__first_name'],
+                       render=[{'function': 'Replace', 'html': '%1%  - %2%  -  %1%',
+                                'column': 'Title:0', 'null_value': 'x',   'var': '%1%'},
+                               {'function': 'Replace', 'column': 'Title:1',  'var': '%2%'}]),
+        )
+        table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
+
+    def add_to_context(self, **kwargs):
+        return {'title': type(self).__name__, 'filter': filter}

@@ -1,15 +1,23 @@
 from django.db import models
 from django.db.models import Count
 from django_datatables.model_def import DatatableModel
-from django_datatables.columns import ColumnLink, DatatableColumn, ChoiceColumn
+from django_datatables.columns import ColumnLink, DatatableColumn, ChoiceColumn, ManyToManyColumn
+
+
+class TagsDirect(models.Model):
+    tag_direct = models.CharField(max_length=40)
 
 
 class Company(models.Model):
     name = models.CharField(max_length=80)
+    direct_tag = models.ManyToManyField(TagsDirect)
 
     class Datatable(DatatableModel):
         people = {'annotations': {'people': Count('person__id')}}
         collink_1 = ColumnLink(title='Defined in Model', field='name', url_name='company')
+
+        direct_tag = ManyToManyColumn(field='direct_tag__tag_direct')
+        reverse_tag = ManyToManyColumn(field='tags__tag')
 
         class Tags(DatatableColumn):
             def setup_results(self, request, all_results):

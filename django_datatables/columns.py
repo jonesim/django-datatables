@@ -1,4 +1,5 @@
 import re
+import inspect
 from types import MethodType
 from django.urls import reverse
 # from bootstrap_modals.helper import show_modal
@@ -73,6 +74,7 @@ class ColumnBase:
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
         self.options: Dict[KT, VT] = options
         self.model_path = self.get_model_path(self.column_name)
+        self.model = kwargs.get('model')
         if kwargs.get('column_name') == field:
             self.field = self.column_name
         else:
@@ -163,6 +165,8 @@ class ColumnBase:
     def __row_result(self, data_dict, _page_results):
         if isinstance(self.field, (list, tuple)):
             return [data_dict.get(f) for f in self.field]
+        if self.options.get('choices'):
+            return self.options['choices'].get(data_dict.get(self.field))
         return data_dict.get(self.field)
 
     def style(self):
@@ -280,32 +284,42 @@ class ColumnLink(ColumnBase):
             self.options['render'] = [render_replace(column=self.column_name,
                                                      html=f'<a href="{self.url}">{link_html}</a>',
                                                      var=var), render_replace(column=link_ref_column, var='999999')]
-
+class DatatableColumnError(Exception):
+    pass
 
 class ManyToManyColumn(DatatableColumn):
 
     def setup_results(self, request, all_results):
-        tags = self.m2m_model.objects.values_list(self.connecting_field + '__id', 'id')
+        if self.reverse:
+            tags = self.related_model.objects.values_list(self.field_id, 'id')
+        else:
+            tags = self.model.objects.values_list('id', self.field_id)
+        tags = tags.filter(**{self.field_id + '__isnull': False}).distinct()
         tag_dict = {}
         for t in tags:
             tag_dict.setdefault(t[0], []).append(t[1])
         all_results['m2m' + self.column_name] = tag_dict
 
-    def proc_result(self, data_dict, page_results):
+    def row_result(self, data_dict, page_results):
         return page_results['m2m' + self.column_name].get(data_dict['id'], [])
 
-    def __init__(self, *, m2m_model, connecting_field, display_field, html=' %1% ', **kwargs):
+    def __init__(self, *,  html=' %1% ', **kwargs):
         if not self.initialise(locals()):
             return
         super().__init__(**self.kwargs)
-        self.m2m_model = self.options.pop('m2m_model')
-        self.connecting_field = connecting_field
-        self.display_field = display_field
-        self.options['lookup'] = list(m2m_model.objects.values_list('id', display_field))
-        self.row_result = self.proc_result
-        self.options['render'] = [
-            {'var': '%1%', 'html': html, 'function': 'ReplaceLookup'},
-        ]
+        fields = self.field.split('__')
+        if not inspect.isclass(self.model):
+            raise DatatableColumnError('ManyToManyColumn must have model set')
+        connecting_field = self.model._meta.get_field(fields[-2])
+        self.related_model = connecting_field.related_model
+        if hasattr(connecting_field, 'field'):
+            self.field_id = connecting_field.field.attname + '__id'
+            self.reverse = True
+        else:
+            self.field_id = fields[-2] + '__id'
+            self.reverse = False
+        self.options['lookup'] = list(self.related_model.objects.values_list('id', fields[-1]))
+        self.options['render'] = [{'var': '%1%', 'html': html, 'function': 'ReplaceLookup'}]
 
 
 class DateColumn(ColumnBase):

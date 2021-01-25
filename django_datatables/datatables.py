@@ -13,13 +13,11 @@ from .filters import DatatableFilter
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
-
-
-def options_to_dict(options):
-    return dict((x, y) for x, y in options)
-
-
 DUMMY_ID = 999999
+
+
+class DatatableError(Exception):
+    pass
 
 
 def row_link(url_name, column_id):
@@ -83,9 +81,12 @@ class DatatableTable:
         for c in self.columns:
             if c.annotations:
                 annotations.update(c.annotations)
-        query = (self.model.objects.annotate(**annotations).filter(**self.filter)
-                 .exclude(**self.exclude).values(*self.fields())
+        query = (self.model.objects.annotate(**annotations).exclude(**self.exclude).values(*self.fields())
                  .order_by(*self.order_by))
+        if isinstance(self.filter, models.Q):
+            query = query.filter(self.filter)
+        else:
+            query = query.filter(**self.filter)
         if self.distinct:
             query = query.distinct(*self.distinct)
         if self.max_records:
@@ -118,13 +119,14 @@ class DatatableTable:
                 return c, n
             if c.column_name == column_name:
                 return c, n
+        raise DatatableError('Unable to find column ' + column_name)
 
     @staticmethod
-    def generate_column(column_setup, start_field, model_field, **kwargs):
+    def generate_column(column_setup, start_field, model_field, model, **kwargs):
         if isclass(column_setup):
-            column = column_setup(**kwargs, column_name=column_setup.__name__)
+            column = column_setup(**kwargs, column_name=column_setup.__name__, model=model)
         elif isinstance(column_setup, ColumnBase):
-            return column_setup.get_class_instance(column_name=start_field, **kwargs)
+            return column_setup.get_class_instance(column_name=start_field, model=model, **kwargs)
         else:
             # create a column from model field
             field = start_field.split('__')[-1]
@@ -139,9 +141,10 @@ class DatatableTable:
                 elif field_type == models.BooleanField:
                     column = BooleanColumn(field=field)
                 else:
-                    column = ColumnBase(field=field)
+                    column = ColumnBase(field=field,)
+                if 'title' not in kwargs:
+                    kwargs['title'] = model_field.verbose_name.title()
                 column = column.get_class_instance(column_name=start_field, **kwargs)
-                column.title = model_field.verbose_name.title()
             else:
                 column = ColumnBase(field=field).get_class_instance(column_name=start_field, **kwargs)
             if isinstance(column_setup, dict):
@@ -154,10 +157,10 @@ class DatatableTable:
         field_str, options = ColumnBase.extract_options(start_field)
         model, field, setup = DatatableModel.get_setup_data(start_model, field_str)
         if type(setup) != list:
-            return [self.generate_column(setup, start_field, field,  **kwargs)]
+            return [self.generate_column(setup, start_field, field, model, **kwargs)]
         columns = []
         for s in setup:
-            columns.append(self.generate_column(s, start_field, field, **kwargs))
+            columns.append(self.generate_column(s, start_field, field, model, **kwargs))
         return columns
 
     def get_columns(self, column, **kwargs):
@@ -206,10 +209,11 @@ class DatatableTable:
 
     def setup_column_id(self):
         if 'column_id' not in self.table_options:
-            column_id = self.find_column('id', True)
-            if column_id:
-                self.table_options['column_id'] = column_id[1]
-                return self.columns[column_id[1]]
+            try:
+                self.table_options['column_id'] = self.find_column('id', True)[1]
+                return self.columns[self.table_options['column_id']]
+            except DatatableError:
+                pass
         else:
             return self.columns[self.table_options['column_id']]
 

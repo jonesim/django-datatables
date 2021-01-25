@@ -414,21 +414,24 @@ if (typeof django_datatables === 'undefined') {
             Replace: function (column, params, table) {
                 this.reg_exp = RegExp(params.var, 'g')
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-
+                if (this.params.null_value === undefined){
+                    this.null_value = ''
+                }
+                else{
+                    this.null_value = this.params.null_value
+                }
                 this.convert = function (current, value) {
+                    var replacement = value
+                    if (this.field_array && replacement != null){
+                        replacement = value[params.index]
+                    }
+                    if (replacement == null){
+                        return this.null_value;
+                    }
                     if (params.html === undefined) {
-                        if (this.field_array) {
-                            return current.replace(params.var, value[params.index])
-                        } else {
-                            return current.replace(params.var, value)
-                        }
-
+                        return current.replace(this.reg_exp, replacement)
                     } else {
-                        if (this.field_array) {
-                            return params.html.replace(params.var, value[params.index])
-                        } else {
-                            return params.html.replace(params.var, value)
-                        }
+                        return params.html.replace(this.reg_exp, replacement)
                     }
                 }.bind(this)
             },
