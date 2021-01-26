@@ -132,7 +132,10 @@ if (typeof django_datatables === 'undefined') {
 
             this.badge_string = function (key) {
                 let result = this.calcs[key]
-                if (result[0] === result[1]) {
+                if (result == undefined){
+                    return '-'
+                }
+                else if (result[0] === result[1]) {
                     return result[0].toString()
                 } else {
                     return result[0].toString() + ' / ' + result[1].toString()
@@ -140,7 +143,10 @@ if (typeof django_datatables === 'undefined') {
             }
 
             this.badge_colour = function (key) {
-                if (this.calcs[key][0] > 0) {
+                if (this.calcs[key] == undefined){
+                    return ['badge-secondary', 'badge-primary']
+                }
+                else if (this.calcs[key][0] > 0) {
                     return ['badge-primary', 'badge-secondary']
                 } else {
                     return ['badge-secondary', 'badge-primary']
