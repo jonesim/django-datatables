@@ -1,8 +1,8 @@
 import csv
 from django.db.models import Count
-from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, row_button, render_replace, \
-    ManyToManyColumn, DateColumn
-from django_datatables.datatables import DatatableView, simple_table, row_link
+from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
+from django_datatables.helpers import row_button, render_replace, row_link
+from django_datatables.datatables import DatatableView, simple_table
 from django.http import HttpResponse
 from . import models
 from django_datatables.colour_rows import ColourRows
@@ -34,7 +34,7 @@ class Example1(DatatableView):
         table.ajax_data = False
         table.add_js_filters('tag', 'Tags')
         table.add_js_filters('totals', 'people', filter_title='Number of People', collapsed=False)
-
+        # table.add_js_filters('tag', 'DirectTag')
         table.table_options['row_href'] = row_link('example2', 'id')
         # table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
 
@@ -357,3 +357,39 @@ class Example9(DatatableView):
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
+
+
+class IdColumn(DatatableColumn):
+
+    def col_setup(self):
+        self.field = 'id'
+        self.title = 'Class'
+
+class Example10(DatatableView):
+    model = models.Company
+    template_name = 'table.html'
+
+    @staticmethod
+    def setup_table(table):
+
+        table.add_columns(
+            'id',                                   # string model field
+            ('id', {'title': 'Tuple'}),             # tuple
+            IdColumn(column_name='class_id'),       # class instance
+            'ModelIdColumn',                        # column class from model
+            ('ModelIdColumn', {'title': 'tuple'}),  # tuple column from model
+            'model_instance',                       # column instance from model
+            ('model_instance', {'title': 'tuple-instance'}),
+            'person__id',                           # indirect field
+            'company_list',                         # list from model
+            'person__ids',                          # list from indirect model
+            ('_ABC', {'render': [render_replace(column='ids/FullName', html='Full %1%')]}),
+        )
+        print('******************************')
+        for c in table.columns:
+            print((c.column_name + (' ' * 20))[:20], (str(c.field)+ (' ' * 40))[:40], c.title)
+        print('******************************')
+        table.table_options['scrollX'] = True
+
+    def add_to_context(self, **kwargs):
+        return {'title': type(self).__name__,}

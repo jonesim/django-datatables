@@ -2,43 +2,108 @@ import json
 from inspect import isclass
 from typing import TypeVar, Dict
 from django.db import models
-from django.urls import reverse
 from django.views.generic import TemplateView
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from .detect_device import detect_device
-from .columns import ColumnBase, DateColumn, ChoiceColumn, render_replace, BooleanColumn
+from .columns import ColumnBase, DateColumn, ChoiceColumn, BooleanColumn
 from .model_def import DatatableModel
 from .filters import DatatableFilter
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
-DUMMY_ID = 999999
 
 
 class DatatableError(Exception):
     pass
 
 
-def row_link(url_name, column_id):
-    if type(url_name) == tuple:
-        url = reverse(url_name[0], args=[*url_name[1:]])
-    else:
-        if url_name.find('999999') == -1:
-            url = reverse(url_name, args=[999999])
+class ColumnInitialisor:
+
+    def __init__(self, start_model, path, field_prefix='', name_prefix='', **kwargs):
+        self.start_model = start_model
+        self.django_field = None
+        self.setup = None
+        self.model = None
+        if type(path) == tuple:
+            kwargs.update(path[1])
+            path = path[0]
+        self.kwargs = kwargs
+        self.columns = []
+        self.kwargs['model_path'] = field_prefix
+
+        if isclass(path):
+            self.setup = path
+            self.kwargs['column_name'] = path.__name__
+        elif isinstance(path, ColumnBase):
+            self.setup = path
+            if path.column_name:
+                self.kwargs['column_name'] = path
+        elif isinstance(path, str):
+            self.path, options = ColumnBase.extract_options(path)
+            self.kwargs.update(options)
+            self.model, self.django_field, self.setup = DatatableModel.get_setup_data(start_model, self.path)
+            self.kwargs['column_name'] = path
+
+            if '__' in path:
+                split_path = path.split('__')
+                self.field = split_path[-1]
+                self.next_prefix = '__'.join(split_path[:-1]) + '__'
+            else:
+                self.field = path
+                self.next_prefix = ''
         else:
-            url = url_name
-    return [render_replace(column=column_id, html=url, var='999999')]
+            raise DatatableError('Unknown type in columns ' + str(path))
+
+        if 'column_name' in kwargs and name_prefix:
+            self.kwargs['column_name'] = f'{name_prefix}/{self.kwargs["column_name"]}'
+
+    def get_columns(self):
+        self.kwargs['model'] = self.model
+        if isclass(self.setup):
+            self.columns.append(self.setup(**self.kwargs))
+        elif isinstance(self.setup, ColumnBase):
+            if self.setup.initialised:
+                self.columns.append(self.setup)
+            else:
+                self.columns.append(self.setup.get_class_instance(**self.kwargs))
+        elif isinstance(self.setup, list):
+            for c in self.setup:
+                self.columns += ColumnInitialisor(start_model=self.start_model, path=c, field_prefix=self.next_prefix,
+                                                  name_prefix=self.field, **self.kwargs).get_columns()
+        else:
+            self.kwargs['field'] = self.field
+            if isinstance(self.setup, dict):
+                self.kwargs.update(self.setup)
+            if self.django_field:
+                self.add_django_field_column()
+            else:
+                self.columns.append(ColumnBase(**self.kwargs))
+        return self.columns
+
+    def add_django_field_column(self):
+        if 'title' not in self.kwargs:
+            self.kwargs['title'] = self.django_field.verbose_name.title()
+        field_type = type(self.django_field)
+        if field_type in [models.DateField, models.DateTimeField]:
+            self.columns.append(DateColumn(**self.kwargs))
+        elif (field_type in [models.IntegerField, models.PositiveSmallIntegerField, models.PositiveIntegerField]
+              and hasattr(self.django_field, 'choices') and len(self.django_field.choices) > 0):
+            self.columns.append(ChoiceColumn(choices=self.django_field.choices, **self.kwargs))
+        elif field_type == models.BooleanField:
+            self.columns.append(BooleanColumn(**self.kwargs))
+        else:
+            self.columns.append(ColumnBase(**self.kwargs))
 
 
 class DatatableTable:
 
-    page_length = 100
-
-    def __init__(self, table_id, model=None):
+    def __init__(self, table_id, model=None, table_options=None, table_classes=None):
         self.columns = []
         self.table_id = table_id
-        self.table_options: Dict[KT, VT] = {}
+        self.table_options: Dict[KT, VT] = {'pageLength': 100}
+        if table_options:
+            self.table_options.update(table_options)
 
         self.ajax_data = True
         self.model = model
@@ -53,10 +118,12 @@ class DatatableTable:
         self.order_by = []
         self.js_filter_list = []
         self.plugins = []
-
-        self.table_classes = ['display', 'compact', 'smalltext', 'table-sm', 'table', 'w-100']
-        self.table_options['pageLength'] = self.page_length
         self.omit_columns = []
+
+        if table_classes:
+            self.table_classes = table_classes
+        else:
+            self.table_classes = ['display', 'compact', 'smalltext', 'table-sm', 'table', 'w-100']
 
     def table_class(self):
         return ' '.join(self.table_classes)
@@ -121,65 +188,9 @@ class DatatableTable:
                 return c, n
         raise DatatableError('Unable to find column ' + column_name)
 
-    @staticmethod
-    def generate_column(column_setup, start_field, model_field, model, **kwargs):
-        if isclass(column_setup):
-            column = column_setup(**kwargs, column_name=column_setup.__name__, model=model)
-        elif isinstance(column_setup, ColumnBase):
-            return column_setup.get_class_instance(column_name=start_field, model=model, **kwargs)
-        else:
-            # create a column from model field
-            field = start_field.split('__')[-1]
-            if model_field:
-                field_type = type(model_field)
-                if field_type in [models.DateField, models.DateTimeField]:
-                    # column.row_result = MethodType(format_date_time, column)
-                    column = DateColumn(field=field)
-                elif (field_type in [models.IntegerField, models.PositiveSmallIntegerField, models.PositiveIntegerField]
-                      and len(model_field.choices) > 0):
-                    column = ChoiceColumn(field=field, choices=model_field.choices)
-                elif field_type == models.BooleanField:
-                    column = BooleanColumn(field=field)
-                else:
-                    column = ColumnBase(field=field,)
-                if 'title' not in kwargs:
-                    kwargs['title'] = model_field.verbose_name.title()
-                column = column.get_class_instance(column_name=start_field, **kwargs)
-            else:
-                column = ColumnBase(field=field).get_class_instance(column_name=start_field, **kwargs)
-            if isinstance(column_setup, dict):
-                column.column_name = field
-                column.setup_kwargs(column_setup)
-        return column
-
-    def create_columns(self, start_model, start_field, **kwargs):
-        # Could get multiple columns from a definition in a model
-        field_str, options = ColumnBase.extract_options(start_field)
-        model, field, setup = DatatableModel.get_setup_data(start_model, field_str)
-        if type(setup) != list:
-            return [self.generate_column(setup, start_field, field, model, **kwargs)]
-        columns = []
-        for s in setup:
-            columns.append(self.generate_column(s, start_field, field, model, **kwargs))
-        return columns
-
-    def get_columns(self, column, **kwargs):
-        if isinstance(column, str):
-            if column in self.omit_columns:
-                return []
-            return self.create_columns(self.model, column, **kwargs)
-        elif isinstance(column, ColumnBase):
-            if column.column_name in self.omit_columns:
-                return []
-            return [column]
-        else:
-            return self.create_columns(self.model, column[0], **column[1])
-
-    def add_columns(self, *columns, **kwargs):
+    def add_columns(self, *columns):
         for c in columns:
-            new_columns = self.get_columns(c, **kwargs)
-            for add_col in new_columns:
-                self.columns.append(add_col)
+            self.columns += ColumnInitialisor(self.model, c).get_columns()
 
     def fields(self):
         fields = []
@@ -263,6 +274,8 @@ class DatatableTable:
 
 class DatatableView(TemplateView):
     model = None
+    table_classes = None
+    table_options = None
 
     def __init__(self, *args, **kwargs):
         super(DatatableView, self).__init__(*args, **kwargs)
@@ -272,7 +285,9 @@ class DatatableView(TemplateView):
         self.dispatch_context = None
 
     def add_table(self, table_id, **kwargs):
-        self.tables[table_id] = DatatableTable(table_id, **kwargs)
+        self.tables[table_id] = DatatableTable(table_id, table_options=self.table_options,
+                                               table_classes=self.table_classes,
+                                               **kwargs)
 
     def add_tables(self):
         self.add_table(type(self).__name__.lower(), model=self.model)

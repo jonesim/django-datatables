@@ -1,32 +1,17 @@
 import re
 import inspect
 from types import MethodType
-from django.urls import reverse
-# from bootstrap_modals.helper import show_modal
 from typing import TypeVar, Dict
-
+from .helpers import get_url, render_replace
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 
-def row_button(command, button_text, *, function='Html', button_classes='btn btn-sm', **kwargs):
-    rb = {
-        'html': (f'<button data-command="{command}" onclick="django_datatables.b_r(this)" '
-                 f'class="{button_classes}">{button_text}</button>'),
-        'function': function,
-    }
-    rb.update(kwargs)
-    return rb
-
-
-def render_replace(*, column, var='%1%', html=None):
-    if html:
-        return {'var': var, 'column': column, 'html': html, 'function': 'Replace'}
-    else:
-        return {'var': var, 'column': column, 'function': 'Replace'}
-
-
 class ColumnNameError(Exception):
+    pass
+
+
+class DatatableColumnError(Exception):
     pass
 
 
@@ -73,7 +58,9 @@ class ColumnBase:
         self.column_defs = {}
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
         self.options: Dict[KT, VT] = options
-        self.model_path = self.get_model_path(self.column_name)
+        self.model_path = kwargs.get('model_path')
+        if not self.model_path:
+            self.model_path = self.get_model_path(self.column_name)
         self.model = kwargs.get('model')
         if kwargs.get('column_name') == field:
             self.field = self.column_name
@@ -113,7 +100,7 @@ class ColumnBase:
 
     @column_name.setter
     def column_name(self, value):
-        if not re.match('^[A-Za-z0-9._]+$', value):
+        if not re.match('^[A-Za-z0-9._/]+$', value):
             raise ColumnNameError('Invalid column_name: ' + value)
         self._column_name = value
 
@@ -171,10 +158,6 @@ class ColumnBase:
 
     def style(self):
         col_def_str = self.column_defs
-#        if self.column_type == ColumnDef.COL_CURRENCY or self.column_type == ColumnDef.COL_CURRENCY_PENCE:
-#            colDefStr['className'] = 'dt-body-right pr-4'
-        if 'mobile' in self.options and not (self.options['mobile']):
-            col_def_str['mobile'] = False
         if self.options.get('hidden'):
             col_def_str['visible'] = False
             col_def_str['searchable'] = False
@@ -263,13 +246,7 @@ class ColumnLink(ColumnBase):
 
     @url.setter
     def url(self, url_name):
-        if type(url_name) == tuple:
-            self._url = reverse(url_name[0], args=[*url_name[1:]])
-        else:
-            if url_name.find('999999') == -1:
-                self._url = reverse(url_name, args=[999999])
-            else:
-                self._url = url_name
+        self._url = get_url(url_name)
 
     def __init__(self, *, url_name, link_ref_column='id', link_html='%1%', var='%1%', **kwargs):
         if not self.initialise(locals()):
@@ -284,8 +261,7 @@ class ColumnLink(ColumnBase):
             self.options['render'] = [render_replace(column=self.column_name,
                                                      html=f'<a href="{self.url}">{link_html}</a>',
                                                      var=var), render_replace(column=link_ref_column, var='999999')]
-class DatatableColumnError(Exception):
-    pass
+
 
 class ManyToManyColumn(DatatableColumn):
 
@@ -318,6 +294,7 @@ class ManyToManyColumn(DatatableColumn):
         else:
             self.field_id = fields[-2] + '__id'
             self.reverse = False
+        self.field = None
         self.options['lookup'] = list(self.related_model.objects.values_list('id', fields[-1]))
         self.options['render'] = [{'var': '%1%', 'html': html, 'function': 'ReplaceLookup'}]
 

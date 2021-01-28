@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models import Count
 from django_datatables.model_def import DatatableModel
-from django_datatables.columns import ColumnLink, DatatableColumn, ChoiceColumn, ManyToManyColumn
+from django_datatables.columns import ColumnLink, DatatableColumn, ChoiceColumn, ManyToManyColumn, render_replace
 
 
 class TagsDirect(models.Model):
@@ -15,7 +15,14 @@ class Company(models.Model):
     class Datatable(DatatableModel):
         people = {'annotations': {'people': Count('person__id')}}
         collink_1 = ColumnLink(title='Defined in Model', field='name', url_name='company')
+        company_list = ['id', 'name']
 
+        class ModelIdColumn(DatatableColumn):
+            def col_setup(self):
+                self.field = 'id'
+                if 'title' not in self.kwargs:
+                    self.title = 'Modal Class'
+        model_instance = ModelIdColumn(title='Instance')
         direct_tag = ManyToManyColumn(field='direct_tag__tag_direct')
         reverse_tag = ManyToManyColumn(field='tags__tag')
 
@@ -42,8 +49,20 @@ class Company(models.Model):
 class Person(models.Model):
 
     class Datatable(DatatableModel):
-        title_model = ChoiceColumn('title', choices=((0, 'Mr'), (1, 'Mrs'), (2, 'Miss')))
+        class FullName(DatatableColumn):
 
+            def row_result(self, data_dict, _page_result):
+                return f'{data_dict[self.field[0]]} - {data_dict[self.field[1]]}'
+
+            def col_setup(self):
+                self.field = ['first_name', 'surname']
+
+        title_model = ChoiceColumn('title', choices=((0, 'Mr'), (1, 'Mrs'), (2, 'Miss')))
+        ids = [
+            'title',
+            ('id', {'render': [render_replace(column='ids/id',html='render %1%')]}),
+            FullName,
+        ]
     title_choices = ((0, 'Mr'), (1, 'Mrs'), (2, 'Miss'))
     title = models.IntegerField(choices=title_choices, null=True)
     company = models.ForeignKey(Company,  on_delete=models.CASCADE)

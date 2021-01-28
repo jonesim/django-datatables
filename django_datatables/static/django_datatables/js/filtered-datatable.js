@@ -508,7 +508,6 @@ if (typeof django_datatables === 'undefined') {
             this.table_id = html_id
 
             django_datatables.DataTables[html_id] = this
-            if (typeof (mobile) == 'undefined') mobile = false;
             for (i = 0; i < tablesetup.colOptions.length; i++) {
                 if (tablesetup.colOptions[i]['render'] != undefined) {
                     tablesetup.tableOptions.columnDefs[i].render = new django_datatables.column_render(i, tablesetup.colOptions[i]['render'], this)
