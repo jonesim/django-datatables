@@ -20,6 +20,7 @@ class Example1(DatatableView):
             ('id', {'column_defs': {'width': '30px'}}),
             'name',
             'Tags',
+            ColumnLink(column_name='peoplex', field=['id', 'name'], url_name='example2'),
             ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
             ColumnLink(column_name='view_company', field='name', url_name='example2'),
             ColumnLink(column_name='view_company_icon', link_ref_column='id', url_name='example2', width='10px',

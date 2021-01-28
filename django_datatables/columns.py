@@ -58,11 +58,11 @@ class ColumnBase:
         self.column_defs = {}
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
         self.options: Dict[KT, VT] = options
-        self.model_path = kwargs.get('model_path')
+        self.model_path = kwargs.pop('model_path', None)
         if not self.model_path:
             self.model_path = self.get_model_path(self.column_name)
-        self.model = kwargs.get('model')
-        if kwargs.get('column_name') == field:
+        self.model = kwargs.pop('model', None)
+        if kwargs.pop('column_name', None) == field:
             self.field = self.column_name
         else:
             self.field = field
@@ -253,7 +253,14 @@ class ColumnLink(ColumnBase):
             return
         super().__init__(**self.kwargs)
         self.url = url_name
-        if var not in link_html:
+
+        if isinstance(self.field, (list, tuple)):
+            self.options['render'] = [render_replace(column=self.column_name + ':0',
+                                                     html=f'<a href="{self.url}">%1%</a>',
+                                                     var='999999'),
+                                      render_replace(column=self.column_name + ':1'),
+                                      ]
+        elif var not in link_html:
             self.options['render'] = [render_replace(column=link_ref_column,
                                                      html=f'<a href="{self.url}">{link_html}</a>',
                                                      var='999999')]

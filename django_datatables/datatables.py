@@ -37,8 +37,8 @@ class ColumnInitialisor:
             self.kwargs['column_name'] = path.__name__
         elif isinstance(path, ColumnBase):
             self.setup = path
-            if path.column_name:
-                self.kwargs['column_name'] = path
+            if not hasattr(path, 'column_name'):
+                self.kwargs['column_name'] = type(path).__name__
         elif isinstance(path, str):
             self.path, options = ColumnBase.extract_options(path)
             self.kwargs.update(options)
