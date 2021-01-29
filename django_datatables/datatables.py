@@ -88,7 +88,7 @@ class ColumnInitialisor:
         if field_type in [models.DateField, models.DateTimeField]:
             self.columns.append(DateColumn(**self.kwargs))
         elif (field_type in [models.IntegerField, models.PositiveSmallIntegerField, models.PositiveIntegerField]
-              and hasattr(self.django_field, 'choices') and len(self.django_field.choices) > 0):
+              and self.django_field.choices is not None and len(self.django_field.choices) > 0):
             self.columns.append(ChoiceColumn(choices=self.django_field.choices, **self.kwargs))
         elif field_type == models.BooleanField:
             self.columns.append(BooleanColumn(**self.kwargs))
