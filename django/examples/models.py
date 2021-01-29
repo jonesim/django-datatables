@@ -11,6 +11,7 @@ class TagsDirect(models.Model):
 class Company(models.Model):
     name = models.CharField(max_length=80)
     direct_tag = models.ManyToManyField(TagsDirect)
+    dissolved = models.BooleanField(default=False)
 
     class Datatable(DatatableModel):
         people = {'annotations': {'people': Count('person__id')}}

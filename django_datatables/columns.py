@@ -358,11 +358,28 @@ class CurrencyColumn(ColumnBase):
 
 class BooleanColumn(ColumnBase):
 
+    choices = ['true', 'false']
+
     def row_result(self, data, _page_data):
         try:
             if data[self.field]:
-                return 'true'
+                return self.choices[0]
             else:
-                return 'false'
+                return self.choices[1]
         except KeyError:
             return
+
+
+class GroupedColumn(DatatableColumn):
+
+    page_key = ''
+
+    @staticmethod
+    def initial_column_data(_request):
+        return ''
+
+    def setup_results(self, request, all_results):
+        all_results[self.page_key] = self.initial_column_data(request)
+
+    def row_result(self, data, page_data):
+        return page_data[self.page_key].get(data[self.field])

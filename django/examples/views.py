@@ -20,6 +20,7 @@ class Example1(DatatableView):
             ('id', {'column_defs': {'width': '30px'}}),
             'name',
             'Tags',
+            ('dissolved', {'choices': ['yes', 'no']}),
             ColumnLink(column_name='peoplex', field=['id', 'name'], url_name='example2'),
             ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
             ColumnLink(column_name='view_company', field='name', url_name='example2'),
@@ -37,6 +38,7 @@ class Example1(DatatableView):
         table.add_js_filters('totals', 'people', filter_title='Number of People', collapsed=False)
         # table.add_js_filters('tag', 'DirectTag')
         table.table_options['row_href'] = row_link('example2', 'id')
+        #table.table_options['scrollX'] = True
         # table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
 
     def add_to_context(self, **kwargs):
@@ -350,8 +352,8 @@ class Example9(DatatableView):
                        choices=dict(models.Person._meta.get_field('title').choices),
                        render=[render_replace(html='ABC -%1%- DFG', column='title')]),
             ColumnBase(column_name='Title', field=['person__title', 'person__first_name'],
-                       render=[{'function': 'Replace', 'html': '%1%  - %2%  -  %1%',
-                                'column': 'Title:0', 'null_value': 'x',   'var': '%1%'},
+                       render=[{'function': 'Replace', 'html': '<span class="badge badge-success"> %1% </span>',
+                                'column': 'Title:0', 'null_value': '<span class="badge badge-primary"> %2% </span>',   'var': '%1%'},
                                {'function': 'Replace', 'column': 'Title:1',  'var': '%2%'}]),
         )
         table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
