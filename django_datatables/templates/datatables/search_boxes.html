@@ -12,7 +12,7 @@
 <script>
     var plugin = {
         init: function (table, state_data) {
-            $('#{{ table.table_id }} .column-search').each(function () {
+            $('#{{ table.table_id }}_wrapper .column-search').each(function () {
                 try {
                     $(this).val(state_data.columns[table.table.api().column($(this).attr('data-col') + ':name').index()].search.search)
                 } catch (e) {
@@ -23,7 +23,7 @@
                     table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
                 }
             })
-            $('#{{ table.table_id }} .column-search').on('keyup change', function () {
+            $('#{{ table.table_id }}_wrapper .column-search').on('keyup change', function () {
                 table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
                     .draw();
             })
