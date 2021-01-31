@@ -79,6 +79,7 @@ if (typeof django_datatables === 'undefined') {
                 }
                 return true
             }
+            return true
         }
         $.fn.dataTable.ext.search.push(columnsearch)
 
