@@ -274,9 +274,9 @@ class ManyToManyColumn(DatatableColumn):
 
     def setup_results(self, request, all_results):
         if self.reverse:
-            tags = self.related_model.objects.values_list(self.field_id, 'id')
+            tags = self.related_model.objects.values_list(self.field_id, 'pk')
         else:
-            tags = self.model.objects.values_list('id', self.field_id)
+            tags = self.model.objects.values_list('pk', self.field_id)
         tags = tags.filter(**{self.field_id + '__isnull': False}).distinct()
         tag_dict = {}
         for t in tags:
@@ -296,13 +296,13 @@ class ManyToManyColumn(DatatableColumn):
         connecting_field = self.model._meta.get_field(fields[-2])
         self.related_model = connecting_field.related_model
         if hasattr(connecting_field, 'field'):
-            self.field_id = connecting_field.field.attname + '__id'
+            self.field_id = connecting_field.field.attname + '__pk'
             self.reverse = True
         else:
-            self.field_id = fields[-2] + '__id'
+            self.field_id = fields[-2] + '__pk'
             self.reverse = False
         self.field = None
-        self.options['lookup'] = list(self.related_model.objects.values_list('id', fields[-1]))
+        self.options['lookup'] = list(self.related_model.objects.values_list('pk', fields[-1]))
         self.options['render'] = [{'var': '%1%', 'html': html, 'function': 'ReplaceLookup'}]
 
 
