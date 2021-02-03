@@ -284,7 +284,7 @@ class ManyToManyColumn(DatatableColumn):
         all_results['m2m' + self.column_name] = tag_dict
 
     def row_result(self, data_dict, page_results):
-        return page_results['m2m' + self.column_name].get(data_dict['id'], [])
+        return page_results['m2m' + self.column_name].get(data_dict['id'], self.blank)
 
     def __init__(self, *,  html=' %1% ', **kwargs):
         if not self.initialise(locals()):
@@ -302,8 +302,14 @@ class ManyToManyColumn(DatatableColumn):
             self.field_id = fields[-2] + '__pk'
             self.reverse = False
         self.field = None
-        self.options['lookup'] = list(self.related_model.objects.values_list('pk', fields[-1]))
+        self.options['lookup'] = kwargs.pop('lookup', list(self.related_model.objects.values_list('pk', fields[-1])))
+        if 'blank' in kwargs:
+            self.options['lookup'].append((-1, kwargs.pop('blank')))
+            self.blank = [-1]
+        else:
+            self.blank = []
         self.options['render'] = [{'var': '%1%', 'html': html, 'function': 'ReplaceLookup'}]
+        self.setup_kwargs(kwargs)
 
 
 class DateColumn(ColumnBase):
