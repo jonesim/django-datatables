@@ -396,3 +396,20 @@ class Example10(DatatableView):
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__,}
+
+
+class Example11(DatatableView):
+    model = models.Company
+    template_name = 'table.html'
+
+    @staticmethod
+    def setup_table(table):
+        table.add_columns(
+            'id',
+            'test',  # parameters included in another column
+            'person__c_test',   # parameters defined in model (Datatable class)
+            ('person__c_test1', {'parameters':['id', 'first_name']}),  # parameters defined in tuple
+
+        )
+    def add_to_context(self, **kwargs):
+        return {'title': type(self).__name__}

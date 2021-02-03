@@ -383,3 +383,17 @@ class GroupedColumn(DatatableColumn):
 
     def row_result(self, data, page_data):
         return page_data[self.page_key].get(data[self.field])
+
+
+class CallableColumn(DatatableColumn):
+
+    def row_result(self, data_dict, _page_results):
+        fake_object = type('fake', (), {k[len(self.model_path):]: v
+                                        for k,v in data_dict.items()
+                                        if k.startswith(self.model_path)})
+        return self.object_function(fake_object)
+
+    def setup_kwargs(self, kwargs):
+        super().setup_kwargs(kwargs)
+        self.object_function = getattr(self.model, self.field[len(self.model_path):])
+        self.field = kwargs.get('parameters')

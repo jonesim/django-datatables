@@ -13,6 +13,9 @@ class Company(models.Model):
     direct_tag = models.ManyToManyField(TagsDirect)
     dissolved = models.BooleanField(default=False)
 
+    def test(self):
+        return f' test - {self.id}'
+
     class Datatable(DatatableModel):
         people = {'annotations': {'people': Count('person__id')}}
         collink_1 = ColumnLink(title='Defined in Model', field='name', url_name='company')
@@ -50,6 +53,8 @@ class Company(models.Model):
 class Person(models.Model):
 
     class Datatable(DatatableModel):
+        c_test = {'parameters': ['id', 'title']}
+
         class FullName(DatatableColumn):
 
             def row_result(self, data_dict, _page_result):
@@ -64,6 +69,13 @@ class Person(models.Model):
             ('id', {'render': [render_replace(column='ids/id',html='render %1%')]}),
             FullName,
         ]
+
+    def c_test(self):
+        return f'{self.id} - {self.title}'
+
+    def c_test1(self):
+        return f'{self.id} - {self.first_name}'
+
     title_choices = ((0, 'Mr'), (1, 'Mrs'), (2, 'Miss'))
     title = models.IntegerField(choices=title_choices, null=True)
     company = models.ForeignKey(Company,  on_delete=models.CASCADE)

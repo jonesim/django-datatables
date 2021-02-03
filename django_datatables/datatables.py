@@ -6,7 +6,7 @@ from django.views.generic import TemplateView
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from .detect_device import detect_device
-from .columns import ColumnBase, DateColumn, ChoiceColumn, BooleanColumn
+from .columns import ColumnBase, DateColumn, ChoiceColumn, BooleanColumn, CallableColumn
 from .model_def import DatatableModel
 from .filters import DatatableFilter
 
@@ -31,6 +31,7 @@ class ColumnInitialisor:
         self.kwargs = kwargs
         self.columns = []
         self.kwargs['model_path'] = field_prefix
+        self.callable = False
 
         if isclass(path):
             self.setup = path
@@ -45,13 +46,14 @@ class ColumnInitialisor:
             self.model, self.django_field, self.setup = DatatableModel.get_setup_data(start_model, self.path)
             self.kwargs['column_name'] = path
 
-            if '__' in path:
-                split_path = path.split('__')
+            if '__' in self.path:
+                split_path = self.path.split('__')
                 self.field = split_path[-1]
                 self.next_prefix = '__'.join(split_path[:-1]) + '__'
             else:
-                self.field = path
+                self.field = self.path
                 self.next_prefix = ''
+            self.callable = callable(getattr(self.model, self.field, None))
         else:
             raise DatatableError('Unknown type in columns ' + str(path))
 
@@ -71,6 +73,10 @@ class ColumnInitialisor:
             for c in self.setup:
                 self.columns += ColumnInitialisor(start_model=self.start_model, path=c, field_prefix=self.next_prefix,
                                                   name_prefix=self.field, **self.kwargs).get_columns()
+        elif self.callable:
+            if self.setup is None:
+                self.setup = {}
+            self.columns.append(CallableColumn(field=self.field, **self.kwargs, **self.setup))
         else:
             self.kwargs['field'] = self.field
             if isinstance(self.setup, dict):
