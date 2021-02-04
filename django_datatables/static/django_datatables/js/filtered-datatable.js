@@ -523,9 +523,11 @@ if (typeof django_datatables === 'undefined') {
                 }.bind(this))
                 if (typeof (django_datatables.setup[html_id].filters) !== 'undefined') {
                     this.filters = django_datatables.setup[html_id].filters
+                    django_datatables.setup[html_id].filters = []
                 }
                 if (typeof (django_datatables.setup[html_id].plugins) !== 'undefined') {
                     this.plugins = django_datatables.setup[html_id].plugins
+                    django_datatables.setup[html_id].plugins = []
                 }
                 this.exec_filter('init', this)
                 this.init_filters()
