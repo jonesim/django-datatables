@@ -5,7 +5,9 @@
             {% for t in datatable.all_titles %}
                 <th>{{ t }}</th>{% endfor %}
         </tr>
+        <tr class="column-search-header">
         {% include 'datatables/search_boxes.html' with table=datatable %}
+        </tr>
         </thead>
         {% if not datatable.table_options.nofooter %}
             <tfoot>
