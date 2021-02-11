@@ -246,6 +246,15 @@ class Example7(DatatableView):
             self.options['lookup'] = list(models.Tags.objects.values_list('id', 'tag'))
 
     def setup_table(self, table):
+
+        tags = list(models.Tags.objects.values_list('id', 'tag'))
+        v_lookup = []
+        for l in tags:
+            if l[0] % 2:
+                v_lookup.append( [ l[0] ,[l[1], 'warning']])
+            else:
+                v_lookup.append( [ l[0] ,[l[1], 'danger']])
+
         table.add_columns(
             'id',
             ColumnBase(column_name='idi', title='without helper', field=['id', 'name'], render=[
@@ -268,6 +277,9 @@ class Example7(DatatableView):
             self.TagsY(column_name='tags_raw'),
             ManyToManyColumn(column_name='CompanyTags', field='tags__tag', model=models.Company,
                              html='<span class="badge badge-primary"> %1% </span>'),
+            ManyToManyColumn(column_name='Coloured', field='tags__tag', model=models.Company, lookup=v_lookup,
+                             render=[{'var': ['%1%', '%2%'], 'html': '<span class="badge badge-%2%"> %1% </span>',
+                                      'function': 'ReplaceLookup'}]),
             ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
         )
         table.ajax_data = False
@@ -435,6 +447,20 @@ class Example12(DatatableView):
             [0, 'zero'],
         ]
 
+        coloured_lookup = [
+            [1, ['one'  , 'secondary']],
+            [2, ['two'  , 'primary']],
+            [3, ['three', 'warning']],
+            [4, ['four' , 'secondary']],
+            [5, ['five' , 'secondary']],
+            [6, ['six'  , 'secondary']],
+            [7, ['seven', 'secondary']],
+            [8, ['eight', 'secondary']],
+            [9, ['nine' , 'secondary']],
+            [0, ['zero' , 'secondary']],
+        ]
+
+
         table.add_columns(
             'id',
             ('id', {'render': [render_replace(column='id', html='- %1%')]}),
@@ -458,6 +484,9 @@ class Example12(DatatableView):
                                    ], 'lookup': lookup}),
             ('_array', {'field_array': True, 'render': [{'function': 'MergeArray'}]}),
             ('_array', {'field_array': True, 'render': [{'function': 'MergeArray', 'separator': '#'}]}),
+            ('_max10', {'render': [
+                {'function': 'ReplaceLookup', 'html': '<span class="badge badge-%2%">%1%</span>', 'var': ['%1%', '%2%']}
+            ], 'lookup': coloured_lookup}),
         )
 
     @staticmethod

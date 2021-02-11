@@ -386,8 +386,15 @@ if (typeof django_datatables === 'undefined') {
             } else if  (params.column === undefined) {
                 params.column = column
             }
-            if (params.var != undefined){
-                this.reg_exp = RegExp(params.var, 'g')
+            if (params.var != undefined) {
+                if (Array.isArray(params.var)) {
+                    this.reg_exp = []
+                    for (var i = 0; i < params.var.length; i++) {
+                        this.reg_exp.push(RegExp(params.var[i], 'g'))
+                    }
+                } else {
+                    this.reg_exp = RegExp(params.var, 'g')
+                }
             }
             if (params.null_value === undefined){
                 this.null_value = ''
@@ -463,9 +470,19 @@ if (typeof django_datatables === 'undefined') {
 
             ReplaceLookup: function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-                this.convert = function (current, value) {
-                    value = this.determine_value(value)
-                    return this.determine_html(value, current).replace(this.reg_exp, this.lookup[value])
+                if (Array.isArray(this.reg_exp)) {
+                    this.convert = function (current, value) {
+                        var html = this.params.html
+                        for (var v = 0; v < this.reg_exp.length; v++) {
+                            html = html.replace(this.reg_exp[v], this.lookup[value][v])
+                        }
+                        return html
+                    }
+                } else {
+                    this.convert = function (current, value) {
+                        value = this.determine_value(value)
+                        return this.determine_html(value, current).replace(this.reg_exp, this.lookup[value])
+                    }.bind(this)
                 }
             },
 

@@ -115,6 +115,8 @@ class ColumnBase:
         elif isinstance(fields, (list, tuple)):
             self.options['field_array'] = True
             self._field = [self.model_path + o for o in fields]
+            if not hasattr(self, 'row_result') or type(self.row_result.__self__) == ColumnBase:
+                self.row_result = MethodType(self.__list_row_result, self)
         else:
             self._field = self.model_path + fields
 
@@ -149,9 +151,11 @@ class ColumnBase:
         return
 
     @staticmethod
+    def __list_row_result(self, data_dict, _page_results):
+        return [data_dict.get(f) for f in self.field]
+
+    @staticmethod
     def __row_result(self, data_dict, _page_results):
-        if isinstance(self.field, (list, tuple)):
-            return [data_dict.get(f) for f in self.field]
         if self.options.get('choices'):
             return self.options['choices'].get(data_dict.get(self.field))
         return data_dict.get(self.field)
@@ -395,7 +399,7 @@ class CallableColumn(DatatableColumn):
 
     def row_result(self, data_dict, _page_results):
         fake_object = type('fake', (), {k[len(self.model_path):]: v
-                                        for k,v in data_dict.items()
+                                        for k, v in data_dict.items()
                                         if k.startswith(self.model_path)})
         return self.object_function(fake_object)
 

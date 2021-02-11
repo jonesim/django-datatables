@@ -115,17 +115,26 @@
                 var lookup = this.pTable.initsetup.colOptions[this.column_no].lookup
                 for (l = 0; l < lookup.length; l++) {
                     var curlookup = lookup[l]
-                    if (curlookup[0] >= 0x10000) {
-                        if (insection) html += endsection
-                        insection = true
-                        html_source = tagsection
-                    } else {
+                    try{
+                        if (curlookup[0].includes('-')){
+                            if (insection) html += endsection
+                            insection = true
+                            html_source = tagsection
+                        } else {
+                            html_source = this.options.tagcheckbox
+                        }
+                    } catch (e) {
                         html_source = this.options.tagcheckbox
+                    }
+                    if (Array.isArray(curlookup[1])){
+                        var filter_text = curlookup[1][0]
+                    } else{
+                        var filter_text = curlookup[1]
                     }
                     textoptions =
                         {
                             3: this.column_no,
-                            1: curlookup[1],
+                            1: filter_text,
                             4: curlookup[0],
                         }
                     html += rep_options(html_source, textoptions)

@@ -253,13 +253,10 @@ class DatatableTable:
         return col_def_str
 
     def get_table_array(self, request, results):
-        json_list = []
         page_results = {}
         for c in self.columns:
             c.setup_results(request, page_results)
-        for data_dict in results:
-            json_list.append([c.row_result(data_dict, page_results) for c in self.columns])
-        return json_list
+        return [[c.row_result(data_dict, page_results) for c in self.columns] for data_dict in results]
 
     def get_json(self, request, results):
         return_data = {'data': self.get_table_array(request, results)}
@@ -348,8 +345,7 @@ class DatatableView(TemplateView):
                             data = r.get(f)
                             if data:
                                 r[f] = '<i class="fas fa-key"></i>'
-            return HttpResponse(table.get_json(request, results),
-                                content_type='application/json')
+            return HttpResponse(table.get_json(request, results), content_type='application/json')
 
         for t in ['row', 'column']:
             if 'datatable-' + t in request.GET:
