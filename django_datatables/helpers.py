@@ -12,11 +12,8 @@ def row_button(command, button_text, *, function='Html', button_classes='btn btn
     return rb
 
 
-def render_replace(*, column, var='%1%', html=None):
-    if html:
-        return {'var': var, 'column': column, 'html': html, 'function': 'Replace'}
-    else:
-        return {'var': var, 'column': column, 'function': 'Replace'}
+def render_replace(*, var='%1%', **kwargs):
+    return dict(var=var, function='Replace', **kwargs)
 
 
 def get_url(url_name):

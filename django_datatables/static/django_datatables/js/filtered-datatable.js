@@ -383,8 +383,44 @@ if (typeof django_datatables === 'undefined') {
                 } else {
                     params.index = 0
                 }
+            } else if  (params.column === undefined) {
+                params.column = column
+            }
+            if (params.var != undefined){
+                this.reg_exp = RegExp(params.var, 'g')
+            }
+            if (params.null_value === undefined){
+                this.null_value = ''
+            }
+            else{
+                this.null_value = params.null_value
             }
             this.params = params
+            if (table.initsetup.colOptions[this.column].lookup != undefined) {
+                this.lookup = {}
+                for (var lv = 0; lv < table.initsetup.colOptions[this.column].lookup.length; lv++) {
+                    this.lookup[table.initsetup.colOptions[this.column].lookup[lv][0]] = table.initsetup.colOptions[this.column].lookup[lv][1]
+                }
+            }
+        }
+
+        BaseProcessAjaxData.prototype.determine_value = function (value) {
+            if (this.field_array && value != null) {
+                return value[this.params.index]
+            }
+            return value
+        }
+
+        BaseProcessAjaxData.prototype.determine_html = function (value, current) {
+            if (value == null) {
+                return this.null_value;
+            }
+            if (this.params.gte != undefined && value >= this.params.gte){
+                return this.params.alt_html
+            }
+            if (this.params.html == undefined)
+                return String(current)
+            return this.params.html
         }
 
         BaseProcessAjaxData.prototype.process = function (column_data, type, row, meta) {
@@ -406,7 +442,6 @@ if (typeof django_datatables === 'undefined') {
         var data_processing = {
             Row: function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-                this.reg_exp = RegExp(params.var, 'g')
                 if (params.html === undefined) {
                     this.convert = function (current, value, meta, row) {
                         return current.replace(params.var, meta.settings.rowId(row))
@@ -419,48 +454,18 @@ if (typeof django_datatables === 'undefined') {
             },
 
             Replace: function (column, params, table) {
-                this.reg_exp = RegExp(params.var, 'g')
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-                if (this.params.null_value === undefined){
-                    this.null_value = ''
-                }
-                else{
-                    this.null_value = this.params.null_value
-                }
                 this.convert = function (current, value) {
-                    var replacement = value
-                    if (this.field_array && replacement != null){
-                        replacement = value[params.index]
-                    }
-                    if (replacement == null){
-                        return this.null_value;
-                    }
-                    if (params.html === undefined) {
-                        return current.replace(this.reg_exp, replacement)
-                    } else {
-                        return params.html.replace(this.reg_exp, replacement)
-                    }
+                    value = this.determine_value(value)
+                    return this.determine_html(value, current).replace(this.reg_exp, value)
                 }.bind(this)
             },
 
             ReplaceLookup: function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-                this.reg_exp = RegExp(params.var, 'g')
-                if (params.column === undefined) {
-                    params.column = column
-                }
-                params.lookup = {}
-                for (var lv = 0; lv < table.initsetup.colOptions[params.column].lookup.length; lv++) {
-                    params.lookup[table.initsetup.colOptions[params.column].lookup[lv][0]] = table.initsetup.colOptions[params.column].lookup[lv][1]
-                }
-                if (params.html === undefined) {
-                    this.convert = function (current, value) {
-                        return this.params.lookup[value]
-                    }.bind(this)
-                } else {
-                    this.convert = function (current, value) {
-                        return this.params.html.replace(this.reg_exp, this.params.lookup[value])
-                    }.bind(this)
+                this.convert = function (current, value) {
+                    value = this.determine_value(value)
+                    return this.determine_html(value, current).replace(this.reg_exp, this.lookup[value])
                 }
             },
 
@@ -489,11 +494,37 @@ if (typeof django_datatables === 'undefined') {
 
             },
 
-            MergeArray: function (column, params) {
-                this.column = column
-                this.process = function (new_row, row) {
-                    console.log(new_row)
-                    new_row[this.column] = new_row[this.column].join(' ')
+            MergeArray: function (column, params, table) {
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+                if (params.separator == undefined){
+                    this.separator = ' '
+                } else{
+                    this.separator = params.separator
+                }
+                if (params.default){
+                    this.convert = function (current, row) {
+                        try {
+                            return_val = current.slice(0, current.length - 1).filter(function (l) {
+                                return l != '' && l != null;
+                            }).join(this.separator)
+                        } catch (e) {
+                            return ''
+                        }
+                        if (return_val == '' && current[current.length - 1] != null && current[current.length - 1].length > 0) {
+                            return current[current.length - 1]
+                        }
+                        return return_val
+                    }.bind(this)
+                } else{
+                    this.convert = function (current, row) {
+                        try {
+                            return current.filter(function (l) {
+                                return l != '' && l != null;
+                            }).join(this.separator)
+                        } catch (e) {
+                            return ''
+                        }
+                    }.bind(this)
                 }
             }
         }

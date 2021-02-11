@@ -199,7 +199,7 @@ class Example6(DatatableView):
             'id',
             'first_name',
         )
-        table.table_options.update(simple_table)
+    #    table.table_options.update(simple_table)
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
@@ -413,3 +413,60 @@ class Example11(DatatableView):
         )
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__}
+
+
+class Example12(DatatableView):
+    model = models.Company
+    template_name = 'table.html'
+
+    @staticmethod
+    def setup_table(table):
+
+        lookup = [
+            [1,'one'],
+            [2, 'two'],
+            [3, 'three'],
+            [4, 'four'],
+            [5, 'five'],
+            [6, 'six'],
+            [7, 'seven'],
+            [8, 'eight'],
+            [9, 'nine'],
+            [0, 'zero'],
+        ]
+
+        table.add_columns(
+            'id',
+            ('id', {'render': [render_replace(column='id', html='- %1%')]}),
+            ('id', {'render': [{'function': 'Html', 'html': '* %1%'},
+                               render_replace(column='id')]}),
+            ('_array', {'render': [render_replace(column='array', html='- %1%')] }),
+            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%')]}),
+            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%', null_value='@ none',)]}),
+            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%', gte=50, alt_html='GTE 50 : %1%')]}),
+            ('_array1', {'field_array': True,
+                         'render': [render_replace(column='array:1', html=': %1%', gte=50, alt_html='GTE 50 : %1%'),
+                                    render_replace(column='array:1', gte=100, alt_html='GTE 100 : %1%')]}),
+
+            '_max10',
+            ('_max10', {'render': [{'function': 'ReplaceLookup', 'html': 'html %1%', 'var': '%1%'}], 'lookup': lookup}),
+            ('_max10', {'render': [{'function': 'ReplaceLookup',
+                                    'html': 'html %1%',
+                                    'var': '%1%' ,
+                                    'alt_html':'BIG %1%',
+                                    'gte':4}
+                                   ], 'lookup': lookup}),
+            ('_array', {'field_array': True, 'render': [{'function': 'MergeArray'}]}),
+            ('_array', {'field_array': True, 'render': [{'function': 'MergeArray', 'separator': '#'}]}),
+        )
+
+    @staticmethod
+    def get_table_query(table, **kwargs):
+
+        results = table.get_query(**kwargs)
+        for r in results:
+            if r['id'] % 2:
+                r['array'] = [ r['id'], r['id'] * 10]
+            r['max10'] = r['id'] % 10
+
+        return results
