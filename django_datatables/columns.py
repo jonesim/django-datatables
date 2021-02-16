@@ -290,6 +290,9 @@ class ManyToManyColumn(DatatableColumn):
     def row_result(self, data_dict, page_results):
         return page_results['m2m' + self.column_name].get(data_dict['id'], self.blank)
 
+    def get_lookup(self, fields):
+        return list(self.related_model.objects.values_list('pk', fields[-1]))
+
     def __init__(self, *,  html=' %1% ', **kwargs):
         if not self.initialise(locals()):
             return
@@ -297,6 +300,7 @@ class ManyToManyColumn(DatatableColumn):
         fields = self.field.split('__')
         if not inspect.isclass(self.model):
             raise DatatableColumnError('ManyToManyColumn must have model set')
+        # noinspection PyProtectedMember
         connecting_field = self.model._meta.get_field(fields[-2])
         self.related_model = connecting_field.related_model
         if hasattr(connecting_field, 'field'):
@@ -306,7 +310,7 @@ class ManyToManyColumn(DatatableColumn):
             self.field_id = fields[-2] + '__pk'
             self.reverse = False
         self.field = None
-        self.options['lookup'] = kwargs.pop('lookup', list(self.related_model.objects.values_list('pk', fields[-1])))
+        self.options['lookup'] = kwargs.pop('lookup', self.get_lookup(fields=fields))
         if 'blank' in kwargs:
             self.options['lookup'].append((-1, kwargs.pop('blank')))
             self.blank = [-1]
