@@ -284,7 +284,6 @@ class DatatableView(TemplateView):
         super(DatatableView, self).__init__(*args, **kwargs)
         self.tables = {}
         self.add_tables()
-
         self.dispatch_context = None
 
     def add_table(self, table_id, **kwargs):
@@ -308,7 +307,6 @@ class DatatableView(TemplateView):
         return super(DatatableView, self).dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        self.setup_tables()
         return super().get(request, *args, **kwargs)
 
     # def render_to_response(self, context, **response_kwargs):
@@ -377,6 +375,7 @@ class DatatableView(TemplateView):
             return self.render_to_response(context)
     """
     def get_context_data(self, **kwargs):
+        self.setup_tables()
         context = super().get_context_data(**kwargs)
         if len(self.tables) == 1:
             context['datatable'] = self.tables[list(self.tables.keys())[0]]
