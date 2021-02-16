@@ -73,6 +73,7 @@ class ColumnBase:
         self.additional_columns = []
         self.kwargs = kwargs
         self.replace_list = []
+        self.blank = None
         if not hasattr(self, 'row_result'):
             self.row_result = MethodType(self.__row_result, self)
         self.setup_kwargs(kwargs)
@@ -158,6 +159,11 @@ class ColumnBase:
     def __row_result(self, data_dict, _page_results):
         if self.options.get('choices'):
             return self.options['choices'].get(data_dict.get(self.field))
+        if self.blank:
+            ret_val = data_dict.get(self.field)
+            if not ret_val:
+                return self.blank
+            return ret_val
         return data_dict.get(self.field)
 
     def style(self):
