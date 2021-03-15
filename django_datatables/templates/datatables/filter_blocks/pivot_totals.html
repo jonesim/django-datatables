@@ -1,14 +1,11 @@
 {% extends 'datatables/filter_blocks/base_filter_block.html' %}
-
+{% block header_icons %}
+    <a class="filter-header-icon all-check" href="javascript:void(0);" title="Select All">
+        <i class="select-all fas fa-check-square"></i></a>
+    <a class="filter-header-icon none-check" href="javascript:void(0);">
+        <i class="select-none far fa-square"></i></a>
+{% endblock %}
 {% block content %}
-    <div class="row pb-2">
-        <div class="col-6 text-center">
-            <a class="small all-check" href="javascript:void(0);">all</a>
-        </div>
-        <div class="col-6 text-center">
-            <a class="small none-check" href="javascript:void(0);">none</a>
-        </div>
-    </div>
     <table class="small w-100">
         <tr>
             <td></td>
@@ -18,26 +15,25 @@
         <tbody class="filter-content">
         </tbody>
     </table>
-
 {% endblock %}
 
 {% block javascript %}
     <script>
-        function filter(column_no, html_id, options) {
+        django_datatables.TotalPivotFilter = function(column_no, html_id, options) {
             django_datatables.PivotFilter.call(this, column_no, html_id, options)
-            this.filter_calcs.get_value = function(row){
-                return row[column_no];
+            this.filter_calcs.get_value = function (row) {
+                return parseFloat(row[options.sum_column]);
             }
             this.storage_key = 'pivot_totals'
             this.refresh = function () {
                 totals = this.filter_calcs.calcs
-                $("#{{ html_id }} .total").each(function () {
+                $("#" + html_id + " .total").each(function () {
                     var result = totals[decodeURI($(this).attr("data-value"))]
-                    $(this).html(numberWithCommas(result[0]))
+                    $(this).html(django_datatables.utilities.numberWithCommas(result[0]))
                 })
-                $("#{{ html_id }} .overall").each(function () {
+                $("#" + html_id + " .overall").each(function () {
                     var result = totals[decodeURI($(this).attr("data-value"))]
-                    $(this).html(numberWithCommas(result[1]))
+                    $(this).html(django_datatables.utilities.numberWithCommas(result[1]))
                 })
             }
             this.init_filters = function () {
@@ -46,13 +42,12 @@
                         filter.filter_calcs.init_calcs(row, row[column_no])
                     })
                 })
-            }.bind(this)
+            }
         }
-        filter.prototype = Object.create(django_datatables.PivotFilter.prototype);
-        options = {
-        'htmlcheckbox': `{% include 'datatables/filter_rows/checkbox_total.html' %}`
-        }
-        var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
+        django_datatables.TotalPivotFilter.prototype = Object.create(django_datatables.PivotFilter.prototype);
+        options = {'htmlcheckbox': `{% include 'datatables/filter_rows/checkbox_total.html' %}`,
+                   'sum_column': {{ kwargs.sum_column|default:'column_no' }}}
+        var new_filter = new django_datatables.TotalPivotFilter({{ column_no }}, '{{ html_id }}', options)
     </script>
 {% endblock %}
 

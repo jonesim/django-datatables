@@ -1,6 +1,14 @@
 from django.urls import reverse
 DUMMY_ID = 999999
 
+simple_table = {
+    'dom': 't',
+    'no_col_search': True,
+    'nofooter': True,
+    'pageLength': 400,
+    'stateSave': False
+}
+
 
 def row_button(command, button_text, *, function='Html', button_classes='btn btn-sm', **kwargs):
     rb = {

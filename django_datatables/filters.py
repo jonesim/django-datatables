@@ -21,6 +21,8 @@ class DatatableFilter:
         self.datatable = datatable
         self.collapsed = collapsed
         self.kwargs = kwargs
+        if 'sum_column' in kwargs:
+            kwargs['sum_column'] = self.datatable.find_column(kwargs['sum_column'])[1]
         if html_id:
             self.html_id = html_id
         else:

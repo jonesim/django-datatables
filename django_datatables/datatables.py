@@ -175,10 +175,6 @@ class DatatableTable:
                 c = c[1:]
             self.table_options.setdefault('order', []).append([self.find_column(c)[1], sort_order])
 
-    def row_color(self, column, *option_colors):
-        self.table_options.setdefault('rowColor', []).append(
-            {'colRef': column, 'values': {o[0]: o[1] for o in option_colors}})
-
     def add_column_options(self, column_names, options):
         if type(column_names) == str:
             column_names = [column_names]
@@ -386,11 +382,3 @@ class DatatableView(TemplateView):
 
     def add_to_context(self, **kwargs):
         return {}
-
-
-simple_table = {
-    'dom': 't',
-    'no_col_search': True,
-    'nofooter': True,
-    'pageLength': 400,
-}

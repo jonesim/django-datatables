@@ -12,6 +12,10 @@ if (typeof django_datatables === 'undefined') {
 
         var utilities = {
 
+            numberWithCommas: function(x, decimal_places=0) {
+                return x.toFixed(decimal_places).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            },
+
             getCookie: function (name) {
                 var cookieValue = null;
                 if (document.cookie && document.cookie !== '') {
@@ -609,8 +613,14 @@ if (typeof django_datatables === 'undefined') {
             }
             if (tablesetup.tableOptions.data === undefined) {
                 var csrf = django_datatables.utilities.getCookie('csrftoken');
+                var url
+                if (window.location.search == '')
+                    url = '?datatable-data=true'
+                else{
+                    url = window.location.search + '&datatable-data=true'
+                }
                 dataTable_setup.ajax = {
-                    'url': '?datatable-data=true',
+                    'url': url,
                     "type": "POST",
                     "data": {"csrfmiddlewaretoken": csrf, table_id: html_id}
                 }
@@ -622,13 +632,14 @@ if (typeof django_datatables === 'undefined') {
                 }
             }
             Object.assign(dataTable_setup, tablesetup.tableOptions)
-            Object.assign(dataTable_setup, django_datatables.setup[html_id].datatable_setup)
-
+            init_setup(html_id)
+            if (django_datatables.setup[html_id].datatable_setup != undefined){
+                Object.assign(dataTable_setup, django_datatables.setup[html_id].datatable_setup)
+            }
             if (typeof (tablesetup.tableOptions.rowGroup) != 'undefined') {
                 dataTable_setup['rowGroup'] =
                     {
                         dataSrc: tablesetup.field_ids.indexOf(tablesetup.tableOptions.rowGroup.dataSrc),
-                        /*
                         endRender: function (rows, group) {
                             sums = Array(rows.data()[0].length).fill('')
                             tablesetup.tableOptions.rowGroup.sumColumns.forEach(
@@ -642,10 +653,9 @@ if (typeof django_datatables === 'undefined') {
                                 })
                             sums_row = ''
                             for (c = 0; c < sums.length; c++) {
-                                if (tablesetup.columnDefs[c].hidden != true) {
+                                if (tablesetup.colOptions[c].hidden != true) {
                                     if (typeof (sums[c]) == 'number') {
-                                        sums_row += '<td class="pr-4">' + sums[c].toFixed(2);
-                                        +'</td>'
+                                        sums_row += '<td class="dt-right">' + sums[c].toFixed(2) + '</td>'
                                     } else {
                                         sums_row += '<td></td>'
                                     }
@@ -655,7 +665,6 @@ if (typeof django_datatables === 'undefined') {
                         },
                         startClassName: 'table-info font-weight-bold',
                         endClassName: 'font-weight-bold white text-right'
-                        */
                     }
             }
 
@@ -691,18 +700,24 @@ if (typeof django_datatables === 'undefined') {
         PythonTable.prototype.init_filters = function () {
             this.table.api().rows().data().each(function (row) {
                 this.filters.forEach(function (filter) {
-                    filter.filter_calcs.init_calcs(row)
+                    if (filter.filter_calcs != undefined) {
+                        filter.filter_calcs.init_calcs(row)
+                    }
                 })
             }.bind(this))
         }
 
         PythonTable.prototype.proc_filters = function () {
             this.filters.forEach(function (filter) {
-                filter.filter_calcs.clear_calcs()
+                if (filter.filter_calcs != undefined) {
+                    filter.filter_calcs.clear_calcs()
+                }
             })
             this.table.api().rows({"filter": "applied"}).data().each(function (row) {
                 this.filters.forEach(function (filter) {
-                    filter.filter_calcs.add_calcs(row)
+                    if (filter.filter_calcs != undefined) {
+                        filter.filter_calcs.add_calcs(row)
+                    }
                 })
             }.bind(this))
         }
@@ -772,11 +787,6 @@ function rep_options(html, option_dict) {
         html = html.replace(option, option_dict[o])
     }
     return html
-}
-
-
-function numberWithCommas(x) {
-    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 

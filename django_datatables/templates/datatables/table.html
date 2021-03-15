@@ -3,11 +3,14 @@
         <thead>
         <tr{% if datatable.table_options.no_titles %} class="d-none"{% endif %}>
             {% for t in datatable.all_titles %}
-                <th>{{ t }}</th>{% endfor %}
+                <th>{{ t }}</th>
+            {% endfor %}
         </tr>
-        <tr class="column-search-header">
-        {% include 'datatables/search_boxes.html' with table=datatable %}
-        </tr>
+        {% if not datatable.table_options.no_col_search %}
+            <tr class="column-search-header">
+                {% include 'datatables/search_boxes.html' with table=datatable %}
+            </tr>
+        {% endif %}
         </thead>
         {% if not datatable.table_options.nofooter %}
             <tfoot>
@@ -20,9 +23,9 @@
     </table>
 
     <script>
-    $( document ).ready(function() {
-        {{ datatable.table_id }}_configuration = {{ datatable.col_def_str|safe }};
-        new django_datatables.PythonTable("{{ datatable.table_id }}", {{ datatable.table_id }}_configuration);
-    })
+        $(document).ready(function () {
+            {{ datatable.table_id }}_configuration = {{ datatable.col_def_str|safe }};
+            new django_datatables.PythonTable("{{ datatable.table_id }}", {{ datatable.table_id }}_configuration);
+        })
     </script>
 {% endspaceless %}

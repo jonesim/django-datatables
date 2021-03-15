@@ -366,6 +366,10 @@ class CurrencyPenceColumn(ColumnBase):
         except KeyError:
             return
 
+    def setup_kwargs(self, kwargs):
+        super().setup_kwargs(kwargs)
+        self.column_defs = {'className': 'dt-right'}
+
 
 class CurrencyColumn(ColumnBase):
 
@@ -374,6 +378,10 @@ class CurrencyColumn(ColumnBase):
             return '{:.2f}'.format(data[self.field])
         except KeyError:
             return
+
+    def setup_kwargs(self, kwargs):
+        super().setup_kwargs(kwargs)
+        self.column_defs = {'className': 'dt-right'}
 
 
 class BooleanColumn(ColumnBase):
