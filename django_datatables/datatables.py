@@ -149,6 +149,10 @@ class DatatableTable:
     def add_plugin(self, plugin, *args, **kwargs):
         self.plugins.append(plugin(self, *args, **kwargs))
 
+    # noinspection PyMethodMayBeStatic
+    def extra_filters(self, query):
+        return query
+
     def get_query(self, **_kwargs):
         annotations = {}
         for c in self.columns:
@@ -164,6 +168,7 @@ class DatatableTable:
             query = query.distinct(*self.distinct)
         if self.max_records:
             query = query[:self.max_records]
+        query = self.extra_filters(query=query)
         return query
 
     def sort(self, *columns):
