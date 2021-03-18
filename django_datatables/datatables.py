@@ -125,6 +125,7 @@ class DatatableTable:
         self.js_filter_list = []
         self.plugins = []
         self.omit_columns = []
+        self.datatable_template = 'datatables/table.html'
 
         if table_classes:
             self.table_classes = table_classes
@@ -149,8 +150,8 @@ class DatatableTable:
     def add_plugin(self, plugin, *args, **kwargs):
         self.plugins.append(plugin(self, *args, **kwargs))
 
-    # noinspection PyMethodMayBeStatic
-    def extra_filters(self, query):
+    @staticmethod
+    def extra_filters(query):
         return query
 
     def get_query(self, **_kwargs):
@@ -222,7 +223,7 @@ class DatatableTable:
         rendered_strings = []
         for p in self.plugins:
             rendered_strings.append(p.render())
-        rendered_strings.append(render_to_string('datatables/table.html', {'datatable': self}))
+        rendered_strings.append(render_to_string(self.datatable_template, {'datatable': self}))
         return ''.join(rendered_strings)
 
     def setup_column_id(self):
@@ -291,7 +292,6 @@ class DatatableView(TemplateView):
         self.tables[table_id] = DatatableTable(table_id, table_options=self.table_options,
                                                table_classes=self.table_classes,
                                                **kwargs)
-        return self.tables[table_id]
 
     def add_tables(self):
         self.add_table(type(self).__name__.lower(), model=self.model)
