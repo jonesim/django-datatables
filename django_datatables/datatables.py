@@ -291,6 +291,7 @@ class DatatableView(TemplateView):
         self.tables[table_id] = DatatableTable(table_id, table_options=self.table_options,
                                                table_classes=self.table_classes,
                                                **kwargs)
+        return self.tables[table_id]
 
     def add_tables(self):
         self.add_table(type(self).__name__.lower(), model=self.model)
