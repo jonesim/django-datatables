@@ -1,5 +1,5 @@
 from django.apps import AppConfig
 
 
-class DatatablesConfig(AppConfig):
+class DjangoDatatablesConfig(AppConfig):
     name = 'django_datatables'
