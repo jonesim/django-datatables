@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class DatatablesConfig(AppConfig):
-    name = 'datatables'
+    name = 'django_datatables'
