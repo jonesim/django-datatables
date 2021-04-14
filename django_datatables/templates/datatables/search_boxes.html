@@ -31,7 +31,7 @@
 
         clear: function () {
             var table = django_datatables.DataTables['{{ table.table_id }}'].table
-            var search_boxes = $('#{{ table.table_id }} .column-search')
+            var search_boxes = $('#{{ table.table_id }}_wrapper .column-search')
             for (var s = 0; s < search_boxes.length; s++) {
                 search_boxes[s].value = ''
                 table.api().column($(search_boxes[s]).attr('data-col') + ':name').search('', false, true, true);
