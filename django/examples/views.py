@@ -2,7 +2,7 @@ import csv
 from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.helpers import row_button, render_replace, row_link
-from django_datatables.datatables import DatatableView, simple_table
+from django_datatables.datatables import DatatableView
 from django.http import HttpResponse
 from . import models
 from django_datatables.colour_rows import ColourRows
