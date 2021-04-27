@@ -1,0 +1,37 @@
+<script>
+    var plugin = {
+        setup: {{ setup|safe }},
+
+        formatting_functions: {
+            'to_fixed': function (sum, column_setup) {
+                if (column_setup.decimal_places !== undefined) {
+                    return sum.toFixed(column_setup.decimal_places)
+                } else {
+                    return sum.toFixed(2)
+                }
+            },
+            {% block formatting_functions %}
+            {% endblock %}
+        },
+
+        refresh: function (table) {
+            var page_data = table.table.api().rows({page: 'current'}).data()
+            var column_totals = {{ totals|safe }}
+            for (var r = 0; r < page_data.length; r++) {
+                for (var c in column_totals) {
+                    column_totals[c] += parseFloat(page_data[r][c])
+                }
+            }
+            var footer = '{{ footer|safe }}'
+            for (c in column_totals) {
+                if (this.setup[c].sum === true) {
+                    footer = footer.replace('%' + c + '%', column_totals[c])
+                } else {
+                    footer = footer.replace('%' + c + '%', this.formatting_functions[this.setup[c].sum](column_totals[c], this.setup[c]))
+                }
+            }
+            $(table.table.api().table().footer()).html(footer)
+        }
+    }
+    django_datatables.add_plugin('{{ datatable.table_id }}', plugin)
+</script>

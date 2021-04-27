@@ -5,10 +5,9 @@ from django_datatables.helpers import row_button, render_replace, row_link
 from django_datatables.datatables import DatatableView
 from django.http import HttpResponse
 from . import models
-from django_datatables.colour_rows import ColourRows
+from django_datatables.plugins.colour_rows import ColourRows
+from django_datatables.plugins.column_totals import ColumnTotals
 
-
-#        table.table_options.update({'rowGroup': {'dataSrc': 'name'}})
 
 class Example1(DatatableView):
     model = models.Company
@@ -32,14 +31,16 @@ class Example1(DatatableView):
                              html='<span class="badge badge-primary"> %1% </span>'),
         )
         table.column('name').column_defs['orderable'] = False
-        table.add_plugin(ColourRows, [{'column': 0, 'values': {'1': 'table-danger'}}])
+        table.add_plugin(ColourRows, [{'column': 'id', 'values': {'1': 'table-danger'}}])
         table.ajax_data = False
         table.add_js_filters('tag', 'Tags')
         table.add_js_filters('totals', 'people', filter_title='Number of People', collapsed=False)
         # table.add_js_filters('tag', 'DirectTag')
         table.table_options['row_href'] = row_link('example2', 'id')
-        #table.table_options['scrollX'] = True
+        table.table_options['no_col_search'] = True
+        # table.table_options['scrollX'] = True
         # table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
+        table.add_plugin(ColumnTotals, {'id': {'sum': 'over1000'}}, template='add_sum_calc.html')
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
@@ -130,12 +131,12 @@ class Example3(DatatableView):
                  'function': 'Replace'},
                ]),
         )
-        table.row_color('Range', ('GT1', 'table-danger'), ('LT1', 'table-warning'))
+        table.add_plugin(ColourRows, [{'column': 'Range', 'values': {'GT1': 'table-danger', 'LT1': 'table-warning'}}])
         table.sort('-people')
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'description': '''
-        Two different ways to add HMTL to table. Using a column renderer saves on the amount of data sent to the client.
+        Two different ways to add HTML to table. Using a column renderer saves on the amount of data sent to the client.
         <br>Row colours implemented with a hidden column.<br>
         Columns sorted by column_replace
         '''}
@@ -192,6 +193,7 @@ class Example6(DatatableView):
             'id',
             'name',
         )
+        table.table_options['no_col_search'] = True
 
     @staticmethod
     def setup_t2(table):
@@ -249,11 +251,11 @@ class Example7(DatatableView):
 
         tags = list(models.Tags.objects.values_list('id', 'tag'))
         v_lookup = []
-        for l in tags:
-            if l[0] % 2:
-                v_lookup.append( [ l[0] ,[l[1], 'warning']])
+        for t in tags:
+            if t[0] % 2:
+                v_lookup.append([t[0], [t[1], 'warning']])
             else:
-                v_lookup.append( [ l[0] ,[l[1], 'danger']])
+                v_lookup.append([t[0], [t[1], 'danger']])
 
         table.add_columns(
             'id',
@@ -284,6 +286,9 @@ class Example7(DatatableView):
         )
         table.ajax_data = False
         table.add_js_filters('tag', 'CompanyTags')
+        table.add_plugin(ColumnTotals, {'id': {'css_class': 'text-danger', 'text': 'Total %id%',
+                                               'sum': 'to_fixed', 'decimal_places': 1},
+                                        'people': {'sum': True}})
 
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
@@ -355,23 +360,24 @@ class Example9(DatatableView):
     model = models.Company
     template_name = 'table.html'
 
-    @staticmethod
-    def setup_table(table):
-        table.add_columns(
-            ('id', {'column_defs': {'width': '30px'}}),
-            'name',
-            ColumnBase(column_name='title', field='person__title',
-                       choices=dict(models.Person._meta.get_field('title').choices),
-                       render=[render_replace(html='ABC -%1%- DFG', column='title')]),
-            ColumnBase(column_name='Title', field=['person__title', 'person__first_name'],
-                       render=[{'function': 'Replace', 'html': '<span class="badge badge-success"> %1% </span>',
-                                'column': 'Title:0', 'null_value': '<span class="badge badge-primary"> %2% </span>',   'var': '%1%'},
-                               {'function': 'Replace', 'column': 'Title:1',  'var': '%2%'}]),
-        )
-        table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
-
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
+
+
+def setup_table(table):
+    table.add_columns(
+        ('id', {'column_defs': {'width': '30px'}}),
+        'name',
+        ColumnBase(column_name='title', field='person__title',
+                   choices=dict(models.Person._meta.get_field('title').choices),
+                   render=[render_replace(html='ABC -%1%- DFG', column='title')]),
+        ColumnBase(column_name='Title', field=['person__title', 'person__first_name'],
+                   render=[{'function': 'Replace', 'html': '<span class="badge badge-success"> %1% </span>',
+                            'column': 'Title:0', 'null_value': '<span class="badge badge-primary"> %2% </span>',
+                            'var': '%1%'},
+                           {'function': 'Replace', 'column': 'Title:1',  'var': '%2%'}]),
+    )
+    table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
 
 
 class IdColumn(DatatableColumn):
@@ -379,6 +385,7 @@ class IdColumn(DatatableColumn):
     def col_setup(self):
         self.field = 'id'
         self.title = 'Class'
+
 
 class Example10(DatatableView):
     model = models.Company
@@ -402,12 +409,12 @@ class Example10(DatatableView):
         )
         print('******************************')
         for c in table.columns:
-            print((c.column_name + (' ' * 20))[:20], (str(c.field)+ (' ' * 40))[:40], c.title)
+            print((c.column_name + (' ' * 20))[:20], (str(c.field) + (' ' * 40))[:40], c.title)
         print('******************************')
         table.table_options['scrollX'] = True
 
     def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__,}
+        return {'title': type(self).__name__, }
 
 
 class Example11(DatatableView):
@@ -420,9 +427,10 @@ class Example11(DatatableView):
             'id',
             'test',  # parameters included in another column
             'person__c_test',   # parameters defined in model (Datatable class)
-            ('person__c_test1', {'parameters':['id', 'first_name']}),  # parameters defined in tuple
+            ('person__c_test1', {'parameters': ['id', 'first_name']}),  # parameters defined in tuple
 
         )
+
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__}
 
@@ -435,7 +443,7 @@ class Example12(DatatableView):
     def setup_table(table):
 
         lookup = [
-            [1,'one'],
+            [1, 'one'],
             [2, 'two'],
             [3, 'three'],
             [4, 'four'],
@@ -448,28 +456,29 @@ class Example12(DatatableView):
         ]
 
         coloured_lookup = [
-            [1, ['one'  , 'secondary']],
-            [2, ['two'  , 'primary']],
+            [1, ['one', 'secondary']],
+            [2, ['two', 'primary']],
             [3, ['three', 'warning']],
-            [4, ['four' , 'secondary']],
-            [5, ['five' , 'secondary']],
-            [6, ['six'  , 'secondary']],
+            [4, ['four', 'secondary']],
+            [5, ['five', 'secondary']],
+            [6, ['six', 'secondary']],
             [7, ['seven', 'secondary']],
             [8, ['eight', 'secondary']],
-            [9, ['nine' , 'secondary']],
-            [0, ['zero' , 'secondary']],
+            [9, ['nine', 'secondary']],
+            [0, ['zero', 'secondary']],
         ]
-
 
         table.add_columns(
             'id',
             ('id', {'render': [render_replace(column='id', html='- %1%')]}),
             ('id', {'render': [{'function': 'Html', 'html': '* %1%'},
                                render_replace(column='id')]}),
-            ('_array', {'render': [render_replace(column='array', html='- %1%')] }),
+            ('_array', {'render': [render_replace(column='array', html='- %1%')]}),
             ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%')]}),
-            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%', null_value='@ none',)]}),
-            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%', gte=50, alt_html='GTE 50 : %1%')]}),
+            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%',
+                                                                        null_value='@ none',)]}),
+            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%', gte=50,
+                                                                        alt_html='GTE 50 : %1%')]}),
             ('_array1', {'field_array': True,
                          'render': [render_replace(column='array:1', html=': %1%', gte=50, alt_html='GTE 50 : %1%'),
                                     render_replace(column='array:1', gte=100, alt_html='GTE 100 : %1%')]}),
@@ -478,9 +487,9 @@ class Example12(DatatableView):
             ('_max10', {'render': [{'function': 'ReplaceLookup', 'html': 'html %1%', 'var': '%1%'}], 'lookup': lookup}),
             ('_max10', {'render': [{'function': 'ReplaceLookup',
                                     'html': 'html %1%',
-                                    'var': '%1%' ,
-                                    'alt_html':'BIG %1%',
-                                    'gte':4}
+                                    'var': '%1%',
+                                    'alt_html': 'BIG %1%',
+                                    'gte': 4}
                                    ], 'lookup': lookup}),
             ('_array', {'field_array': True, 'render': [{'function': 'MergeArray'}]}),
             ('_array', {'field_array': True, 'render': [{'function': 'MergeArray', 'separator': '#'}]}),
@@ -495,7 +504,7 @@ class Example12(DatatableView):
         results = table.get_query(**kwargs)
         for r in results:
             if r['id'] % 2:
-                r['array'] = [ r['id'], r['id'] * 10]
+                r['array'] = [r['id'], r['id'] * 10]
             r['max10'] = r['id'] % 10
 
         return results

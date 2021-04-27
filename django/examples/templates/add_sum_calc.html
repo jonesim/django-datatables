@@ -1,0 +1,11 @@
+{% extends 'datatables/plugins/column_totals.html' %}
+
+{% block formatting_functions %}
+    'over1000': function (sum) {
+    if (sum > 1000) {
+        return '<span style="color:red">' + sum + '</span>'
+    } else {
+        return '<span style="color:green">' + sum + '</span>'
+    }
+}
+{% endblock %}
