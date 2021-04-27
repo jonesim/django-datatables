@@ -66,7 +66,7 @@ class Person(models.Model):
         title_model = ChoiceColumn('title', choices=((0, 'Mr'), (1, 'Mrs'), (2, 'Miss')))
         ids = [
             'title',
-            ('id', {'render': [render_replace(column='ids/id',html='render %1%')]}),
+            ('id', {'render': [render_replace(column='ids/id', html='render %1%')]}),
             FullName,
         ]
 
