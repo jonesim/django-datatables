@@ -276,6 +276,10 @@ class DatatableTable:
         commands = [{'command': 'delete_row', 'row': row_id, 'table': self.table_id}]
         return HttpResponse(json.dumps(commands), content_type='application/json')
 
+    def remove_columns(self, *column_names):
+        for n in column_names:
+            del self.columns[self.find_column(n)[1]]
+
 
 class DatatableView(TemplateView):
     model = None
