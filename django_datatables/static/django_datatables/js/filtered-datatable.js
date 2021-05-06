@@ -558,6 +558,7 @@ if (typeof django_datatables === 'undefined') {
 
             this.initsetup = tablesetup
             this.filters = []
+            this.plugins = []
             this.table_id = html_id
 
             django_datatables.DataTables[html_id] = this
