@@ -9,8 +9,8 @@ from django.http import HttpResponse
 from . import models
 from django_datatables.plugins.colour_rows import ColourRows
 from django_datatables.plugins.column_totals import ColumnTotals
-from pathlib import Path
 from django.conf import settings
+
 
 class Example1(DatatableView):
     model = models.Company
