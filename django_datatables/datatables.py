@@ -43,7 +43,8 @@ class ColumnInitialisor:
         elif isinstance(path, str):
             self.path, options = ColumnBase.extract_options(path)
             self.kwargs.update(options)
-            self.model, self.django_field, self.setup = DatatableModel.get_setup_data(start_model, self.path)
+            if start_model is not None:
+                self.model, self.django_field, self.setup = DatatableModel.get_setup_data(start_model, self.path)
             self.kwargs['column_name'] = path
 
             if '__' in self.path:

@@ -1,4 +1,6 @@
 import csv
+
+import json
 from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.helpers import row_button, render_replace, row_link
@@ -7,7 +9,8 @@ from django.http import HttpResponse
 from . import models
 from django_datatables.plugins.colour_rows import ColourRows
 from django_datatables.plugins.column_totals import ColumnTotals
-
+from pathlib import Path
+from django.conf import settings
 
 class Example1(DatatableView):
     model = models.Company
@@ -508,3 +511,28 @@ class Example12(DatatableView):
             r['max10'] = r['id'] % 10
 
         return results
+
+
+class Example13(DatatableView):
+    template_name = 'table.html'
+
+    @staticmethod
+    def setup_table(table):
+        table.add_columns(
+            'id',
+            'first_name',
+            'last_name',
+            'company_name'
+        )
+
+    @staticmethod
+    def get_table_query(table, **kwargs):
+        path = str(settings.BASE_DIR.joinpath('examples', 'data', 'example13.json'))
+        with open(path) as json_file:
+            data = json.load(json_file)
+        return data
+
+    def add_to_context(self, **kwargs):
+        return {'title': type(self).__name__, 'description': '''
+        This example gets its data from a json file instead of the database
+        '''}
