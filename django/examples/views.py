@@ -518,12 +518,18 @@ class Example13(DatatableView):
 
     @staticmethod
     def setup_table(table):
+        table.datatable_template = 'table13.html'
         table.add_columns(
             'id',
             'first_name',
             'last_name',
-            'company_name'
+            'company_name',
+            ColumnBase(column_name='seconds', field='seconds', render=[
+                {'function': 'hhmm', 'column': 'seconds', 'var': '%1%'},
+               ]),
         )
+        table.table_options['scrollX'] = True
+        table.add_plugin(ColumnTotals, {'seconds': {'sum': True}})
 
     @staticmethod
     def get_table_query(table, **kwargs):
