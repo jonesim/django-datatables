@@ -598,7 +598,6 @@ if (typeof django_datatables === 'undefined') {
                 }.bind(this));
                 this.exec_filter('reset')
                 this.table.api().draw()
-                this.table.api().columns.adjust()  // fixes a problem with scrollX setting
             }.bind(this)
 
 
