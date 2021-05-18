@@ -363,24 +363,23 @@ class Example9(DatatableView):
     model = models.Company
     template_name = 'table.html'
 
+    @staticmethod
+    def setup_table(table):
+        table.add_columns(
+            ('id', {'column_defs': {'width': '30px'}}),
+            'name',
+            ColumnBase(column_name='title', field='person__title',
+                       choices=dict(models.Person._meta.get_field('title').choices),
+                       render=[render_replace(html='ABC -%1%- DFG', column='title')]),
+            ColumnBase(column_name='Title', field=['person__title', 'person__first_name'],
+                       render=[{'function': 'Replace', 'html': '<span class="badge badge-success"> %1% </span>',
+                                'column': 'Title:0', 'null_value': '<span class="badge badge-primary"> %2% </span>',   'var': '%1%'},
+                               {'function': 'Replace', 'column': 'Title:1',  'var': '%2%'}]),
+        )
+        table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
+
     def add_to_context(self, **kwargs):
         return {'title': type(self).__name__, 'filter': filter}
-
-
-def setup_table(table):
-    table.add_columns(
-        ('id', {'column_defs': {'width': '30px'}}),
-        'name',
-        ColumnBase(column_name='title', field='person__title',
-                   choices=dict(models.Person._meta.get_field('title').choices),
-                   render=[render_replace(html='ABC -%1%- DFG', column='title')]),
-        ColumnBase(column_name='Title', field=['person__title', 'person__first_name'],
-                   render=[{'function': 'Replace', 'html': '<span class="badge badge-success"> %1% </span>',
-                            'column': 'Title:0', 'null_value': '<span class="badge badge-primary"> %2% </span>',
-                            'var': '%1%'},
-                           {'function': 'Replace', 'column': 'Title:1',  'var': '%2%'}]),
-    )
-    table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
 
 
 class IdColumn(DatatableColumn):
@@ -473,30 +472,32 @@ class Example12(DatatableView):
 
         table.add_columns(
             'id',
-            ('id', {'render': [render_replace(column='id', html='- %1%')]}),
-            ('id', {'render': [{'function': 'Html', 'html': '* %1%'},
+            ('id', {'title': 'Simple Replace', 'render': [render_replace(column='id', html='* %1%')]}),
+            ('id', {'title': 'HTML first render followed by Replace', 'render': [{'function': 'Html', 'html': '* %1%'},
                                render_replace(column='id')]}),
-            ('_array', {'render': [render_replace(column='array', html='- %1%')]}),
-            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%')]}),
-            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%',
+            ('_array', {'title':'Repeated replace on list', 'render': [render_replace(column='array', html='- %1%')]}),
+            ('_array1', {'title':'Replace with indexed item in list', 'field_array': True, 'render': [render_replace(column='array:1', html=': %1%')]}),
+            ('_array1', {'title':'Replace with alternative for null item', 'field_array': True, 'render': [render_replace(column='array:1', html=': %1%',
                                                                         null_value='@ none',)]}),
-            ('_array1', {'field_array': True, 'render': [render_replace(column='array:1', html=': %1%', gte=50,
+            ('_array1', {'title':'Alternative result for gte (>) 50 ', 'field_array': True, 'render': [render_replace(column='array:1', html=': %1%', gte=50,
                                                                         alt_html='GTE 50 : %1%')]}),
-            ('_array1', {'field_array': True,
+            ('_array1', {'title':'Alternative result for gte (>) 50 and then gte 100', 'field_array': True,
                          'render': [render_replace(column='array:1', html=': %1%', gte=50, alt_html='GTE 50 : %1%'),
                                     render_replace(column='array:1', gte=100, alt_html='GTE 100 : %1%')]}),
 
-            '_max10',
-            ('_max10', {'render': [{'function': 'ReplaceLookup', 'html': 'html %1%', 'var': '%1%'}], 'lookup': lookup}),
-            ('_max10', {'render': [{'function': 'ReplaceLookup',
+            ('_array', {'title': 'Replace with multiple items from list', 'field_array': True,
+                        'render': [{'function': 'Replace', 'var': ['%1%', '%2%'], 'html': 'first %1% Second %2%'}]}),
+            ('_max10',{'title':'Demo field (Max10)'}),
+            ('_max10', {'title':'Replacelookup function on Max10', 'render': [{'function': 'ReplaceLookup', 'html': 'html %1%', 'var': '%1%'}], 'lookup': lookup}),
+            ('_max10', {'title':'Replacelookup function with gte', 'render': [{'function': 'ReplaceLookup',
                                     'html': 'html %1%',
                                     'var': '%1%',
                                     'alt_html': 'BIG %1%',
                                     'gte': 4}
                                    ], 'lookup': lookup}),
-            ('_array', {'field_array': True, 'render': [{'function': 'MergeArray'}]}),
-            ('_array', {'field_array': True, 'render': [{'function': 'MergeArray', 'separator': '#'}]}),
-            ('_max10', {'render': [
+            ('_array', {'title':' MergeArray function','field_array': True, 'render': [{'function': 'MergeArray'}]}),
+            ('_array', {'title':' MergeArray function with different separator','field_array': True, 'render': [{'function': 'MergeArray', 'separator': '#'}]}),
+            ('_max10', {'title': 'Replacelookup using 2 items from an array one indicating colour', 'render': [
                 {'function': 'ReplaceLookup', 'html': '<span class="badge badge-%2%">%1%</span>', 'var': ['%1%', '%2%']}
             ], 'lookup': coloured_lookup}),
         )
@@ -511,6 +512,12 @@ class Example12(DatatableView):
             r['max10'] = r['id'] % 10
 
         return results
+
+    def add_to_context(self, **kwargs):
+        return {'title': type(self).__name__, 'description': '''
+        Examples of render functions <B>Replace, ReplaceLookup, HTML</B> <br>
+        also shows how lists can be accessed and displayed  
+        '''}
 
 
 class Example13(DatatableView):
