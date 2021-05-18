@@ -287,7 +287,12 @@ class ManyToManyColumn(DatatableColumn):
             tags = self.related_model.objects.values_list(self.field_id, 'pk')
         else:
             tags = self.model.objects.values_list('pk', self.field_id)
-        tags = tags.filter(**{self.field_id + '__isnull': False}).distinct()
+        tags = tags.filter(**{self.field_id + '__isnull': False})
+        if self.kwargs.get('exclude'):
+            tags = tags.exclude(**self.kwargs['exclude'])
+        if self.kwargs.get('filter'):
+            tags = tags.filter(**self.kwargs['filter'])
+        tags = tags.distinct()
         tag_dict = {}
         for t in tags:
             tag_dict.setdefault(t[0], []).append(t[1])
