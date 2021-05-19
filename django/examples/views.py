@@ -533,7 +533,8 @@ class Example13(DatatableView):
             'company_name',
             ColumnBase(column_name='seconds', field='seconds', render=[
                 {'function': 'hhmm', 'column': 'seconds', 'var': '%1%'},
-               ]),
+
+               ], column_defs={'className': 'dt-right'}),
         )
         table.table_options['scrollX'] = True
         table.add_plugin(ColumnTotals, {'seconds': {'sum': True}})

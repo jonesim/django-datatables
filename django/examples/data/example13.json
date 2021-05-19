@@ -17,7 +17,7 @@
 {"id":17,"first_name":"Igor","last_name":"Trotter","company_name":"Youfeed","seconds":3600},
 {"id":18,"first_name":"Josefina","last_name":"Mosten","company_name":null,"seconds":3600},
 {"id":19,"first_name":"Del","last_name":"Skingle","company_name":null,"seconds":3600},
-{"id":20,"first_name":"Davy","last_name":"Reveland","company_name":null,"seconds":3600},
+{"id":20,"first_name":"Davy","last_name":"Reveland","company_name":null,"seconds": null},
 {"id":21,"first_name":"Neel","last_name":"O'Scully","company_name":null,"seconds":3600},
 {"id":22,"first_name":"Kaleena","last_name":"Pitson","company_name":null,"seconds":3600},
 {"id":23,"first_name":"Idalia","last_name":"Smeaton","company_name":"Kayveo","seconds":3600},
