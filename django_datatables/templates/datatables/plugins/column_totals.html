@@ -19,7 +19,10 @@
             var column_totals = {{ totals|safe }}
             for (var r = 0; r < page_data.length; r++) {
                 for (var c in column_totals) {
-                    column_totals[c] += parseFloat(page_data[r][c])
+                    var n = parseFloat(page_data[r][c]);
+                    if(!isNaN(n)) {
+                        column_totals[c] += n;
+                    }
                 }
             }
             var footer = '{{ footer|safe }}'
