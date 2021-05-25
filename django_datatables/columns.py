@@ -389,16 +389,22 @@ class CurrencyColumn(ColumnBase):
         self.column_defs = {'className': 'dt-right'}
 
 
-class BooleanColumn(ColumnBase):
+class BooleanColumn(DatatableColumn):
 
-    choices = ['true', 'false']
+    def __init__(self, *,  choices=None, **kwargs):
+        if not self.initialise(locals()):
+            return
+        super().__init__(**kwargs)
+        if choices:
+            self.choices = choices
+        else:
+            self.choices = ['true', 'false', None]
 
     def row_result(self, data, _page_data):
         try:
-            if data[self.field]:
-                return self.choices[0]
-            else:
-                return self.choices[1]
+            if data[self.field] is None:
+                return self.choices[-1]
+            return self.choices[0] if data[self.field] else self.choices[1]
         except KeyError:
             return
 

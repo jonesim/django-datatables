@@ -4,7 +4,7 @@ DUMMY_ID = 999999
 simple_table = {
     'dom': 't',
     'no_col_search': True,
-    'nofooter': True,
+    'no_footer': True,
     'pageLength': 400,
     'stateSave': False
 }

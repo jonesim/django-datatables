@@ -12,14 +12,15 @@
             </tr>
         {% endif %}
         </thead>
-        {% if not datatable.table_options.nofooter %}
-            <tfoot>
+        <tfoot>
             <tr>
-                {% for t in datatable.all_titles %}
-                    <th>{{ t }}</th>{% endfor %}
+                {% if not datatable.table_options.no_footer %}
+                    {% for t in datatable.all_titles %}
+                        <th>{{ t }}</th>
+                    {% endfor %}
+                {% endif %}
             </tr>
-            </tfoot>
-        {% endif %}
+        </tfoot>
     </table>
 
     <script>

@@ -5,6 +5,7 @@ from django.db import models
 from django.views.generic import TemplateView
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.utils.safestring import mark_safe
 from .detect_device import detect_device
 from .columns import ColumnBase, DateColumn, ChoiceColumn, BooleanColumn, CallableColumn
 from .model_def import DatatableModel
@@ -118,7 +119,7 @@ class DatatableTable:
         # django query attributes
         self.filter = {}
         self.exclude = {}
-        self.distinct = []
+        self.distinct = None
         self.max_records = None
 
         # javascript datatable attributes
@@ -166,7 +167,7 @@ class DatatableTable:
             query = query.filter(self.filter)
         else:
             query = query.filter(**self.filter)
-        if self.distinct:
+        if self.distinct is not None:
             query = query.distinct(*self.distinct)
         if self.max_records:
             query = query[:self.max_records]
@@ -225,7 +226,7 @@ class DatatableTable:
         for p in self.plugins:
             rendered_strings.append(p.render())
         rendered_strings.append(render_to_string(self.datatable_template, {'datatable': self}))
-        return ''.join(rendered_strings)
+        return mark_safe(''.join(rendered_strings))
 
     def setup_column_id(self):
         if 'column_id' not in self.table_options:
