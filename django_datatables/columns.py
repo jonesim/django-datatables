@@ -186,7 +186,7 @@ class ColumnBase:
             if field_no_path.find('_') > 0:
                 return field_no_path.replace('_', ' ').title()
             else:
-                title = field_no_path[0]
+                title = field_no_path[0].upper()
                 for letter in field_no_path[1:]:
                     if letter.isupper():
                         title += ' '
