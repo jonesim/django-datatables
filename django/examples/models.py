@@ -12,6 +12,7 @@ class Company(models.Model):
     name = models.CharField(max_length=80)
     direct_tag = models.ManyToManyField(TagsDirect)
     dissolved = models.BooleanField(default=False)
+    order = models.IntegerField(null=True)
 
     def test(self):
         return f' test - {self.id}'
