@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'examples',
     'django_datatables',
+    'ajax_helpers',
 ]
 
 MIDDLEWARE = [
