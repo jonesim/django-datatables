@@ -132,3 +132,8 @@
     border-radius: .25rem;
     transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
 }
+
+.button-cell{
+    padding-top: 2px!important;
+    padding-bottom: 2px!important;
+}
