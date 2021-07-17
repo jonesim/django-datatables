@@ -1,0 +1,78 @@
+<select style="display: none" multiple name="{{ widget.name }}" id="select-{{ widget.name }}">
+    {% for v in widget.value %}
+        <option value={{ v }} selected></option>
+    {% endfor %}
+</select>
+
+{{ table.render }}
+<script>
+
+    function datatableWidget(widget, multi_select_table) {
+
+        function select_options(widget, json_array) {
+            var select_data = ''
+            for (var o of json_array) {
+                select_data += '<option value=' + o + ' selected></option>'
+            }
+            $('#select-' + widget.name).html(select_data)
+        }
+
+        function removeItem(arr, value) {
+            var index = arr.indexOf(String(value));
+            if (index > -1) {
+                arr.splice(index, 1);
+            }
+            return arr;
+        }
+
+        function datatableWidgetRowClick() {
+            var row_element = this;
+            var row = widget.dt.api().row($(row_element));
+            var select_data = $('#select-' + widget.name).val();
+            if (!$(this).hasClass('table-primary')) {
+                select_data.push(row.data()[widget.id_column]);
+                row.data()[widget.select_column] = widget.tick;
+            } else {
+                select_data = removeItem(select_data, row.data()[widget.id_column]);
+                row.data()[widget.select_column] = widget.notick;
+            }
+            select_options(widget, select_data);
+            row.invalidate();
+            $(row_element).toggleClass('table-primary');
+        }
+
+        var select_data = $('#select-' + widget.name).val();
+        multi_select_table.on('click', 'tbody tr', datatableWidgetRowClick);
+
+        if (multi_select_table.length > 0) {
+            multi_select_table.find('tr').each(function () {
+                try {
+                    var row = widget.dt.api().row($(this));
+                    if (select_data.indexOf(row.data()[widget.id_column].toString()) > -1) {
+                        $(this).addClass('table-primary');
+                        row.data()[widget.select_column] = widget.tick;
+                        row.invalidate();
+                    }
+                } catch {
+                }
+            })
+        }
+    }
+
+    (function () {
+        var widget = {};
+        widget.id_column = {{ id_column }};
+        widget.tick = '{{ tick|safe }}';
+        widget.notick = '{{ no_tick|safe }}';
+        widget.name = '{{ widget.name }}';
+        widget.select_column = {{selected_column}};
+
+            $('#{{ table.table_id }}').on('init.dt', function () {
+                var multi_select_table = $(this);
+                // var initial_data = $('#select-' + widget.name).val();
+                widget.dt = django_datatables.DataTables[this.id].table;
+                datatableWidget(widget, multi_select_table);
+            })
+    })()
+
+</script>
