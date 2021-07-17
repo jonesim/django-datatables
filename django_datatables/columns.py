@@ -225,8 +225,8 @@ class LambdaColumn(ColumnBase):
     def __init__(self, *, lambda_function, **kwargs):
         if not self.initialise(locals()):
             return
+        self.lambda_function = kwargs.pop('lambda_function')
         super().__init__(**kwargs)
-        self.lambda_function = lambda_function
 
     def row_result(self, data_dict, _page_results):
         return self.lambda_function(data_dict.get(self.field))
