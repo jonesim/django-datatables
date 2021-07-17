@@ -1,5 +1,6 @@
-from django.forms.widgets import SelectMultiple
+from django.forms.widgets import SelectMultiple, Widget
 from .datatables import DatatableTable
+from .reorder_datatable import OrderedDatatable
 from .columns import LambdaColumn
 
 
@@ -30,5 +31,28 @@ class DataTableWidget(SelectMultiple):
         context['no_tick'] = self.no_tick
         context['selected_column'] = table.find_column('selected')[1]
         context['id_column'] = table.find_column('id')[1]
+        context['table'] = table
+        return context
+
+
+class DataTableReorderWidget(Widget):
+    template_name = 'datatables/widgets/datatable-reorder.html'
+
+    crispy_kwargs = {'label_class': 'col-3 col-form-label-sm', 'field_class': 'col-12 input-group-sm'}
+
+    def __init__(self, *args, order_field=None, model=None, fields=None, **kwargs):
+        kwargs.setdefault('attrs', {}).update({'table_model': model, 'fields': fields})
+        self.order_field = order_field
+        super().__init__(*args, **kwargs)
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        table = OrderedDatatable(context['widget']['attrs']['id'],
+                                 model=self.attrs['table_model'],
+                                 order_field=self.order_field)
+        if 'filter' in self.attrs:
+            table.filter = self.attrs['filter']
+        table.add_columns(*self.attrs['fields'])
+        table.ajax_data = False
         context['table'] = table
         return context

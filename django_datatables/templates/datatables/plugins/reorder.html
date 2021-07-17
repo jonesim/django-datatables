@@ -1,0 +1,20 @@
+<script>
+    var plugin = {
+        init: function () {
+            $('#{{ datatable.table_id }}').on('row-reordered.dt', function () {
+                var table_data = []
+                for (var i = 0; i < django_datatables.DataTables.{{ datatable.table_id }}.table.api().data().length; i++) {
+                    table_data.push(django_datatables.DataTables.{{ datatable.table_id }}.table.api().row(i).data().slice(0, 2))
+                }
+                var order = {}
+                order.data = {
+                    'datatable': 'sort',
+                    'sort': table_data,
+                    'table_id': '{{ datatable.table_id }}',
+                }
+                ajax_helpers.post_json(order)
+            })
+        }
+    }
+    django_datatables.add_plugin('{{ datatable.table_id }}', plugin)
+</script>

@@ -1,0 +1,24 @@
+{% load ajax_helpers %}
+{{ table.render }}
+<script>
+    $('#{{ table.table_id }}').on('init.dt', function () {
+        $('#{{ table.table_id }}').on('row-reordered.dt', function () {
+            var table_data = []
+            for (var i = 0; i < django_datatables.DataTables.{{ table.table_id }}.table.api().data().length; i++) {
+                table_data.push(django_datatables.DataTables.{{ table.table_id }}.table.api().row(i).data().slice(0, 2))
+            }
+            var order = {}
+            try{
+                order['url'] = django_modal.modal_div().attr('data-url')
+            } catch (e) {
+            }
+            order['datatable'] = 'sort'
+            order['data'] = {
+                'datatable': 'sort',
+                'sort': table_data,
+                'table_id': '{{ table.table_id }}',
+            }
+            ajax_helpers.post_json(order)
+        })
+    })
+</script>
