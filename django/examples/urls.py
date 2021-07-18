@@ -18,4 +18,6 @@ urlpatterns = [
     path('example-11', views.Example11.as_view(), name='example11'),
     path('example-12', views.Example12.as_view(), name='example12'),
     path('example-13', views.Example13.as_view(), name='example13'),
+    path('orderable', views.ExampleReorder.as_view(), name='reorder'),
+    path('widget', views.WidgetView.as_view(), name='widget'),
 ]

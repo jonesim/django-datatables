@@ -5,11 +5,18 @@ from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.helpers import row_button, render_replace, row_link
 from django_datatables.datatables import DatatableView
+from django import forms
+from django.views.generic import FormView
 from django.http import HttpResponse
 from . import models
 from django_datatables.plugins.colour_rows import ColourRows
 from django_datatables.plugins.column_totals import ColumnTotals
 from django.conf import settings
+from django_datatables.reorder_datatable import ReorderDatatableView
+from django_datatables.plugins.reorder import Reorder
+from django_datatables.widgets import DataTableWidget, DataTableReorderWidget
+from django_datatables.reorder_datatable import reorder
+from ajax_helpers.mixins import AjaxHelpers
 
 
 class Example1(DatatableView):
@@ -373,7 +380,8 @@ class Example9(DatatableView):
                        render=[render_replace(html='ABC -%1%- DFG', column='title')]),
             ColumnBase(column_name='Title', field=['person__title', 'person__first_name'],
                        render=[{'function': 'Replace', 'html': '<span class="badge badge-success"> %1% </span>',
-                                'column': 'Title:0', 'null_value': '<span class="badge badge-primary"> %2% </span>',   'var': '%1%'},
+                                'column': 'Title:0', 'null_value': '<span class="badge badge-primary"> %2% </span>',
+                                'var': '%1%'},
                                {'function': 'Replace', 'column': 'Title:1',  'var': '%2%'}]),
         )
         table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
@@ -550,3 +558,42 @@ class Example13(DatatableView):
         return {'title': type(self).__name__, 'description': '''
         This example gets its data from a json file instead of the database
         '''}
+
+
+class DemoForm(forms.Form):
+
+    tags = forms.MultipleChoiceField(widget=DataTableWidget(fields=['id', 'tag'], model=models.Tags))
+    order = forms.CharField(
+        widget=DataTableReorderWidget(model=models.Company, order_field='order', fields=['name'])
+    )
+
+
+class WidgetView(AjaxHelpers, FormView):
+    template_name = 'widget_example.html'
+    form_class = DemoForm
+
+    ajax_commands = ['datatable', 'button']
+
+    def get_initial(self):
+        return {'tags': [1]}
+
+    def datatable_sort(self, **kwargs):
+        form = self.get_form()
+        widget = form.fields[kwargs['table_id'][3:]].widget
+        reorder(widget.attrs['table_model'], widget.order_field, kwargs['sort'])
+        return self.command_response('reload')
+
+
+class ExampleReorder(ReorderDatatableView):
+    template_name = 'table-nosearch.html'
+
+    model = models.Company
+    order_field = 'order'
+
+    @staticmethod
+    def setup_table(table):
+        table.add_columns('name')
+        table.add_plugin(Reorder)
+
+    def add_to_context(self, **kwargs):
+        return {'title': type(self).__name__, 'filter': filter}

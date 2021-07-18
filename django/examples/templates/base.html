@@ -24,6 +24,7 @@
     <script type="text/javascript"
             src="https://cdn.datatables.net/plug-ins/1.10.16/sorting/datetime-moment.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="{% static 'ajax_helpers/ajax_helpers.js' %}"></script>
 
 </head>
 <body>
@@ -45,6 +46,8 @@
     <a href="{% url 'example11' %}" class="btn btn-primary">Example 11</a>
     <a href="{% url 'example12' %}" class="btn btn-primary">Example 12</a>
     <a href="{% url 'example13' %}" class="btn btn-primary">Example 13</a>
+    <a href="{% url 'widget' %}" class="btn btn-primary">Widget</a>
+    <a href="{% url 'reorder' %}" class="btn btn-primary">Reorder</a>
 </div>
 
 {% block table %}
