@@ -5,7 +5,7 @@ with open("readme.md", "r") as fh:
 
 setuptools.setup(
     name="django-filtered-datatables",
-    version="0.0.15",
+    version="0.0.16",
     author="Ian Jones",
     description="Django views with javascript filters using Datatables",
     long_description=long_description,
@@ -19,4 +19,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+    install_requires=['django-ajax-helpers'],
 )
