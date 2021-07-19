@@ -579,8 +579,11 @@ if (typeof django_datatables === 'undefined') {
             }
             if (tablesetup.tableOptions.data === undefined) {
                 var csrf = ajax_helpers.getCookie('csrftoken');
-                var url
-                if (window.location.search == '')
+                var url;
+                if (tablesetup.tableOptions.ajax_url !== undefined){
+                    url = tablesetup.tableOptions.ajax_url
+                }
+                else if (window.location.search == '')
                     url = '?datatable-data=true'
                 else{
                     url = window.location.search + '&datatable-data=true'
