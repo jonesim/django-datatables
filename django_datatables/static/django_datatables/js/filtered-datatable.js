@@ -10,70 +10,23 @@ if (typeof django_datatables === 'undefined') {
             DataTables[table_id].send_row(command, row_id)
         }
 
+        ajax_helpers.command_functions.delete_row = function (command) {
+            DataTables[command.table_id].table.api().row('#' + command.row_no).remove()
+            DataTables[command.table_id].table.api().draw(false)
+        }
+        ajax_helpers.command_functions.refresh_row = function(command){
+            DataTables[command.table_id].table.api().row('#' + command.row_no).data(command.data).invalidate()
+        }
+
+        ajax_helpers.command_functions.reload_table = function(command){
+            DataTables[command.table_id].table.api().ajax.reload(null, false);
+        }
+
         var utilities = {
 
             numberWithCommas: function(x, decimal_places=0) {
                 return x.toFixed(decimal_places).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             },
-
-            getCookie: function (name) {
-                var cookieValue = null;
-                if (document.cookie && document.cookie !== '') {
-                    var cookies = document.cookie.split(';');
-                    for (var i = 0; i < cookies.length; i++) {
-                        var cookie = jQuery.trim(cookies[i]);
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
-                        }
-                    }
-                }
-                return cookieValue;
-            },
-
-            process_commands: function (commands) {
-                for (var c = 0; c < commands.length; c++) {
-                    var dt_api = django_datatables.DataTables[commands[c].table].table.api()
-                    switch (commands[c].command) {
-                        case 'delete_row':
-                            dt_api.row('#' + commands[c].row).remove()
-                            dt_api.draw(false)
-                            break;
-                        case 'refresh_row':
-                            dt_api.row('#' + commands[c].row).data(commands[c].data).invalidate()
-                            break;
-                    }
-                }
-            },
-
-            post_data: function (url, data) {
-                $.ajax({
-                    url: url,
-                    method: 'post',
-                    data: data,
-                    beforeSend: function (xhr) {
-                        xhr.setRequestHeader("X-CSRFToken", utilities.getCookie('csrftoken'));
-                    },
-                    cache: false,
-                    success: function (form_response, status, jqXHR) {
-                        content_disposition = jqXHR.getResponseHeader('Content-Disposition')
-                        if (typeof (content_disposition) == 'string' && content_disposition.indexOf('attachment') > -1) {
-                            blob = new Blob([form_response], {type: "octet/stream"})
-                            download_url = window.URL.createObjectURL(blob);
-                            a = document.createElement('a');
-                            a.style.display = 'none';
-                            a.href = download_url;
-                            a.download = content_disposition.split('"')[1];
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(download_url);
-                            alert('your file has downloaded');
-                        } else if (typeof (form_response) == 'object') {
-                            utilities.process_commands(form_response)
-                        }
-                    }
-                })
-            }
         }
 
         var columnsearch = function (settings, data, dataIndex, row_data) {
@@ -574,7 +527,7 @@ if (typeof django_datatables === 'undefined') {
             this.table_id = html_id
 
             django_datatables.DataTables[html_id] = this
-            for (i = 0; i < tablesetup.colOptions.length; i++) {
+            for (var i = 0; i < tablesetup.colOptions.length; i++) {
                 if (tablesetup.colOptions[i]['render'] != undefined) {
                     tablesetup.tableOptions.columnDefs[i].render = new django_datatables.column_render(i, tablesetup.colOptions[i]['render'], this)
                 }
@@ -625,7 +578,7 @@ if (typeof django_datatables === 'undefined') {
                 initComplete: this.postInit,
             }
             if (tablesetup.tableOptions.data === undefined) {
-                var csrf = django_datatables.utilities.getCookie('csrftoken');
+                var csrf = ajax_helpers.getCookie('csrftoken');
                 var url
                 if (window.location.search == '')
                     url = '?datatable-data=true'
@@ -760,9 +713,9 @@ if (typeof django_datatables === 'undefined') {
         PythonTable.prototype.send_row = function (command, row_id) {
             var row_data = this.table.api().row('#' + row_id).data()
             var data = {
-                'row': JSON.stringify(row_data), 'command': command, 'row_no': row_id, table_id: this.table_id
+                'row': command, 'row_data': JSON.stringify(row_data), 'row_no': row_id, table_id: this.table_id
             }
-            django_datatables.utilities.post_data('?datatable-row=true', data)
+            ajax_helpers.post_json({data: data})
         }
 
         PythonTable.prototype.send_column = function (command, column) {
@@ -771,9 +724,9 @@ if (typeof django_datatables === 'undefined') {
                 return acc
             }, [])
             var data = {
-                column: JSON.stringify(acc), command: command, table_id: this.table_id
+                column_data: JSON.stringify(acc), column: command, table_id: this.table_id
             }
-            django_datatables.utilities.post_data('?datatable-column=true', data)
+            ajax_helpers.post_json({data: data})
         }
 
 

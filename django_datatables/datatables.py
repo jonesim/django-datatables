@@ -3,7 +3,7 @@ from inspect import isclass
 from typing import TypeVar, Dict
 from django.db import models
 from django.views.generic import TemplateView
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from .detect_device import detect_device
@@ -271,8 +271,9 @@ class DatatableTable:
         if id_column:
             self.filter[id_column.field] = int(row_id[1:])
             results = self.get_table_array(request, self.get_query())[0]
-            commands = [{'command': 'refresh_row', 'row': row_id, 'data': results, 'table': self.table_id}]
-            return HttpResponse(json.dumps(commands), content_type='application/json')
+            return JsonResponse([{'function': 'refresh_row', 'row_no': row_id, 'data': results,
+                                  'table_id': self.table_id}],
+                                safe=False)
 
     def delete_row(self, _request, row_id):
         commands = [{'command': 'delete_row', 'row': row_id, 'table': self.table_id}]
@@ -289,7 +290,7 @@ class DatatableView(TemplateView):
     table_options = None
 
     def __init__(self, *args, **kwargs):
-        super(DatatableView, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tables = {}
         self.add_tables()
         self.dispatch_context = None
@@ -352,16 +353,13 @@ class DatatableView(TemplateView):
                             if data:
                                 r[f] = '<i class="fas fa-key"></i>'
             return HttpResponse(table.get_json(request, results), content_type='application/json')
-
-        for t in ['row', 'column']:
-            if 'datatable-' + t in request.GET:
-                table = self.tables[request.POST['table_id']]
-                self.setup_tables(table_id=table.table_id)
-                if hasattr(self, t + '_' + request.POST['command']):
-                    column_values = json.loads(request.POST[t])
-                    extra_data = {k: request.POST[k] for k in request.POST if k != t}
-                    return getattr(self, t + '_' + request.POST['command'])(request, column_values, table, extra_data)
-        return None
+        if hasattr(super(), 'post'):
+            # noinspection PyUnresolvedReferences
+            return super().post(request, *args, **kwargs)
+        elif request.is_ajax() and request.content_type == 'application/json':
+            response = json.loads(request.body)
+            raise Exception(f'May need to use AjaxHelpers Mixin or'
+                            f' add one of these \n{", ".join(response.keys())}\nto ajax_commands ')
 
     def sent_column(self, column_values, extra_data):
         pass

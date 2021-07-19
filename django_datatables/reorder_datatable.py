@@ -1,4 +1,3 @@
-from ajax_helpers.mixins import AjaxHelpers
 from django_datatables.datatables import DatatableView, DatatableTable
 
 
@@ -49,10 +48,10 @@ class OrderedDatatable(DatatableTable):
         return super().col_def_str()
 
 
-class ReorderDatatableView(AjaxHelpers, DatatableView):
+class ReorderDatatableView(DatatableView):
 
     order_field: str
-    ajax_commands = ['datatable', 'button']
+    ajax_commands = ['datatable']
 
     def add_sortable_table(self, table_id, order_field, **kwargs):
         self.tables[table_id] = OrderedDatatable(
@@ -61,7 +60,8 @@ class ReorderDatatableView(AjaxHelpers, DatatableView):
     def datatable_sort(self, **kwargs):
         table = self.tables[kwargs['table_id']]
         reorder(table.model, table.order_field, kwargs['sort'])
-        return self.command_response('reload')
+        # noinspection PyUnresolvedReferences
+        return self.command_response('reload_table', table_id=kwargs['table_id'])
 
     def add_tables(self):
         self.add_sortable_table(type(self).__name__.lower(), model=self.model, order_field=self.order_field)
