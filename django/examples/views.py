@@ -56,19 +56,21 @@ class Example1(DatatableView):
         return {'title': type(self).__name__, 'filter': filter}
 
 
-class Example2(DatatableView):
+class Example2(AjaxHelpers, DatatableView):
     model = models.Person
     template_name = 'table2.html'
+    ajax_commands = ['row', 'column']
 
-    @staticmethod
-    def column_get_csv(request, column_values, table, _extra_data):
+    def column_get_csv(self, **kwargs):
 
         # Does not filter out hidden columns but can easily be modified
-
+        column_data = json.loads(kwargs['column_data'])
+        table = self.tables[kwargs['table_id']]
+        self.setup_tables(table_id=table.table_id)
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="test.csv"'
-        table.filter['id__in'] = column_values
-        results = table.get_table_array(request, table.get_query())
+        table.filter['id__in'] = column_data
+        results = table.get_table_array(self.request, table.get_query())
         writer = csv.writer(response)
         writer.writerow(table.all_titles())
         for r in results:
@@ -217,24 +219,31 @@ class Example6(DatatableView):
         return {'title': type(self).__name__, 'filter': filter}
 
 
-class Example7(DatatableView):
+class Example7(AjaxHelpers, DatatableView):
     model = models.Company
     template_name = 'table7.html'
+    ajax_commands = ['row']
 
-    @staticmethod
-    def row_delete(request, _row, table, extra_data):
+
+    def row_delete(self, **kwargs):
         # Could delete from database here but for demo don't remove
-        return table.delete_row(request, extra_data['row_no'])
+        return self.command_response('delete_row', row_no=kwargs['row_no'], table_id=kwargs['table_id'])
 
-    @staticmethod
-    def row_toggle_tag(request, row, table, extra_data):
-        company = models.Company.objects.get(id=row[0])
+
+    def row_toggle_tag(self, **kwargs):
+
+        row_data = json.loads(kwargs['row_data'])
+        table = self.tables[kwargs['table_id']]
+        self.setup_tables(table_id=table.table_id)
+
+        company = models.Company.objects.get(id=row_data[0])
         tag = models.Tags.objects.get(id=1)
         if tag in company.tags_set.all():
             company.tags_set.remove(tag)
         else:
             company.tags_set.add(tag)
-        return table.refresh_row(request, extra_data['row_no'])
+        return table.refresh_row(self.request, kwargs['row_no'])
+
 
     class TagsY(DatatableColumn):
 
@@ -584,7 +593,7 @@ class WidgetView(AjaxHelpers, FormView):
         return self.command_response('reload')
 
 
-class ExampleReorder(ReorderDatatableView):
+class ExampleReorder(AjaxHelpers, ReorderDatatableView):
     template_name = 'table-nosearch.html'
 
     model = models.Company
