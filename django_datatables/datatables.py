@@ -339,8 +339,7 @@ class DatatableView(TemplateView):
         return table.get_query(**kwargs)
 
     def post(self, request, *args, **kwargs):
-
-        if 'datatable-data' in request.GET:
+        if request.POST.get('datatable_data'):
             table = self.tables[request.POST['table_id']]
             self.setup_tables(table_id=table.table_id)
             results = self.get_table_query(table, **kwargs)

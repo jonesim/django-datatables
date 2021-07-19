@@ -582,16 +582,13 @@ if (typeof django_datatables === 'undefined') {
                 var url;
                 if (tablesetup.tableOptions.ajax_url !== undefined){
                     url = tablesetup.tableOptions.ajax_url
-                }
-                else if (window.location.search == '')
-                    url = '?datatable-data=true'
-                else{
-                    url = window.location.search + '&datatable-data=true'
+                } else {
+                    url = window.location.search
                 }
                 dataTable_setup.ajax = {
                     'url': url,
                     "type": "POST",
-                    "data": {"csrfmiddlewaretoken": csrf, table_id: html_id}
+                    "data": {"csrfmiddlewaretoken": csrf, table_id: html_id, datatable_data: true}
                 }
             }
 
