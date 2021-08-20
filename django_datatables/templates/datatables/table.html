@@ -1,5 +1,5 @@
 {% spaceless %}
-    <table id="{{ datatable.table_id }}" class="{{ datatable.table_class }}">
+    <table id="{{ datatable.table_id }}" class="{{ datatable.table_class }}" data-url="{{ request.path }}">
         <thead>
         <tr{% if datatable.table_options.no_titles %} class="d-none"{% endif %}>
             {% for t in datatable.all_titles %}
