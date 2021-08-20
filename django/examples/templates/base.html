@@ -1,31 +1,14 @@
 <!doctype html>
-{% load static %}
+{% load static ajax_helpers %}
 
 <html>
 <head>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
-    <!-- bootstrap -->
-    <!-- Latest compiled and minified CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
-    <!-- Latest compiled JavaScript -->
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
-    <link rel="stylesheet" type="text/css"
-          href="https://cdn.datatables.net/v/dt/dt-1.10.18/b-1.5.6/b-html5-1.5.6/rg-1.1.0/rr-1.2.4/datatables.min.css"/>
-    <script type="text/javascript"
-            src="https://cdn.datatables.net/v/dt/dt-1.10.18/b-1.5.6/b-html5-1.5.6/rg-1.1.0/rr-1.2.4/datatables.min.js"></script>
-    <script src="{% static 'ajax_helpers/ajax_helpers.js' %}"></script>
-    <script type="text/javascript" src="{% static 'django_datatables/js/filtered-datatable.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'django_datatables/css/datatables.css' %}"/>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.10.2/css/all.css" crossorigin="anonymous">
 
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
-    <script type="text/javascript"
-            src="https://cdn.datatables.net/plug-ins/1.10.16/sorting/datetime-moment.js"></script>
-    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-
+    {% lib_include 'ajax_helpers' 'Bootstrap' 'FontAwesome' module='ajax_helpers.includes' %}
+    {% lib_include 'Modals' 'Toggle' 'select2' 'JQueryUI' 'TinyMce' module='django_modals.includes' %}
+    {% lib_include module='django_menus.includes' %}
+    {% lib_include module='show_src_code.includes' %}
+    {% lib_include 'datatable' module='django_datatables.includes' %}
 
 </head>
 <body>
