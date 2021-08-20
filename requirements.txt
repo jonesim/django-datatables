@@ -1,3 +1,5 @@
 Django==2.2.5
-django-ajax-helpers==0.0.6
-
+django-ajax-helpers==0.0.9
+django-tab-menus==0.0.11
+django-show-source-code==0.0.3
+django-nested-modals==0.0.7
