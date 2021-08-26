@@ -181,7 +181,7 @@ if (typeof django_datatables === 'undefined') {
 
         FilterBase.prototype.restore_state = function (data) {
             try {
-                state_data = this.pTable.table.api().state.loaded().columns[this.column_no][this.storage_key]
+                var state_data = this.pTable.table.api().state.loaded().columns[this.column_no][this.storage_key]
             } catch (e) {
                 console.log(e)
                 return
@@ -288,7 +288,7 @@ if (typeof django_datatables === 'undefined') {
 
             this.html = function () {
                 var htmldata = ''
-                for (k of this.filter_calcs.sort_keys()) {
+                for (var k of this.filter_calcs.sort_keys()) {
                     htmldata += this.options.htmlcheckbox.replace(/%1/g, k).replace(/%6/g, encodeURI(k))
                 }
                 var context = $('#' + this.html_id)
@@ -490,7 +490,7 @@ if (typeof django_datatables === 'undefined') {
                 if (params.default){
                     this.convert = function (current, row) {
                         try {
-                            return_val = current.slice(0, current.length - 1).filter(function (l) {
+                            var return_val = current.slice(0, current.length - 1).filter(function (l) {
                                 return l != '' && l != null;
                             }).join(this.separator)
                         } catch (e) {
@@ -607,17 +607,17 @@ if (typeof django_datatables === 'undefined') {
                     {
                         dataSrc: tablesetup.field_ids.indexOf(tablesetup.tableOptions.rowGroup.dataSrc),
                         endRender: function (rows, group) {
-                            sums = Array(rows.data()[0].length).fill('')
+                            var sums = Array(rows.data()[0].length).fill('')
                             tablesetup.tableOptions.rowGroup.sumColumns.forEach(
                                 function (column) {
-                                    column_no = tablesetup.field_ids.indexOf(column)
+                                    var column_no = tablesetup.field_ids.indexOf(column)
                                     var sum = rows.data().pluck(column_no).reduce(
                                         function (a, b) {
                                             return a + parseFloat(b)
                                         }, 0)
                                     sums[column_no] = sum
                                 })
-                            sums_row = ''
+                            var sums_row = ''
                             for (c = 0; c < sums.length; c++) {
                                 if (tablesetup.colOptions[c].hidden != true) {
                                     if (typeof (sums[c]) == 'number') {
@@ -638,7 +638,7 @@ if (typeof django_datatables === 'undefined') {
 
             if (this.initsetup.tableOptions.row_href) {
                 $('#' + html_id + ' tbody').on('click', 'tr', function () {
-                    p_table = django_datatables.DataTables[html_id]
+                    var p_table = django_datatables.DataTables[html_id]
                     var row_id = $(this).attr('id')
                     var row_data = p_table.table.api().row('#' + row_id).data()
                     var href_render = new django_datatables.column_render(0, p_table.initsetup.tableOptions.row_href, p_table)
