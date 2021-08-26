@@ -1,6 +1,7 @@
 from django import template
 from django.utils.safestring import mark_safe
 from django_datatables.filters import DatatableFilter
+from django.template.loader import render_to_string
 register = template.Library()
 
 
@@ -40,3 +41,8 @@ def clear_table(table):
 @register.inclusion_tag('datatables/no_of_results.html')
 def no_of_results(table):
     return {'datatable': table}
+
+
+@register.simple_tag
+def include_escape(template_name):
+    return mark_safe(render_to_string(template_name).replace('\n', '\\n').replace('"', '\\"'))
