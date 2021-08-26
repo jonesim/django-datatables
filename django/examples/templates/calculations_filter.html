@@ -42,9 +42,9 @@
                 add_calcs: function (data) {
                     this.calcs.filtered_sum += data[0]
                     this.calcs.count += 1
-                    let delta = (data[0] - this.calcs.mean)
+                    var delta = (data[0] - this.calcs.mean)
                     this.calcs.mean += delta / this.calcs.count
-                    let delta2 = data[0] - this.calcs.mean
+                    var delta2 = data[0] - this.calcs.mean
                     this.calcs.M2 += delta * delta2
                 }
             }
