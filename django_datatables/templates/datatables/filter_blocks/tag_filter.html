@@ -35,7 +35,8 @@
                 return tag_filter
             }
 
-            this.buildfilter = function (refresh = false) {
+            this.buildfilter = function () {
+                var refresh = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
                 this.filter_data = {
                     'required': [],
                     'include': [],
@@ -103,13 +104,13 @@
             }
 
             this.html = function () {
-                var tagsection = `  <div class="filter-header tag-container" data-target="#collapsesect%3_%4" data-toggle="collapse">
-                            <li class="list-group-item list-group-item-secondary p-1 my-1">%1
-                                <span data-value="%4" class="small badge badge-pill badge-primary mx-1"></span>
-                            </li>
-                            </div>
-                            <div id="collapsesect%3_%4" class="collapse">`
-                var endsection = `</div>`
+                var tagsection = [
+                    '<div class="filter-header tag-container" data-target="#collapsesect%3_%4" data-toggle="collapse">',
+                    '<li class="list-group-item list-group-item-secondary p-1 my-1">%1',
+                    '<span data-value="%4" class="small badge badge-pill badge-primary mx-1"></span>',
+                    '</li></div><div id="collapsesect%3_%4" class="collapse">'
+                ].join("")
+                var endsection = '</div>'
                 var html = ""
                 var insection = false
                 var lookup = this.pTable.initsetup.colOptions[this.column_no].lookup
@@ -140,7 +141,7 @@
                     html += rep_options(html_source, textoptions)
                 }
                 if (insection) html += endsection;
-                let context = $('#' + this.html_id)
+                var context = $('#' + this.html_id)
                 $('.filter-content', context).html(html)
                 $(".all-clear", context).click(this.this_fn('clear'))
                 $(".tag-filter", context).click(this.this_fn('change_multi_input'))
@@ -164,9 +165,9 @@
                 this.buildfilter(true)
             }
         }
-        filter.prototype = Object.create(django_datatables.FilterBase.prototype);
+       filter.prototype = Object.create(django_datatables.FilterBase.prototype);
         options = {
-            tagcheckbox : `{% include 'datatables/filter_rows/checkbox_tag.html' %}`
+            tagcheckbox : "{% include_escape 'datatables/filter_rows/checkbox_tag.html' %}"
         };
         var new_filter = new filter({{ column_no }}, '{{ html_id }}', options);
     </script>

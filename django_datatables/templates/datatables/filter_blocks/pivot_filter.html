@@ -13,7 +13,7 @@
 
 {% block javascript %}
     <script>
-        options = {'htmlcheckbox': `{% include 'datatables/filter_rows/checkbox_filter.html' %}`}
+        options = {'htmlcheckbox': "{% include_escape 'datatables/filter_rows/checkbox_filter.html' %}"}
         var new_filter = new django_datatables.PivotFilter({{ column_no }}, '{{ html_id }}', options)
     </script>
 {% endblock %}

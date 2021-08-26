@@ -20,13 +20,14 @@
             this.save_data = function (data) {
                 var selected_ids = []
                 var selected = $("#" + this.html_id + " select").select2('data');
-                for (let i = 0; i < selected.length; i++) {
+                for (var i = 0; i < selected.length; i++) {
                     selected_ids.push(selected[i].id)
                 }
                 return selected_ids
             }
 
-            this.buildfilter = function (refresh = false) {
+            this.buildfilter = function () {
+                var refresh = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
                 this.filter_data = [];
                 var selected = $("#" + this.html_id + " select").select2('data');
                 for (var i = 0; i < selected.length; i++) {
@@ -38,7 +39,7 @@
             }
 
             this.filter = function (data) {
-                let col_data = data[this.column_no];
+                var col_data = data[this.column_no];
                 if (this.filter_data.length === 0) return true;
                 if (this.filter_data.indexOf(col_data) < 0) {
                     if (col_data === "" || data[this.column_no] === null) {
@@ -49,10 +50,13 @@
             }
 
             this.html = function () {
-                const optionhtml = `<option value="%6">%1</option>`
+                var optionhtml = '<option value="%6">%1</option>'
                 var htmldata = '';
-                for (var k of this.filter_calcs.sort_keys()) {
-                    htmldata += optionhtml.replace(/%1/g, k).replace(/%6/g, encodeURI(k))
+                var sorted_keys = this.filter_calcs.sort_keys()
+                var k = sorted_keys.next()
+                while (!k.done){
+                    htmldata += optionhtml.replace(/%1/g, k.value).replace(/%6/g, encodeURI(k))
+                    k = sorted_keys.next()
                 }
                 var context = $('#' + this.html_id)
                 $('.filter-content', context).html(htmldata);
@@ -68,7 +72,7 @@
                 $("select", context).val('').trigger('change')
             }
             this.format_template = function (state) {
-                const dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill %3">%2</span></span>';
+                var dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill %3">%2</span></span>';
                 if (state.loading) return;
                 return $(dropdown_item.replace('%1', state.text).replace('%2', this.filter_calcs.badge_string(state.text)).replace('%3', this.filter_calcs.badge_colour(state.text)[0]));
             }

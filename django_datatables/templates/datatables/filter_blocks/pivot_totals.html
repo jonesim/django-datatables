@@ -1,4 +1,5 @@
 {% extends 'datatables/filter_blocks/base_filter_block.html' %}
+{% load datatable_tags %}
 {% block header_icons %}
     <a class="filter-header-icon all-check" href="javascript:void(0);" title="Select All">
         <i class="select-all fas fa-check-square"></i></a>
@@ -45,8 +46,8 @@
             }
         }
         django_datatables.TotalPivotFilter.prototype = Object.create(django_datatables.PivotFilter.prototype);
-        options = {'htmlcheckbox': `{% include 'datatables/filter_rows/checkbox_total.html' %}`,
-                   'sum_column': {{ kwargs.sum_column|default:'column_no' }}}
+        options = {'htmlcheckbox': "{% include_escape 'datatables/filter_rows/checkbox_total.html' %}",
+                   'sum_column': {{ kwargs.sum_column|default:column_no }}}
         var new_filter = new django_datatables.TotalPivotFilter({{ column_no }}, '{{ html_id }}', options)
     </script>
 {% endblock %}
