@@ -30,6 +30,13 @@ class ColumnBase:
             self.kwargs = self.merge_kwargs_locals(local_vars)
             # noinspection PyAttributeOutsideInit
             self.initialised = 'column_name' in self.kwargs or hasattr(self, 'column_name')
+            if not self.initialised:
+                if 'annotations' in self.kwargs:
+                    self.kwargs['annotation_names'] = {}
+                    for k in self.kwargs['annotations']:
+                        self.kwargs['annotation_names'][k] = []
+                        for e in self.kwargs['annotations'][k].source_expressions:
+                            self.kwargs['annotation_names'][k].append(e.name)
         return self.initialised
 
     def get_class_instance(self, column_name, **kwargs):
@@ -51,12 +58,6 @@ class ColumnBase:
 
     def __init__(self, field=None, **kwargs):
         if not self.initialise(locals()):
-            if 'annotations' in kwargs:
-                self.kwargs['annotation_names'] = {}
-                for k in kwargs['annotations']:
-                    self.kwargs['annotation_names'][k] = []
-                    for e in kwargs['annotations'][k].source_expressions:
-                        self.kwargs['annotation_names'][k].append(e.name)
             return
         # Remove  ._$ characters from beginning of name and set appropriate options
         self._column_name = None
