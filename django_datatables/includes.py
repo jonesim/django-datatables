@@ -1,6 +1,11 @@
+from importlib.metadata import PackageNotFoundError
+
 from ajax_helpers.html_include import SourceBase, pip_version
 
-version = pip_version('django-filtered-datatables')
+try:
+    version = pip_version('django-filtered-datatables')
+except PackageNotFoundError:
+    version = 'local'
 
 
 class DataTables(SourceBase):
