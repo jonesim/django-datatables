@@ -51,6 +51,12 @@ class ColumnBase:
 
     def __init__(self, field=None, **kwargs):
         if not self.initialise(locals()):
+            if 'annotations' in kwargs:
+                self.kwargs['annotation_names'] = {}
+                for k in kwargs['annotations']:
+                    self.kwargs['annotation_names'][k] = []
+                    for e in kwargs['annotations'][k].source_expressions:
+                        self.kwargs['annotation_names'][k].append(e.name)
             return
         # Remove  ._$ characters from beginning of name and set appropriate options
         self._column_name = None
@@ -77,6 +83,14 @@ class ColumnBase:
         if not hasattr(self, 'row_result'):
             self.row_result = MethodType(self.__row_result, self)
         self.setup_kwargs(kwargs)
+        if 'annotation_names' in self.kwargs:
+            for k in self.kwargs['annotation_names']:
+                for c, n in enumerate(self.kwargs['annotation_names'][k]):
+                    self.annotations[k].source_expressions[c].name = self.model_path + n
+        self.col_setup()
+
+    def col_setup(self):
+        pass
 
     @property
     def annotations(self):
@@ -214,10 +228,6 @@ class DatatableColumn(ColumnBase):
         if not self.initialise(locals()):
             return
         super().__init__(**kwargs)
-        self.col_setup()
-
-    def col_setup(self):
-        pass
 
 
 class LambdaColumn(ColumnBase):
