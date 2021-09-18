@@ -1,0 +1,2 @@
+recursive-include datatable_examples *
+recursive-exclude datatable_examples *.pyc
