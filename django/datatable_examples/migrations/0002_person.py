@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('examples', '0001_initial'),
+        ('datatable_examples', '0001_initial'),
     ]
 
     operations = [
@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
                 ('first_name', models.CharField(max_length=80)),
                 ('surname', models.CharField(max_length=80)),
                 ('date_entered', models.DateField()),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='examples.Company')),
+                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='datatable_examples.Company')),
             ],
         ),
     ]

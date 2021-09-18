@@ -1,7 +1,7 @@
 # coding=utf-8
 from django.contrib import admin
 
-import examples.models as models
+import datatable_examples.models as models
 from django.conf import settings
 
 @admin.register(models.TagsDirect)

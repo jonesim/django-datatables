@@ -1,5 +1,5 @@
 from django.urls import path
-import examples.views as views
+import datatable_examples.views as views
 
 urlpatterns = [
     path('', views.Example1.as_view()),

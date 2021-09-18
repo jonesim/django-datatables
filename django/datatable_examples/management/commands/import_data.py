@@ -2,7 +2,7 @@ import csv
 import datetime
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from examples import models
+from datatable_examples import models
 
 
 class Command(BaseCommand):

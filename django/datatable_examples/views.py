@@ -48,6 +48,8 @@ class Example1(DatatableView):
         # table.add_js_filters('tag', 'DirectTag')
         table.table_options['row_href'] = row_link('example2', 'id')
         table.table_options['no_col_search'] = True
+        table.table_options['pageLength'] = '22'
+
         # table.table_options['scrollX'] = True
         # table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
         table.add_plugin(ColumnTotals, {'id': {'sum': 'over1000'}}, template='add_sum_calc.html')
@@ -93,6 +95,7 @@ class Example2(AjaxHelpers, DatatableView):
         #     'rowGroup': {'dataSrc': 'company__name',
         #                  }
         #  })
+        table.table_options['ajax_url'] = self.request.path
 
     def add_to_context(self, **kwargs):
         context = {'description': '''
@@ -517,6 +520,8 @@ class Example12(DatatableView):
             ('_max10', {'title': 'Replacelookup using 2 items from an array one indicating colour', 'render': [
                 {'function': 'ReplaceLookup', 'html': '<span class="badge badge-%2%">%1%</span>', 'var': ['%1%', '%2%']}
             ], 'lookup': coloured_lookup}),
+
+            ('_array',{'field_array': True, 'render': [render_replace(column='array:1', html='%1%')]} )
         )
 
     @staticmethod
@@ -558,7 +563,7 @@ class Example13(DatatableView):
 
     @staticmethod
     def get_table_query(table, **kwargs):
-        path = str(settings.BASE_DIR.joinpath('examples', 'data', 'example13.json'))
+        path = str(settings.BASE_DIR.joinpath('datatable_examples', 'data', 'example13.json'))
         with open(path) as json_file:
             data = json.load(json_file)
         return data

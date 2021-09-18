@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('examples', '0002_person'),
+        ('datatable_examples', '0002_person'),
     ]
 
     operations = [
@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('tag', models.CharField(max_length=40)),
-                ('company', models.ManyToManyField(to='examples.Company')),
+                ('company', models.ManyToManyField(to='datatable_examples.Company')),
             ],
         ),
     ]

@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'examples',
+    'datatable_examples',
     'django_datatables',
     'django_modals',
     'django_menus',

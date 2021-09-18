@@ -6,7 +6,7 @@ setuptools.setup(
     author="Ian Jones",
     description="Datatable examples",
     include_package_data = True,
-    packages=['examples'],
+    packages=['datatable_examples'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
