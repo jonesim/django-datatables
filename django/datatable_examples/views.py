@@ -1,5 +1,5 @@
 import csv
-
+import inspect
 import json
 from django.db.models import Count
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
@@ -17,11 +17,43 @@ from django_datatables.plugins.reorder import Reorder
 from django_datatables.widgets import DataTableWidget, DataTableReorderWidget
 from django_datatables.reorder_datatable import reorder
 from ajax_helpers.mixins import AjaxHelpers
+from django_menus.menu import MenuMixin
+from show_src_code.view_mixins import DemoViewMixin
 
 
-class Example1(DatatableView):
+class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
+    template_name = 'datatable_examples/table.html'
+
+    def setup_menu(self):
+
+        self.add_menu('main_menu').add_items(
+            'example1',
+            'example2',
+            'example3',
+            'example4',
+            'example5',
+            'example6',
+            'example7',
+            'example8',
+            'example9',
+            'example10',
+            'example11',
+            'example12',
+            'example13',
+            'reorder',
+            'widget',
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['view_class'] = inspect.getmodule(self).__name__ + '.' + self.__class__.__name__
+        context['title'] = type(self).__name__
+        context['filter'] = filter
+        return context
+
+
+class Example1(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table.html'
 
     @staticmethod
     def setup_table(table):
@@ -54,13 +86,10 @@ class Example1(DatatableView):
         # table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
         table.add_plugin(ColumnTotals, {'id': {'sum': 'over1000'}}, template='add_sum_calc.html')
 
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'filter': filter}
 
-
-class Example2(AjaxHelpers, DatatableView):
+class Example2(MainMenu,  DatatableView):
     model = models.Person
-    template_name = 'table2.html'
+    template_name = 'datatable_examples/csv_button_table.html'
     ajax_commands = ['row', 'column']
 
     def column_get_csv(self, **kwargs):
@@ -120,9 +149,8 @@ class CompanyView(DatatableView):
         pass
 
 
-class Example3(DatatableView):
+class Example3(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table.html'
 
     @staticmethod
     def badge(_column, data_dict, _page_results):
@@ -150,16 +178,15 @@ class Example3(DatatableView):
         table.sort('-people')
 
     def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'description': '''
+        return {'description': '''
         Two different ways to add HTML to table. Using a column renderer saves on the amount of data sent to the client.
         <br>Row colours implemented with a hidden column.<br>
         Columns sorted by column_replace
         '''}
 
 
-class Example4(DatatableView):
+class Example4(MainMenu, DatatableView):
     model = models.Person
-    template_name = 'table.html'
 
     @staticmethod
     def setup_table(table):
@@ -175,9 +202,9 @@ class Example4(DatatableView):
         table.add_js_filters('date', 'date_entered')
 
 
-class Example5(DatatableView):
+class Example5(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table5.html'
+    template_name = 'datatable_examples/example5.html'
 
     @staticmethod
     def setup_table(table):
@@ -190,13 +217,10 @@ class Example5(DatatableView):
         )
         table.add_js_filters('tag', 'Tags')
 
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'filter': filter}
 
-
-class Example6(DatatableView):
+class Example6(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table6.html'
+    template_name = 'datatable_examples/two_tables.html'
 
     def add_tables(self):
         self.add_table('t1', model=models.Company)
@@ -218,20 +242,15 @@ class Example6(DatatableView):
         )
     #    table.table_options.update(simple_table)
 
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'filter': filter}
 
-
-class Example7(AjaxHelpers, DatatableView):
+class Example7(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table7.html'
+    template_name = 'datatable_examples/top_filter.html'
     ajax_commands = ['row']
-
 
     def row_delete(self, **kwargs):
         # Could delete from database here but for demo don't remove
         return self.command_response('delete_row', row_no=kwargs['row_no'], table_id=kwargs['table_id'])
-
 
     def row_toggle_tag(self, **kwargs):
 
@@ -246,7 +265,6 @@ class Example7(AjaxHelpers, DatatableView):
         else:
             company.tags_set.add(tag)
         return table.refresh_row(self.request, kwargs['row_no'])
-
 
     class TagsY(DatatableColumn):
 
@@ -312,9 +330,6 @@ class Example7(AjaxHelpers, DatatableView):
                                                'sum': 'to_fixed', 'decimal_places': 1},
                                         'people': {'sum': True}})
 
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'filter': filter}
-
 
 class CollapseButton(DatatableColumn):
 
@@ -333,9 +348,8 @@ class CollapseButton(DatatableColumn):
         self.title = ''
 
 
-class Example8(DatatableView):
+class Example8(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table.html'
 
     @staticmethod
     def setup_table(table):
@@ -356,9 +370,6 @@ class Example8(DatatableView):
         table.column('collapsed').column_defs['orderable'] = False
         # table.table_options['ordering'] = False
 
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'filter': filter}
-
     @staticmethod
     def get_table_query(table, **kwargs):
         query = list(table.model.objects.values('id', 'name'))
@@ -378,9 +389,8 @@ class Example8(DatatableView):
         return query
 
 
-class Example9(DatatableView):
+class Example9(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table.html'
 
     @staticmethod
     def setup_table(table):
@@ -398,9 +408,6 @@ class Example9(DatatableView):
         )
         table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
 
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'filter': filter}
-
 
 class IdColumn(DatatableColumn):
 
@@ -409,9 +416,8 @@ class IdColumn(DatatableColumn):
         self.title = 'Class'
 
 
-class Example10(DatatableView):
+class Example10(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table.html'
 
     @staticmethod
     def setup_table(table):
@@ -435,13 +441,9 @@ class Example10(DatatableView):
         print('******************************')
         table.table_options['scrollX'] = True
 
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, }
 
-
-class Example11(DatatableView):
+class Example11(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table.html'
 
     @staticmethod
     def setup_table(table):
@@ -453,13 +455,9 @@ class Example11(DatatableView):
 
         )
 
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__}
 
-
-class Example12(DatatableView):
+class Example12(MainMenu, DatatableView):
     model = models.Company
-    template_name = 'table.html'
 
     @staticmethod
     def setup_table(table):
@@ -494,34 +492,36 @@ class Example12(DatatableView):
             'id',
             ('id', {'title': 'Simple Replace', 'render': [render_replace(column='id', html='* %1%')]}),
             ('id', {'title': 'HTML first render followed by Replace', 'render': [{'function': 'Html', 'html': '* %1%'},
-                               render_replace(column='id')]}),
-            ('_array', {'title':'Repeated replace on list', 'render': [render_replace(column='array', html='- %1%')]}),
-            ('_array1', {'title':'Replace with indexed item in list', 'field_array': True, 'render': [render_replace(column='array:1', html=': %1%')]}),
-            ('_array1', {'title':'Replace with alternative for null item', 'field_array': True, 'render': [render_replace(column='array:1', html=': %1%',
-                                                                        null_value='@ none',)]}),
-            ('_array1', {'title':'Alternative result for gte (>) 50 ', 'field_array': True, 'render': [render_replace(column='array:1', html=': %1%', gte=50,
-                                                                        alt_html='GTE 50 : %1%')]}),
-            ('_array1', {'title':'Alternative result for gte (>) 50 and then gte 100', 'field_array': True,
+                                                                                 render_replace(column='id')]}),
+            ('_array', {'title': 'Repeated replace on list', 'render': [render_replace(column='array', html='- %1%')]}),
+            ('_array1', {'title': 'Replace with indexed item in list', 'field_array': True,
+                         'render': [render_replace(column='array:1', html=': %1%')]}),
+            ('_array1', {'title': 'Replace with alternative for null item', 'field_array': True,
+                         'render': [render_replace(column='array:1', html=': %1%',
+                                                   null_value='@ none',)]}),
+            ('_array1', {'title': 'Alternative result for gte (>) 50 ', 'field_array': True,
+                         'render': [render_replace(column='array:1', html=': %1%', gte=50, alt_html='GTE 50 : %1%')]}),
+            ('_array1', {'title': 'Alternative result for gte (>) 50 and then gte 100', 'field_array': True,
                          'render': [render_replace(column='array:1', html=': %1%', gte=50, alt_html='GTE 50 : %1%'),
                                     render_replace(column='array:1', gte=100, alt_html='GTE 100 : %1%')]}),
 
             ('_array', {'title': 'Replace with multiple items from list', 'field_array': True,
                         'render': [{'function': 'Replace', 'var': ['%1%', '%2%'], 'html': 'first %1% Second %2%'}]}),
-            ('_max10',{'title':'Demo field (Max10)'}),
-            ('_max10', {'title':'Replacelookup function on Max10', 'render': [{'function': 'ReplaceLookup', 'html': 'html %1%', 'var': '%1%'}], 'lookup': lookup}),
-            ('_max10', {'title':'Replacelookup function with gte', 'render': [{'function': 'ReplaceLookup',
-                                    'html': 'html %1%',
-                                    'var': '%1%',
-                                    'alt_html': 'BIG %1%',
-                                    'gte': 4}
-                                   ], 'lookup': lookup}),
-            ('_array', {'title':' MergeArray function','field_array': True, 'render': [{'function': 'MergeArray'}]}),
-            ('_array', {'title':' MergeArray function with different separator','field_array': True, 'render': [{'function': 'MergeArray', 'separator': '#'}]}),
+            ('_max10', {'title': 'Demo field (Max10)'}),
+            ('_max10', {'title': 'Replacelookup function on Max10',
+                        'render': [{'function': 'ReplaceLookup', 'html': 'html %1%', 'var': '%1%'}], 'lookup': lookup}),
+            ('_max10', {'title': 'Replacelookup function with gte', 'render': [
+                {'function': 'ReplaceLookup', 'html': 'html %1%', 'var': '%1%',
+                 'alt_html': 'BIG %1%', 'gte': 4}
+            ], 'lookup': lookup}),
+            ('_array', {'title': ' MergeArray function', 'field_array': True, 'render': [{'function': 'MergeArray'}]}),
+            ('_array', {'title': ' MergeArray function with different separator', 'field_array': True,
+                        'render': [{'function': 'MergeArray', 'separator': '#'}]}),
             ('_max10', {'title': 'Replacelookup using 2 items from an array one indicating colour', 'render': [
                 {'function': 'ReplaceLookup', 'html': '<span class="badge badge-%2%">%1%</span>', 'var': ['%1%', '%2%']}
             ], 'lookup': coloured_lookup}),
 
-            ('_array',{'field_array': True, 'render': [render_replace(column='array:1', html='%1%')]} )
+            ('_array', {'field_array': True, 'render': [render_replace(column='array:1', html='%1%')]})
         )
 
     @staticmethod
@@ -536,18 +536,17 @@ class Example12(DatatableView):
         return results
 
     def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'description': '''
+        return {'description': '''
         Examples of render functions <B>Replace, ReplaceLookup, HTML</B> <br>
         also shows how lists can be accessed and displayed  
         '''}
 
 
-class Example13(DatatableView):
-    template_name = 'table.html'
+class Example13(MainMenu, DatatableView):
+    template_name = 'datatable_examples/table13.html'
 
     @staticmethod
     def setup_table(table):
-        table.datatable_template = 'table13.html'
         table.add_columns(
             'id',
             'first_name',
@@ -569,7 +568,7 @@ class Example13(DatatableView):
         return data
 
     def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'description': '''
+        return {'description': '''
         This example gets its data from a json file instead of the database
         '''}
 
@@ -582,8 +581,8 @@ class DemoForm(forms.Form):
     )
 
 
-class WidgetView(AjaxHelpers, FormView):
-    template_name = 'widget_example.html'
+class WidgetView(MainMenu, FormView):
+    template_name = 'datatable_examples/widget_example.html'
     form_class = DemoForm
 
     ajax_commands = ['datatable', 'button']
@@ -598,8 +597,8 @@ class WidgetView(AjaxHelpers, FormView):
         return self.command_response('reload')
 
 
-class ExampleReorder(AjaxHelpers, ReorderDatatableView):
-    template_name = 'table-nosearch.html'
+class ExampleReorder(MainMenu, ReorderDatatableView):
+    template_name = 'datatable_examples/table-nosearch.html'
 
     model = models.Company
     order_field = 'order'
@@ -608,6 +607,3 @@ class ExampleReorder(AjaxHelpers, ReorderDatatableView):
     def setup_table(table):
         table.add_columns('name')
         table.add_plugin(Reorder)
-
-    def add_to_context(self, **kwargs):
-        return {'title': type(self).__name__, 'filter': filter}
