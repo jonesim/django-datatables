@@ -1,8 +1,9 @@
 from django.urls import path
+from django.views.generic.base import RedirectView
 import datatable_examples.views as views
 
 urlpatterns = [
-    path('', views.Example1.as_view()),
+    path('datatable-redirect/', RedirectView.as_view(pattern_name='example1', ), name='django-filtered-datatables'),
     path('<int:pk>', views.CompanyView.as_view(), name='company'),
     path('example-1', views.Example1.as_view(), name='example1'),
     path('example-2/<int:pk>/', views.Example2.as_view(), name='example2'),
