@@ -1,7 +1,6 @@
-{% extends 'base.html' %}
+{% extends 'datatable_examples/table.html' %}
 {% load datatable_tags %}
-
-{% block table %}
+{% block tables %}
     <div class="" style="display: flex">
         <div class="pr-0" style="max-height: calc(100vh - 110px);overflow: auto;width: 280px;flex-shrink: 0">
             {% filter_control datatables.t1 %}

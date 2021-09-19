@@ -1,0 +1,26 @@
+{% extends 'datatable_examples/base.html' %}
+{% load datatable_tags src_code %}
+
+{% block contents %}
+    <div class="m-1 text-right">
+     <img src="{{ version_img }}">
+      <a class="btn btn-outline-secondary btn-sm" href="{{ home_page }}"><i class="fab fa-github text-dark"></i>GitHub</a>
+     {% show_src_code 'source_code' view_class %}
+    </div>
+    <div class="p-4">
+        {{ description|safe }}
+        <br>
+        {% block header %}
+        {% endblock %}
+        {% block tables %}
+            <div class="d-flex">
+                <div style="min-width:320px">
+                    {% filter_control datatable %}
+                </div>
+                <div class="px-4 d-block float-left">
+                    {{ datatable.render|safe }}
+                </div>
+            </div>
+        {% endblock %}
+    </div>
+{% endblock %}

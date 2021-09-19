@@ -1,0 +1,34 @@
+<!doctype html>
+{% load ajax_helpers %}
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% lib_include 'ajax_helpers' 'Bootstrap' 'FontAwesome' module='ajax_helpers.includes' %}
+    {% lib_include 'Modals' 'Toggle' 'select2' 'JQueryUI' 'TinyMce' module='django_modals.includes' %}
+    {% lib_include module='django_menus.includes' %}
+    {% lib_include module='show_src_code.includes' %}
+    {% lib_include 'datatable' module='django_datatables.includes' %}
+</head>
+<body>
+{% block body %}
+    <nav class="navbar navbar-expand-lg bg-dark navbar-dark active-bar">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            {{ menus.main_menu.render }}
+        </div>
+        <div class="text-light">
+            {{ menus.user_menu.render }}
+        </div>
+    </nav>
+
+    {% block contents %}
+    {% endblock %}
+
+{% endblock %}
+
+</body>
+</html>

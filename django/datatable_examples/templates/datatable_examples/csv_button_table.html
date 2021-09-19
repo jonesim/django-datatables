@@ -1,0 +1,9 @@
+{% extends 'datatable_examples/table.html' %}
+
+{% block header %}
+    <div class="form-inline">
+        <button class="btn m-2" onclick="django_datatables.DataTables['{{ datatable.table_id }}'].send_column('get_csv', 'id')">
+            <i style="font-size: 28px" class="filter-header-icon fas fa-file-csv"></i>
+        </button>
+    </div>
+{% endblock %}

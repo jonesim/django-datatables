@@ -1,0 +1,6 @@
+{% extends 'datatable_examples/table.html' %}
+{% load datatable_tags %}
+
+{% block header %}
+    {% filter_template 'calculations_filter.html' datatable filter_title='Custom Filter' %}
+{% endblock %}
