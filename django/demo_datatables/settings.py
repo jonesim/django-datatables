@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django_menus',
     'ajax_helpers',
     'show_src_code',
+    'modal_examples',
 ]
 
 MIDDLEWARE = [
