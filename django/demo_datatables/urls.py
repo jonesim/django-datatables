@@ -15,8 +15,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from django.apps import apps
 
 urlpatterns = [
-    path('', include('datatable_examples.urls')),
+    path('', include('show_src_code.urls')),
     path('admin/', admin.site.urls),
 ]
+
+a = apps.get_app_configs()
+for c in a:
+    if hasattr(c, 'urls'):
+        urlpatterns += [path('', include(c.urls))]
