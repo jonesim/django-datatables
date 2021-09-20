@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'show_src_code',
     'modal_examples',
     'menu_examples',
+    'ajax_examples',
 ]
 
 MIDDLEWARE = [
