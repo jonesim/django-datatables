@@ -40,10 +40,12 @@ INSTALLED_APPS = [
     'datatable_examples',
     'django_datatables',
     'django_modals',
+    'crispy_forms',
     'django_menus',
     'ajax_helpers',
     'show_src_code',
     'modal_examples',
+    'menu_examples',
 ]
 
 MIDDLEWARE = [
@@ -57,6 +59,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'demo_datatables.urls'
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 TEMPLATES = [
     {
