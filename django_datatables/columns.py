@@ -68,6 +68,8 @@ class ColumnBase:
         self.model_path = kwargs.pop('model_path', None)
         if not self.model_path:
             self.model_path = self.get_model_path(self.column_name)
+            if '/' in self.model_path:
+                self.model_path = self.model_path[self.model_path.find('/') + 1:]
         self.model = kwargs.pop('model', None)
         if kwargs.pop('column_name', None) == field:
             self.field = self.column_name
