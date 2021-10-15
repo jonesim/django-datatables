@@ -1,0 +1,84 @@
+{% extends 'datatables/filter_blocks/pivot_filter.html' %}
+{% load datatable_tags %}
+
+{% block content %}
+    <div class="filter-content">
+        {% for f in kwargs.filter_list %}
+            {% include 'datatable_examples/checkbox.html' with data_value=f.1 text=f.0 %}
+        {% endfor %}
+    </div>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        django_datatables.TemplateFilter = function (column_no, html_id, options) {
+            filtered_options = {{ options|safe }}
+                django_datatables.PivotFilter.call(this, column_no, html_id, options);
+            this.html = function () {
+                var context = $('#{{ html_id }}');
+                $(".filtercheck", context).change(this.this_fn('buildfilter', true));
+                $(".all-check", context).click(this.this_fn('checkall', true));
+                $(".none-check", context).click(this.this_fn('checkall', false));
+                this.restore_state();
+                this.buildfilter(false);
+            };
+            FilteredCalcsOther = new django_datatables.FilterCalcs(column_no);
+            for (var o = 0; o < filtered_options.length; o++) {
+                FilteredCalcsOther.calcs[filtered_options[o]] = [0, 0];
+            }
+            FilteredCalcsOther.init_calcs = function (row) {
+                var value = this.get_value(row);
+                this.count += 1;
+                let key = this.get_key(row);
+                if (!Array.isArray(key)) {
+                    key = [key];
+                }
+                for (var k = 0; k < key.length; k++) {
+                    if (key[k] in this.calcs) {
+                        this.calcs[key[k]][1] += value;
+                    } else {
+                        this.calcs['other'][1] += value;
+                    }
+                }
+                FilteredCalcsOther.add_calcs = function (row) {
+                    var value = this.get_value(row);
+                    var item = this.get_key(row);
+                    if (Array.isArray(item)) {
+                        for (var i = 0; i < item.length; i++) {
+                            if (item[i] in this.calcs) {
+                                this.calcs[item[i]][0] += value;
+                            } else {
+                                this.calcs['other'][0] += value;
+                            }
+                        }
+                    } else {
+                        if (item in this.calcs) {
+                            this.calcs[item][0] += value;
+                        } else {
+                            this.calcs['other'][0] += value;
+                        }
+                    }
+                };
+            };
+
+            this.filter_calcs = FilteredCalcsOther;
+            this.filter = function (data) {
+                var col_data = data[this.column_no];
+                if (this.filter_calcs.calcs[col_data] === undefined) {
+                    if (this.filter_data.indexOf("other") < 0) return false;
+                } else {
+                    if (typeof (col_data) === 'number') col_data = col_data.toString();
+                    if (col_data == "" | col_data == null) {
+                        col_data = 'null';
+                    }
+                    if ((this.filter_data.indexOf(col_data) < 0)) return false;
+                }
+                return true;
+            };
+        };
+
+        django_datatables.TemplateFilter.prototype = Object.create(django_datatables.PivotFilter.prototype);
+        options = {'htmlcheckbox': "{% include_escape 'datatables/filter_rows/checkbox_filter.html' %}"};
+        var new_filter = new django_datatables.TemplateFilter({{ column_no }}, '{{ html_id }}', options);
+    </script>
+{% endblock %}
