@@ -10,12 +10,16 @@ from .detect_device import detect_device
 from .columns import ColumnBase, DateColumn, ChoiceColumn, BooleanColumn, CallableColumn
 from .model_def import DatatableModel
 from .filters import DatatableFilter
-
+from .models import SavedState
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 
 class DatatableError(Exception):
+    pass
+
+
+class DatatableExcludedRow(Exception):
     pass
 
 
@@ -31,9 +35,9 @@ class ColumnInitialisor:
             path = path[0]
         self.kwargs = kwargs
         self.columns = []
-        self.kwargs['model_path'] = field_prefix
         self.callable = False
-
+        self.next_prefix = ''
+        explicit_name = False
         if isclass(path):
             self.setup = path
             self.kwargs['column_name'] = path.__name__
@@ -43,10 +47,14 @@ class ColumnInitialisor:
                 self.kwargs['column_name'] = type(path).__name__
         elif isinstance(path, str):
             self.path, options = ColumnBase.extract_options(path)
+            self.path = field_prefix + self.path
             self.kwargs.update(options)
             if start_model is not None:
                 self.model, self.django_field, self.setup = DatatableModel.get_setup_data(start_model, self.path)
-            self.kwargs['column_name'] = path
+            if 'column_name' in self.kwargs:
+                explicit_name = True
+            else:
+                self.kwargs['column_name'] = path
 
             if '__' in self.path:
                 split_path = self.path.split('__')
@@ -54,16 +62,16 @@ class ColumnInitialisor:
                 self.next_prefix = '__'.join(split_path[:-1]) + '__'
             else:
                 self.field = self.path
-                self.next_prefix = ''
             self.callable = callable(getattr(self.model, self.field, None))
         else:
             raise DatatableError('Unknown type in columns ' + str(path))
 
-        if 'column_name' in kwargs and name_prefix:
-            self.kwargs['column_name'] = f'{name_prefix}/{self.kwargs["column_name"]}'
+        if 'column_name' in kwargs and name_prefix and not explicit_name:
+            self.kwargs['column_name'] = f'{name_prefix}/{field_prefix}{self.kwargs["column_name"]}'
 
     def get_columns(self):
         self.kwargs['model'] = self.model
+        self.kwargs['model_path'] = self.next_prefix
         if isclass(self.setup):
             self.columns.append(self.setup(**self.kwargs))
         elif isinstance(self.setup, ColumnBase):
@@ -72,6 +80,7 @@ class ColumnInitialisor:
             else:
                 self.columns.append(self.setup.get_class_instance(**self.kwargs))
         elif isinstance(self.setup, list):
+            del self.kwargs['column_name']
             for c in self.setup:
                 self.columns += ColumnInitialisor(start_model=self.start_model, path=c, field_prefix=self.next_prefix,
                                                   name_prefix=self.field, **self.kwargs).get_columns()
@@ -115,6 +124,7 @@ class DatatableTable:
 
         self.ajax_data = True
         self.model = model
+        self.page_results = {}
 
         # django query attributes
         self.filter = {}
@@ -140,11 +150,17 @@ class DatatableTable:
     def column(self, column_name):
         return self.find_column(column_name)[0]
 
-    def add_js_filters(self, name_or_template, column_ids, **kwargs):
-        if type(column_ids) == str:
-            column_ids = [column_ids]
-        for c in column_ids:
-            self.js_filter_list.append(DatatableFilter(name_or_template, self, column=self.find_column(c)[0], **kwargs))
+    def add_js_filters(self, name_or_template, *column_ids, filter_class=DatatableFilter, **kwargs):
+        if isclass(name_or_template):
+            filter_class = name_or_template
+        if column_ids:
+            if isinstance(column_ids[0], (list, tuple)):
+                column_ids = column_ids[0]
+            for c in column_ids:
+                self.js_filter_list.append(filter_class(name_or_template, self, column=self.find_column(c)[0],
+                                                        **kwargs))
+        else:
+            self.js_filter_list.append(filter_class(name_or_template, self, **kwargs))
 
     def js_filter(self, name_or_template, column_id, **kwargs):
         return DatatableFilter(name_or_template, self, column=self.find_column(column_id)[0], **kwargs)
@@ -219,7 +235,7 @@ class DatatableTable:
         return [c.column_name for c in self.columns]
 
     def all_titles(self):
-        return [str(c.title) for c in self.columns]
+        return [mark_safe(str(c.title)) for c in self.columns]
 
     def render(self):
         rendered_strings = []
@@ -260,7 +276,14 @@ class DatatableTable:
         page_results = {}
         for c in self.columns:
             c.setup_results(request, page_results)
-        return [[c.row_result(data_dict, page_results) for c in self.columns] for data_dict in results]
+        results_list = []
+        for data_dict in results:
+            try:
+                results_list.append([c.row_result(data_dict, page_results) for c in self.columns])
+            except DatatableExcludedRow:
+                pass
+        return results_list
+
 
     def get_json(self, request, results):
         return_data = {'data': self.get_table_array(request, results)}
@@ -391,3 +414,14 @@ class DatatableView(TemplateView):
 
     def add_to_context(self, **kwargs):
         return {}
+
+    def button_datatable_save_state(self, state, table_id, **kwargs):
+        saved_state = SavedState.objects.get_or_create(name=kwargs['name'], table_id=table_id)[0]
+        saved_state.state = json.dumps(state)
+        saved_state.save()
+        return self.command_response('delay', time=1)
+
+    def button_datatable_load_state(self, table_id, name, id, **kwargs):
+        saved_state = SavedState.objects.get(id=int(id))
+        self.add_command('restore_datatable', state=saved_state.state, table_id=table_id, state_id=saved_state.id)
+        return self.command_response('reload')

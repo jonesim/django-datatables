@@ -1,3 +1,4 @@
+import inspect
 import string
 import random
 from django.template.loader import render_to_string
@@ -35,7 +36,7 @@ class DatatableFilter:
             self.filter_title = column.title
         else:
             self.filter_title = ''
-        if type(name_or_template) == str:
+        if not inspect.isclass(name_or_template):
             if name_or_template in self.template_library:
                 self.template = self.template_library[name_or_template]
             else:

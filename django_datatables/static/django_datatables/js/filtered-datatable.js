@@ -22,6 +22,13 @@ if (typeof django_datatables === 'undefined') {
             DataTables[command.table_id].table.api().ajax.reload(null, false);
         }
 
+        ajax_helpers.command_functions.restore_datatable = function (command) {
+            state = JSON.parse(command.state)
+            state.time = new Date().getTime()
+            state.state_id = command.state_id
+            localStorage.setItem('DataTables_' + command.table_id + '_' + location.pathname, JSON.stringify(state));
+        };
+
         var utilities = {
 
             numberWithCommas: function(x, decimal_places=0) {

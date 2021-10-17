@@ -1,4 +1,5 @@
 import re
+import copy
 import inspect
 from types import MethodType
 from typing import TypeVar, Dict
@@ -30,13 +31,6 @@ class ColumnBase:
             self.kwargs = self.merge_kwargs_locals(local_vars)
             # noinspection PyAttributeOutsideInit
             self.initialised = 'column_name' in self.kwargs or hasattr(self, 'column_name')
-            if not self.initialised:
-                if 'annotations' in self.kwargs:
-                    self.kwargs['annotation_names'] = {}
-                    for k in self.kwargs['annotations']:
-                        self.kwargs['annotation_names'][k] = []
-                        for e in self.kwargs['annotations'][k].source_expressions:
-                            self.kwargs['annotation_names'][k].append(e.name)
         return self.initialised
 
     def get_class_instance(self, column_name, **kwargs):
@@ -86,10 +80,6 @@ class ColumnBase:
         if not hasattr(self, 'row_result'):
             self.row_result = MethodType(self.__row_result, self)
         self.setup_kwargs(kwargs)
-        if 'annotation_names' in self.kwargs:
-            for k in self.kwargs['annotation_names']:
-                for c, n in enumerate(self.kwargs['annotation_names'][k]):
-                    self.annotations[k].source_expressions[c].name = self.model_path + n
         self.col_setup()
 
     def col_setup(self):
@@ -101,7 +91,15 @@ class ColumnBase:
 
     @annotations.setter
     def annotations(self, value):
-        for f in value:
+        self._annotations = copy.deepcopy(value)
+        if self.model_path:
+            new_annotations = {}
+            for k in self.annotations:
+                new_annotations[self.model_path + k] = self.annotations[k]
+                for e in new_annotations[self.model_path + k].source_expressions:
+                    e.name = self.model_path + e.name
+            self._annotations = new_annotations
+        for f in self.annotations:
             if self.field is None:
                 self._field = f
             elif type(self.field) == str:
@@ -110,7 +108,6 @@ class ColumnBase:
             else:
                 if f not in self.field:
                     self._field.append(f)
-        self._annotations = value
 
     @property
     def column_name(self):
@@ -199,7 +196,7 @@ class ColumnBase:
     @staticmethod
     def title_from_name(name):
         if type(name) == str and len(name) > 0:
-            field_no_path = name.split('__')[-1]
+            field_no_path = name.split('/')[-1].split('__')[-1]
             if field_no_path.find('_') > 0:
                 return field_no_path.replace('_', ' ').title()
             else:
