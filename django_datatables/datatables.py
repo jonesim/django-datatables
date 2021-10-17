@@ -206,11 +206,15 @@ class DatatableTable:
             if c.column_name in column_names:
                 c.setup_kwargs(options)
 
-    def find_column(self, column_name, by_field=False):
+    def find_column(self, column_name):
         for n, c in enumerate(self.columns):
-            if by_field and c.field == column_name:
-                return c, n
             if c.column_name == column_name:
+                return c, n
+        for n, c in enumerate(self.columns):
+            if c.field == column_name:
+                return c, n
+        for n, c in enumerate(self.columns):
+            if c.column_name.split('/')[-1] == column_name:
                 return c, n
         raise DatatableError('Unable to find column ' + column_name)
 
