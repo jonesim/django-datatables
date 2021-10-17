@@ -206,10 +206,11 @@ class DatatableTable:
             if c.column_name in column_names:
                 c.setup_kwargs(options)
 
-    def find_column(self, column_name):
-        for n, c in enumerate(self.columns):
-            if c.column_name == column_name:
-                return c, n
+    def find_column(self, column_name, by_field=False):
+        if not by_field:
+            for n, c in enumerate(self.columns):
+                if c.column_name == column_name:
+                    return c, n
         for n, c in enumerate(self.columns):
             if c.field == column_name:
                 return c, n
@@ -286,7 +287,6 @@ class DatatableTable:
             except DatatableExcludedRow:
                 pass
         return results_list
-
 
     def get_json(self, request, results):
         return_data = {'data': self.get_table_array(request, results)}
