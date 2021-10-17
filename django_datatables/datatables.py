@@ -273,13 +273,12 @@ class DatatableTable:
         return col_def_str
 
     def get_table_array(self, request, results):
-        page_results = {}
         for c in self.columns:
-            c.setup_results(request, page_results)
+            c.setup_results(request, self.page_results)
         results_list = []
         for data_dict in results:
             try:
-                results_list.append([c.row_result(data_dict, page_results) for c in self.columns])
+                results_list.append([c.row_result(data_dict, self.page_results) for c in self.columns])
             except DatatableExcludedRow:
                 pass
         return results_list
