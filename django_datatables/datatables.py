@@ -101,13 +101,13 @@ class ColumnInitialisor:
     def add_django_field_column(self):
         if 'title' not in self.kwargs:
             self.kwargs['title'] = self.django_field.verbose_name.title()
-        field_type = type(self.django_field)
-        if field_type in [models.DateField, models.DateTimeField]:
+        if isinstance(self.django_field, (models.DateField, models.DateTimeField)):
             self.columns.append(DateColumn(**self.kwargs))
-        elif (field_type in [models.IntegerField, models.PositiveSmallIntegerField, models.PositiveIntegerField]
+        elif (isinstance(self.django_field,
+                         (models.IntegerField, models.PositiveSmallIntegerField, models.PositiveIntegerField))
               and self.django_field.choices is not None and len(self.django_field.choices) > 0):
             self.columns.append(ChoiceColumn(choices=self.django_field.choices, **self.kwargs))
-        elif field_type == models.BooleanField:
+        elif isinstance(self.django_field, models.BooleanField):
             self.columns.append(BooleanColumn(**self.kwargs))
         else:
             self.columns.append(ColumnBase(**self.kwargs))
