@@ -6,3 +6,4 @@ class DatatableExampleConfig(PypiAppConfig):
     name = 'datatable_examples'
     pypi = 'django-filtered-datatables'
     urls = 'datatable_examples.urls'
+    default_auto_field = 'django.db.models.AutoField'
