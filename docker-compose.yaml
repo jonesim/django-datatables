@@ -13,6 +13,16 @@ services:
    - PYTHONPATH=/dt
   ports:
    - 8006:8006
+  depends_on:
+   - db
 
+ db:
+  image: postgres:13.0-alpine
+  volumes:
+    - ./data/db:/var/lib/postgresql/data
+  environment:
+    - POSTGRES_USER=django_datatables
+    - POSTGRES_PASSWORD=django_datatables
+    - POSTGRES_DB=django_datatables
 
 

@@ -44,9 +44,9 @@ INSTALLED_APPS = [
     'django_menus',
     'ajax_helpers',
     'show_src_code',
-    'modal_examples',
-    'menu_examples',
-    'ajax_examples',
+    # 'modal_examples',
+    # 'menu_examples',
+    # 'ajax_examples',
 ]
 
 MIDDLEWARE = [
@@ -86,8 +86,12 @@ WSGI_APPLICATION = 'demo_datatables.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': str(BASE_DIR.joinpath('db.sqlite3')),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'django_datatables',
+        'USER': 'django_datatables',
+        'PASSWORD': 'django_datatables',
+        'HOST': 'db',
+        'PORT': 5432,
     }
 }
 

@@ -1,7 +1,9 @@
 import csv
 import inspect
 import json
-from django.db.models import Count
+from django.db.models import Count, Sum
+from django.db.models.functions import TruncMonth
+
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.helpers import row_button, render_replace, row_link
 from django_datatables.datatables import DatatableView
@@ -42,6 +44,7 @@ class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
             'example13',
             'reorder',
             'widget',
+            'tally',
         )
 
     def get_context_data(self, **kwargs):
@@ -607,3 +610,33 @@ class ExampleReorder(MainMenu, ReorderDatatableView):
     def setup_table(table):
         table.add_columns('name')
         table.add_plugin(Reorder)
+
+
+class TallyView(MainMenu, DatatableView):
+    model = models.Tally
+
+    @staticmethod
+    def setup_table(table):
+        table.distinct = []
+        table.order_by =['month']
+        table.add_columns(
+            ('month', {'annotations_value': {'month': TruncMonth('date')}}),
+            ('cars_c', {'annotations': {'cars_c': Sum('cars')}}),
+            # 'cars',
+            # 'vans',
+            # 'buses',
+            # 'lorries',
+            # 'motor_bikes',
+            # 'push_bikes',
+            # 'tractors'
+        )
+
+    # def get_table_query2(self, table, **kwargs):
+    #     r = models.Tally.objects.order_by('month').annotate(month=TruncMonth('date'), cars_c=Sum('cars')).values('month', 'cars_c')
+    #     return r
+        # .annotate(
+        #     year=Year('date'),
+        #     month=Month('date'),
+        # SELECT DATE_TRUNC('month', "datatable_examples_tally"."date") AS "month", SUM("datatable_examples_tally"."cars") AS "cars_c" FROM "datatable_examples_tally" GROUP BY DATE_TRUNC('month', "datatable_examples_tally"."date") ORDER BY "month" ASC
+
+# T.objects.annotate(month=TruncMonth('date')).values('month').annotate(c=Sum('id')).values('month', 'c')

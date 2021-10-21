@@ -4,6 +4,8 @@ django-tab-menus==0.0.13
 django-show-source-code==0.0.6
 # django-show-source-code @ git+git://github.com/jonesim/show-src-code
 django-nested-modals==0.0.13
+openpyxl==3.0.7
+psycopg2-binary>=2.8
 modal-examples @ git+git://github.com/jonesim/django-modals#subdirectory=django_examples
 menu-examples @ git+git://github.com/jonesim/django-menus#subdirectory=django_examples
 ajax-examples @ git+git://github.com/jonesim/ajax-helpers#subdirectory=django_examples
