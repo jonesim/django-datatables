@@ -103,15 +103,15 @@ class ColumnBase:
         self._annotations_value = self._set_annotations(value)
 
     def _set_annotations(self, value):
-        _annotations = copy.deepcopy(value)
+        annotations = copy.deepcopy(value)
         if self.model_path:
             new_annotations = {}
-            for k in _annotations:
-                new_annotations[self.model_path + k] = _annotations[k]
+            for k in annotations:
+                new_annotations[self.model_path + k] = annotations[k]
                 for e in new_annotations[self.model_path + k].source_expressions:
                     e.name = self.model_path + e.name
-            _annotations = new_annotations
-        for f in _annotations:
+            annotations = new_annotations
+        for f in annotations:
             if self.field is None:
                 self._field = f
             elif type(self.field) == str:
@@ -120,7 +120,7 @@ class ColumnBase:
             else:
                 if f not in self.field:
                     self._field.append(f)
-        return _annotations
+        return annotations
 
     @property
     def column_name(self):
