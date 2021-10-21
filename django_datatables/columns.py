@@ -17,6 +17,8 @@ class DatatableColumnError(Exception):
 
 
 class ColumnBase:
+    popover_html = ('<button type="button" class="ml-1 btn btn-link p-0" data-html=true data-placement="top" '
+                    'data-toggle="popover" data-content="{}"><i class="far fa-question-circle"></i></button>')
 
     @staticmethod
     def merge_kwargs_locals(local_vars):
@@ -78,6 +80,7 @@ class ColumnBase:
         self.kwargs = kwargs
         self.replace_list = []
         self.blank = None
+        self.popover = None
         if not hasattr(self, 'row_result'):
             self.row_result = MethodType(self.__row_result, self)
         self.setup_kwargs(kwargs)

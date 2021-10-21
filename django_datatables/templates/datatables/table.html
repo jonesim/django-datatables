@@ -28,5 +28,6 @@
             {{ datatable.table_id }}_configuration = {{ datatable.col_def_str|safe }};
             new django_datatables.PythonTable("{{ datatable.table_id }}", {{ datatable.table_id }}_configuration);
         })
+        $('#{{ datatable.table_id }} [data-toggle="popover"]').popover({trigger:"hover"})
     </script>
 {% endspaceless %}

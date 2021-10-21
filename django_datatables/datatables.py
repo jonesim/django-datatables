@@ -245,7 +245,8 @@ class DatatableTable:
         return [c.column_name for c in self.columns]
 
     def all_titles(self):
-        return [mark_safe(str(c.title)) for c in self.columns]
+         return [mark_safe(str(c.title) + ('' if not c.popover else c.popover_html.format(c.popover)))
+                 for c in self.columns]
 
     def render(self):
         rendered_strings = []
