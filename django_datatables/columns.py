@@ -73,6 +73,7 @@ class ColumnBase:
         self.title = self.title_from_name(self.column_name)
         self.column_type = 0
         self._annotations = None
+        self._annotations_value = None
         self.additional_columns = []
         self.kwargs = kwargs
         self.replace_list = []
@@ -91,15 +92,26 @@ class ColumnBase:
 
     @annotations.setter
     def annotations(self, value):
-        self._annotations = copy.deepcopy(value)
+        self._annotations = self._set_annotations(value)
+
+    @property
+    def annotations_value(self):
+        return self._annotations_value
+
+    @annotations_value.setter
+    def annotations_value(self, value):
+        self._annotations_value = self._set_annotations(value)
+
+    def _set_annotations(self, value):
+        annotations = copy.deepcopy(value)
         if self.model_path:
             new_annotations = {}
-            for k in self.annotations:
-                new_annotations[self.model_path + k] = self.annotations[k]
+            for k in annotations:
+                new_annotations[self.model_path + k] = annotations[k]
                 for e in new_annotations[self.model_path + k].source_expressions:
                     e.name = self.model_path + e.name
-            self._annotations = new_annotations
-        for f in self.annotations:
+            annotations = new_annotations
+        for f in annotations:
             if self.field is None:
                 self._field = f
             elif type(self.field) == str:
@@ -108,6 +120,7 @@ class ColumnBase:
             else:
                 if f not in self.field:
                     self._field.append(f)
+        return annotations
 
     @property
     def column_name(self):
