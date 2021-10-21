@@ -174,11 +174,22 @@ class DatatableTable:
 
     def get_query(self, **_kwargs):
         annotations = {}
+        annotations_value = {}
+        annotations_value_fields = []
         for c in self.columns:
             if c.annotations:
                 annotations.update(c.annotations)
-        query = (self.model.objects.annotate(**annotations).exclude(**self.exclude).values(*self.fields())
-                 .order_by(*self.order_by))
+            elif c.annotations_value:
+                annotations_value_fields.append(c.field)
+                annotations_value.update(c.annotations_value)
+
+        if len(annotations_value_fields) > 0:
+            query = (self.model.objects.annotate(**annotations_value).values(*annotations_value_fields)
+                     .annotate(**annotations).exclude(**self.exclude).values(*self.fields())
+                     .order_by(*self.order_by))
+        else:
+            query = (self.model.objects.annotate(**annotations).exclude(**self.exclude).values(*self.fields())
+                     .order_by(*self.order_by))
         if isinstance(self.filter, models.Q):
             query = query.filter(self.filter)
         else:
