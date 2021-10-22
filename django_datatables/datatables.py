@@ -172,6 +172,10 @@ class DatatableTable:
     def extra_filters(query):
         return query
 
+    @staticmethod
+    def view_filter(query, table):
+        return query
+
     def get_query(self, **_kwargs):
         annotations = {}
         annotations_value = {}
@@ -193,6 +197,7 @@ class DatatableTable:
         if self.max_records:
             query = query[:self.max_records]
         query = self.extra_filters(query=query)
+        query = self.view_filter(query, self)
         return query
 
     def sort(self, *columns):
@@ -327,6 +332,11 @@ class DatatableView(TemplateView):
         self.add_tables()
         self.dispatch_context = None
 
+    def view_filter(self, query, table):
+        if hasattr(table.model, 'query_filter'):
+            return table.model.query_filter(query, self.request, table=table)
+        return query
+
     def add_table(self, table_id, **kwargs):
         self.tables[table_id] = DatatableTable(table_id, table_options=self.table_options,
                                                table_classes=self.table_classes,
@@ -342,6 +352,7 @@ class DatatableView(TemplateView):
                     self.setup_table(table)
                 else:
                     getattr(self, 'setup_' + t_id)(table)
+            table.view_filter = self.view_filter
 
     def dispatch(self, request, *args, **kwargs):
         self.dispatch_context = detect_device(request)
