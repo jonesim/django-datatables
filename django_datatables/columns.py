@@ -3,7 +3,8 @@ import copy
 import inspect
 from types import MethodType
 from typing import TypeVar, Dict
-from .helpers import get_url, render_replace
+from .helpers import get_url, render_replace, DUMMY_ID
+
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
@@ -462,3 +463,27 @@ class CallableColumn(DatatableColumn):
         super().setup_kwargs(kwargs)
         self.object_function = getattr(self.model, self.field[len(self.model_path):])
         self.field = kwargs.get('parameters')
+
+
+class NoHeadingColumn(DatatableColumn):
+    def __init__(self, **kwargs):
+        kwargs['title'] = ''
+        kwargs['no_col_search'] = True
+        kwargs['column_defs'] = {'orderable': False}
+        super().__init__(**kwargs)
+
+
+class MenuColumn(NoHeadingColumn):
+    """
+    This is used to render a django-menus in a column.
+    example:
+
+    MenuColumn(column_name='menu', field='id', menu=HtmlMenu(self.request, 'button_group').add_items(
+                    ('view 1', 'View 1', {'url_kwargs': {'int': DUMMY_ID}}),
+                    ('view 2', 'View 2', {'url_kwargs': {'int': DUMMY_ID}})
+                )),
+    """
+    def __init__(self, menu, **kwargs):
+        menu_rendered = menu.render().replace(str(DUMMY_ID), '%1%')
+        kwargs['render'] = [render_replace(html=menu_rendered, column=kwargs['column_name'])]
+        super().__init__(**kwargs)
