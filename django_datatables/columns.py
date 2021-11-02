@@ -85,6 +85,7 @@ class ColumnBase:
         if not hasattr(self, 'row_result'):
             self.row_result = MethodType(self.__row_result, self)
         self.setup_kwargs(kwargs)
+        self.result_processes = {}
         self.col_setup()
 
     def col_setup(self):
