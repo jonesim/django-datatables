@@ -115,7 +115,7 @@ class ColumnInitialisor:
 
 class DatatableTable:
 
-    def __init__(self, table_id, model=None, table_options=None, table_classes=None):
+    def __init__(self, table_id, model=None, table_options=None, table_classes=None, **kwargs):
         self.columns = []
         self.table_id = table_id
         self.table_options: Dict[KT, VT] = {'pageLength': 100}
@@ -138,6 +138,8 @@ class DatatableTable:
         self.plugins = []
         self.omit_columns = []
         self.datatable_template = 'datatables/table.html'
+
+        self.kwargs = kwargs
 
         if table_classes:
             self.table_classes = table_classes
@@ -180,8 +182,8 @@ class DatatableTable:
         annotations = {}
         annotations_value = {}
         for c in self.columns:
-            if c.annotations:
-                annotations.update(c.annotations)
+            if c.get_annotations(**self.kwargs):
+                annotations.update(c.get_annotations(**self.kwargs))
             if c.annotations_value:
                 annotations_value.update(c.annotations_value)
         query = self.model.objects
@@ -329,7 +331,6 @@ class DatatableView(TemplateView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tables = {}
-        self.add_tables()
         self.dispatch_context = None
 
     def view_filter(self, query, table):
@@ -339,8 +340,7 @@ class DatatableView(TemplateView):
 
     def add_table(self, table_id, **kwargs):
         self.tables[table_id] = DatatableTable(table_id, table_options=self.table_options,
-                                               table_classes=self.table_classes,
-                                               **kwargs)
+                                               table_classes=self.table_classes, request=self.request, **kwargs)
 
     def add_tables(self):
         self.add_table(type(self).__name__.lower(), model=self.model)
@@ -355,6 +355,7 @@ class DatatableView(TemplateView):
             table.view_filter = self.view_filter
 
     def dispatch(self, request, *args, **kwargs):
+        self.add_tables()
         self.dispatch_context = detect_device(request)
         return super(DatatableView, self).dispatch(request, *args, **kwargs)
 

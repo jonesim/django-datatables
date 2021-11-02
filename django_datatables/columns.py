@@ -125,6 +125,9 @@ class ColumnBase:
                     self._field.append(f)
         return annotations
 
+    def get_annotations(self, **kwargs):
+        return self._annotations
+
     @property
     def column_name(self):
         return self._column_name
