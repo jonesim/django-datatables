@@ -236,16 +236,20 @@ class DatatableTable:
             self.columns += ColumnInitialisor(self.model, c).get_columns()
 
     def fields(self):
-        fields = []
+
+        def add_fields(fields, new_fields):
+            if isinstance(new_fields, (tuple, list)):
+                fields.update(new_fields)
+            else:
+                fields.add(new_fields)
+
+        fields = set()
+        for p in self.get_result_processes():
+            if hasattr(p, 'field'):
+                add_fields(fields, p.field)
         for c in self.columns:
             if c.field and 'calculated' not in c.options:
-                if isinstance(c.field, (tuple, list)):
-                    for f in c.field:
-                        if f not in fields:
-                            fields.append(f)
-                else:
-                    if c.field not in fields:
-                        fields.append(c.field)
+                add_fields(fields, c.field)
         return fields
 
     def all_names(self):
@@ -290,18 +294,22 @@ class DatatableTable:
         # col_def_str = col_def_str.replace('&"', "")
         return col_def_str
 
-    def get_table_array(self, request, results):
+    def get_result_processes(self):
         result_processes = {}
         for c in self.columns:
             result_processes.update(c.result_processes)
-        for p in result_processes.values():
+        return result_processes.values()
+
+    def get_table_array(self, request, results):
+        result_processes = self.get_result_processes()
+        for p in result_processes:
             p.setup_results(request, self.page_results)
         for c in self.columns:
             c.setup_results(request, self.page_results)
         results_list = []
         for data_dict in results:
             try:
-                for p in result_processes.values():
+                for p in result_processes:
                     p.row_result(data_dict, self.page_results)
                 results_list.append([c.row_result(data_dict, self.page_results) for c in self.columns])
             except DatatableExcludedRow:
