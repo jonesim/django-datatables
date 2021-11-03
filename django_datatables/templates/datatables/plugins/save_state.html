@@ -1,0 +1,97 @@
+{% load modal_tags %}
+<div id="{{ html_id }}">
+    {{ kwargs.form }}
+    <div class="text-right" style="margin-top: -10px">
+        <button onclick="filter_{{ html_id }}.edit_save_state()"
+                class="btn btn-outline-secondary btn-sm datatable_edit_button">EDIT
+        </button>
+        {% show_modal 'datatable_save_state' 'table_id-' table.table_id button='Save Report' button_classes='datatable_save_button btn btn-outline-secondary btn-sm d-none' %}
+    </div>
+</div>
+<script>
+    function datatable_state(table_id) {
+        return JSON.stringify(django_datatables.DataTables[table_id].table.api().state());
+    }
+
+    $('#{{ html_id }} select').change(function (e) {
+        var table_id = '{{ table.table_id }}';
+        var table = django_datatables.DataTables[table_id].table;
+        if ($(this).val() !== "") {
+            if (($(this).val() != table.api().state.loaded().state_id || table.api().state().state_id == null)) {
+                ajax_helpers.post_json({
+                    data: {
+                        button: 'datatable_load_state',
+                        id: $(this).val(),
+                        name: $(this).find(":selected").text(),
+                        table_id: table_id,
+                    }
+                });
+            }
+        } else {
+            filter_{{ html_id }}.set_buttons(true);
+        }
+    });
+
+    function SaveState(column_no, html_id, options) {
+        this.refresh_count = 0;
+        this.storage_key = 'saved_state';
+        django_datatables.FilterBase.call(this, 0, html_id, options);
+
+        this.filter = function () {
+            return true;
+        };
+
+        this.set_select = function(value){
+            var select = $('#' + html_id + ' select');
+            select.val(value);
+            select.trigger('change');
+        };
+
+        this.refresh = function () {
+            if (this.refresh_count > 0) {
+                this.set_select(null)
+            }
+            this.refresh_count += 1;
+        };
+
+        this.set_buttons = function (save) {
+            var context = $('#' + html_id);
+            if (save) {
+                $('.datatable_save_button', context).removeClass('d-none');
+                $('.datatable_edit_button', context).addClass('d-none');
+            } else {
+                $('.datatable_save_button', context).addClass('d-none');
+                $('.datatable_edit_button', context).removeClass('d-none');
+            }
+        };
+
+        this.save_state = function (state) {
+            if (this.refresh_count > 0) {
+                state.state_id = null;
+                this.set_buttons(true);
+            }
+        };
+
+        this.html = function () {
+            if (this.pTable.table.api().state.loaded().state_id !== undefined) {
+                this.pTable.table.api().state().state_id = this.pTable.table.api().state.loaded().state_id;
+                this.set_select(this.pTable.table.api().state.loaded().state_id);
+                this.set_buttons(false);
+            } else {
+                this.set_buttons(true);
+            }
+        };
+
+        this.edit_save_state = function () {
+            var url = '{% url 'datatable_save_state' '999999' %}';
+            django_modal.show_modal(url.replace('999999', $('#' + html_id + ' select').val()));
+        };
+    }
+
+    SaveState.prototype = Object.create(django_datatables.FilterBase.prototype);
+    var filter_{{ html_id }} = new SaveState(0, '{{ html_id }}');
+    django_datatables.add_filter('{{ table.table_id }}', filter_{{ html_id }});
+
+</script>
+
+

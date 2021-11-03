@@ -23,5 +23,5 @@ class PickStateForm(CrispyForm):
 
 
 def add_save_filters(table, user):
-    table.add_js_filters('datatable_examples/save_state.html',
+    table.add_js_filters('datatables/plugins/save_state.html',
                          form=PickStateForm(helper_class=NoLabelsRegularHelper, user=user, table_id=table.table_id))
