@@ -73,7 +73,7 @@
         };
 
         this.html = function () {
-            if (this.pTable.table.api().state.loaded().state_id !== undefined && this.pTable.table.api().state.loaded().state_id !== null) {
+            if (this.pTable.table.api().state.loaded()!== null && this.pTable.table.api().state.loaded().state_id !== undefined) {
                 this.pTable.table.api().state().state_id = this.pTable.table.api().state.loaded().state_id;
                 this.set_select(this.pTable.table.api().state.loaded().state_id);
                 this.set_buttons(false);
