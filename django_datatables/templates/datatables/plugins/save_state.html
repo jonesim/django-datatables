@@ -5,7 +5,7 @@
         <button onclick="filter_{{ html_id }}.edit_save_state()"
                 class="btn btn-outline-secondary btn-sm datatable_edit_button">EDIT
         </button>
-        {% show_modal 'datatable_save_state' 'table_id-' table.table_id button='Save Report' button_classes='datatable_save_button btn btn-outline-secondary btn-sm d-none' %}
+        {% show_modal 'datatables:save_state' 'table_id-' table.table_id button='Save Report' button_classes='datatable_save_button btn btn-outline-secondary btn-sm d-none' %}
     </div>
 </div>
 <script>
@@ -83,7 +83,7 @@
         };
 
         this.edit_save_state = function () {
-            var url = '{% url 'datatable_save_state' '999999' %}';
+            var url = '{% url 'datatables:save_state' '999999' %}';
             django_modal.show_modal(url.replace('999999', $('#' + html_id + ' select').val()));
         };
     }

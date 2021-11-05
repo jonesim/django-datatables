@@ -21,5 +21,5 @@ urlpatterns = [
     path('', include('show_src_code.urls')),
     path('admin/', admin.site.urls),
     path('favicon.ico', RedirectView.as_view(url='/static/datatable_examples/favicon.ico', permanent=True)),
-    path('datatables', include('django_datatables.urls'))
+    path('datatables/', include('django_datatables.urls', namespace='datatables'))
 ]
