@@ -14,7 +14,8 @@ class PickStateForm(CrispyForm):
         kwargs['no_buttons'] = True
         super().__init__(*args, **kwargs)
         self.fields['states'].widget = Select2(attrs={'id': table_id + '_state_id'})
-        reports = (SavedState.objects.order_by('name').filter(Q(public=True) | Q(user_id=user.id))
+        reports = (SavedState.objects.order_by('name').filter(Q(table_id=table_id),
+                                                              Q(public=True) | Q(user_id=user.id))
                    .values_list('id', 'name', 'public'))
         self.fields['states'].choices = [
             ('', ''),
