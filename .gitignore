@@ -3,6 +3,7 @@
 .idea/
 build/
 dist/
+/data/
 /django/db.sqlite3
 /django_filtered_datatables.egg-info/
 data/

@@ -618,25 +618,9 @@ class TallyView(MainMenu, DatatableView):
     @staticmethod
     def setup_table(table):
         table.distinct = []
-        table.order_by =['month']
+        # table.order_by = ['month']
         table.add_columns(
             ('month', {'annotations_value': {'month': TruncMonth('date')}}),
             ('cars_c', {'annotations': {'cars_c': Sum('cars')}}),
-            # 'cars',
-            # 'vans',
-            # 'buses',
-            # 'lorries',
-            # 'motor_bikes',
-            # 'push_bikes',
-            # 'tractors'
+
         )
-
-    # def get_table_query2(self, table, **kwargs):
-    #     r = models.Tally.objects.order_by('month').annotate(month=TruncMonth('date'), cars_c=Sum('cars')).values('month', 'cars_c')
-    #     return r
-        # .annotate(
-        #     year=Year('date'),
-        #     month=Month('date'),
-        # SELECT DATE_TRUNC('month', "datatable_examples_tally"."date") AS "month", SUM("datatable_examples_tally"."cars") AS "cars_c" FROM "datatable_examples_tally" GROUP BY DATE_TRUNC('month', "datatable_examples_tally"."date") ORDER BY "month" ASC
-
-# T.objects.annotate(month=TruncMonth('date')).values('month').annotate(c=Sum('id')).values('month', 'c')
