@@ -127,6 +127,7 @@ class DatatableTable:
         self.page_results = {}
 
         # django query attributes
+        self.initial_filter = {}
         self.filter = {}
         self.exclude = {}
         self.distinct = None
@@ -187,6 +188,9 @@ class DatatableTable:
             if c.annotations_value:
                 annotations_value.update(c.annotations_value)
         query = self.model.objects
+        if self.initial_filter:
+            query = (query.filter(self.initial_filter) if isinstance(self.initial_filter, models.Q)
+                     else query.filter(**self.initial_filter))
         if annotations_value:
             query = query.annotate(**annotations_value).values(*[f for f in annotations_value])
         query = query.annotate(**annotations).exclude(**self.exclude).values(*self.fields()).order_by(*self.order_by)
