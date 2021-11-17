@@ -82,11 +82,11 @@ class ColumnBase:
         self.replace_list = []
         self.blank = None
         self.popover = None
-        if not hasattr(self, 'row_result'):
-            self.row_result = MethodType(self.__row_result, self)
         self.setup_kwargs(kwargs)
         self.result_processes = {}
         self.col_setup()
+        if not hasattr(self, 'row_result'):
+            self.row_result = MethodType(self.__row_result, self)
 
     def col_setup(self):
         pass
