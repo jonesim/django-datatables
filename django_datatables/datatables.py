@@ -76,6 +76,8 @@ class ColumnInitialisor:
             self.columns.append(self.setup(**self.kwargs))
         elif isinstance(self.setup, ColumnBase):
             if self.setup.initialised:
+                if 'table' in self.kwargs:
+                    self.setup.table = self.kwargs['table']
                 self.columns.append(self.setup)
             else:
                 self.columns.append(self.setup.get_class_instance(**self.kwargs))
@@ -241,7 +243,7 @@ class DatatableTable:
 
     def add_columns(self, *columns):
         for c in columns:
-            self.columns += ColumnInitialisor(self.model, c).get_columns()
+            self.columns += ColumnInitialisor(self.model, c, table=self).get_columns()
 
     def fields(self):
 

@@ -231,7 +231,7 @@ class ColumnBase:
     def setup_kwargs(self, kwargs):
 
         for a, value in kwargs.items():
-            if a in ['field', 'column_name']:
+            if a in ['field', 'column_name', 'table']:
                 continue
             if a == 'row_result':
                 self.row_result = MethodType(value, self)
