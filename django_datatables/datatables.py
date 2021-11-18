@@ -128,6 +128,7 @@ class DatatableTable:
 
         # django query attributes
         self.initial_filter = {}
+        self.initial_values = []
         self.filter = {}
         self.exclude = {}
         self.distinct = None
@@ -188,6 +189,9 @@ class DatatableTable:
             if c.annotations_value:
                 annotations_value.update(c.annotations_value)
         query = self.model.objects
+        # Use initial values to group_by for annotations
+        if self.initial_values:
+            query = query.values(*self.initial_values)
         if self.initial_filter:
             query = (query.filter(self.initial_filter) if isinstance(self.initial_filter, models.Q)
                      else query.filter(**self.initial_filter))
