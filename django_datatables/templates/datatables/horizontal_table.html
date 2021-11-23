@@ -5,6 +5,7 @@
     (function () {
         var cell_data, row_class;
         var table = {{ datatable.model_table_setup }};
+        table.find_column = django_datatables.PythonTable.prototype.find_column
         for (var i = 0; i < table.initsetup.colOptions.length; i++) {
             if (table.initsetup.colOptions[i].row_class !== undefined){
                 row_class = ' class="' + table.initsetup.colOptions[i].row_class + '"'
