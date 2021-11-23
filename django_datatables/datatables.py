@@ -1,6 +1,7 @@
 import json
 from inspect import isclass
 from typing import TypeVar, Dict
+from ajax_helpers.utils import random_string
 from django.db import models
 from django.views.generic import TemplateView
 from django.http import HttpResponse, JsonResponse
@@ -116,11 +117,13 @@ class ColumnInitialisor:
 
 
 class DatatableTable:
+    datatable_template = 'datatables/table.html'
 
-    def __init__(self, table_id, model=None, table_options=None, table_classes=None, **kwargs):
+    def __init__(self, table_id=None, model=None, table_options=None, table_classes=None, view=None, **kwargs):
         self.columns = []
-        self.table_id = table_id
+        self.table_id = table_id if table_id else random_string()
         self.table_options: Dict[KT, VT] = {'pageLength': 100}
+        self.view = view
         if table_options:
             self.table_options.update(table_options)
 
@@ -141,7 +144,6 @@ class DatatableTable:
         self.js_filter_list = []
         self.plugins = []
         self.omit_columns = []
-        self.datatable_template = 'datatables/table.html'
 
         self.kwargs = kwargs
 
@@ -243,7 +245,9 @@ class DatatableTable:
 
     def add_columns(self, *columns):
         for c in columns:
-            self.columns += ColumnInitialisor(self.model, c, table=self).get_columns()
+            new_columns = ColumnInitialisor(self.model, c, table=self).get_columns()
+            self.columns += [nc for nc in new_columns if nc.enabled]
+        return self
 
     def fields(self):
 
@@ -365,8 +369,7 @@ class DatatableView(TemplateView):
 
     def add_table(self, table_id, **kwargs):
         self.tables[table_id] = DatatableTable(table_id, table_options=self.table_options,
-                                               table_classes=self.table_classes, request=self.request, view=self,
-                                               **kwargs)
+                                               table_classes=self.table_classes, view=self, **kwargs)
 
     def add_tables(self):
         self.add_table(type(self).__name__.lower(), model=self.model)

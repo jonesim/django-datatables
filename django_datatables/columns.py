@@ -18,6 +18,13 @@ class DatatableColumnError(Exception):
 
 
 class ColumnBase:
+
+    """
+    kwargs
+        * **enabled** not included in table columns
+        * **hidden** not displayed by default may be overridden by table saving options
+    """
+
     popover_html = ('<button type="button" class="ml-1 btn btn-link p-0" data-html=true data-placement="top" '
                     'data-toggle="popover" data-content="{}"><i class="far fa-question-circle"></i></button>')
 
@@ -68,6 +75,8 @@ class ColumnBase:
             if '/' in self.model_path:
                 self.model_path = self.model_path[self.model_path.find('/') + 1:]
         self.model = kwargs.pop('model', None)
+        self.table = kwargs.pop('table', None)
+        self.enabled = kwargs.pop('enabled', True)
         if kwargs.pop('column_name', None) == field:
             self.field = self.column_name
         else:
@@ -231,7 +240,7 @@ class ColumnBase:
     def setup_kwargs(self, kwargs):
 
         for a, value in kwargs.items():
-            if a in ['field', 'column_name', 'table']:
+            if a in ['field', 'column_name']:
                 continue
             if a == 'row_result':
                 self.row_result = MethodType(value, self)
