@@ -1,0 +1,31 @@
+<table class="{{ datatable.table_class }}" id="{{ datatable.table_id }}">
+</table>
+
+<script>
+    (function () {
+        var cell_data, row_class;
+        var table = {{ datatable.model_table_setup }};
+        for (var i = 0; i < table.initsetup.colOptions.length; i++) {
+            if (table.initsetup.colOptions[i].row_class !== undefined){
+                row_class = ' class="' + table.initsetup.colOptions[i].row_class + '"'
+            } else {
+                row_class = ''
+            }
+            var row = '<tr' + row_class + '><th>' + table.row_titles[i] + '</th>';
+            for (var j = 0; j < table.data.length; j++) {
+                if (table.initsetup.colOptions[i]['render'] != undefined) {
+                    render = new django_datatables.column_render(i, table.initsetup.colOptions[i]['render'], table);
+                    cell_data = render(table.data[j][i], null, table.data[j]);
+                } else {
+                    cell_data = table.data[j][i];
+                }
+                if (cell_data == null) {
+                    cell_data = '';
+                }
+                row += '<td>' + cell_data + '</td>';
+            }
+            row += '</tr>';
+            $('#' + table.table_id).append(row);
+        }
+    })();
+</script>

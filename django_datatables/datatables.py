@@ -352,6 +352,25 @@ class DatatableTable:
             del self.columns[self.find_column(n)[1]]
 
 
+class HorizontalTable(DatatableTable):
+
+    datatable_template = 'datatables/horizontal_table.html'
+
+    def __init__(self, *args, **kwargs):
+        pk = kwargs.pop('pk', None)
+        kwargs.setdefault('table_classes', ['table', 'table-sm', 'bg-light', 'w-100'])
+        super().__init__(*args, **kwargs)
+        if pk:
+            self.filter['pk'] = pk
+
+    def model_table_setup(self):
+        return mark_safe(json.dumps({'initsetup': json.loads(self.col_def_str()),
+                                     'data': self.get_table_array(self.kwargs.get('request'), self.get_query()),
+                                     'row_titles': self.all_titles(),
+                                     'table_id': self.table_id,
+                                     }))
+
+
 class DatatableView(TemplateView):
     model = None
     table_classes = None
