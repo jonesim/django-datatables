@@ -290,6 +290,9 @@ class TextFieldColumn(ColumnBase):
 
 class ColumnLink(ColumnBase):
 
+    base_link_html = '%1%'
+    base_link_css = None
+
     @property
     def url(self):
         return self._url
@@ -298,27 +301,30 @@ class ColumnLink(ColumnBase):
     def url(self, url_name):
         self._url = get_url(url_name)
 
-    def __init__(self, *, url_name, link_ref_column='id', link_html='%1%', var='%1%', **kwargs):
+    def __init__(self, *, url_name, link_ref_column='id', link_html=None, link_css='', var='%1%', **kwargs):
         if not self.initialise(locals()):
             return
         super().__init__(**self.kwargs)
         link_ref_column = self.model_path + link_ref_column
         self.url = url_name
 
+        if not link_html:
+            link_html = self.base_link_html
+
+        if not link_css:
+            link_css = self.base_link_css
+        link_css = f' class="{link_css}"' if link_css else ''
+        link = f'<a{link_css} href="{self.url}">{{}}</a>'
         if isinstance(self.field, (list, tuple)):
-            self.options['render'] = [render_replace(column=self.column_name + ':0',
-                                                     html=f'<a href="{self.url}">%1%</a>',
-                                                     var='999999'),
-                                      render_replace(column=self.column_name + ':1'),
-                                      ]
+            self.options['render'] = [
+                render_replace(column=self.column_name + ':0', html=link.format('%1%'), var='999999'),
+                render_replace(column=self.column_name + ':1'),
+            ]
         elif var not in link_html:
-            self.options['render'] = [render_replace(column=link_ref_column,
-                                                     html=f'<a href="{self.url}">{link_html}</a>',
-                                                     var='999999')]
+            self.options['render'] = [render_replace(column=link_ref_column, html=link.format(link_html), var='999999')]
         else:
-            self.options['render'] = [render_replace(column=self.column_name,
-                                                     html=f'<a href="{self.url}">{link_html}</a>',
-                                                     var=var), render_replace(column=link_ref_column, var='999999')]
+            self.options['render'] = [render_replace(column=self.column_name, html=link.format(link_html), var=var),
+                                      render_replace(column=link_ref_column, var='999999')]
 
 
 class ManyToManyColumn(DatatableColumn):
