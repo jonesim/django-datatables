@@ -302,6 +302,7 @@ class ColumnLink(ColumnBase):
         if not self.initialise(locals()):
             return
         super().__init__(**self.kwargs)
+        link_ref_column = self.model_path + link_ref_column
         self.url = url_name
 
         if isinstance(self.field, (list, tuple)):
