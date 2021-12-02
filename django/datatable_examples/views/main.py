@@ -1,57 +1,22 @@
 import csv
-import inspect
 import json
-from django.db.models import Count, Sum, Min
-from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
-from django_datatables.helpers import row_button, render_replace, row_link
-from django_datatables.datatables import DatatableView
+
+from datatable_examples import models
+from datatable_examples.views.menu import MainMenu
 from django import forms
-from django.views.generic import FormView
+from django.conf import settings
+from django.db.models import Count
 from django.http import HttpResponse
-from . import models
+
+from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
+from django_datatables.datatables import DatatableView
+from django_datatables.helpers import row_button, render_replace, row_link
 from django_datatables.plugins.colour_rows import ColourRows
 from django_datatables.plugins.column_totals import ColumnTotals
-from django.conf import settings
-from django_datatables.reorder_datatable import ReorderDatatableView
 from django_datatables.plugins.reorder import Reorder
-from django_datatables.widgets import DataTableWidget, DataTableReorderWidget
-from django_datatables.reorder_datatable import reorder
-from ajax_helpers.mixins import AjaxHelpers
-from django_menus.menu import MenuMixin
-from show_src_code.view_mixins import DemoViewMixin
 from django_datatables.plugins.save_filters import add_save_filters
-
-
-class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
-    template_name = 'datatable_examples/table.html'
-
-    def setup_menu(self):
-
-        self.add_menu('main_menu').add_items(
-            'example1',
-            'example2',
-            'example3',
-            'example4',
-            'example5',
-            'example6',
-            'example7',
-            'example8',
-            'example9',
-            'example10',
-            'example11',
-            'example12',
-            'example13',
-            'example14',
-            'reorder',
-            'widget',
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['view_class'] = inspect.getmodule(self).__name__ + '.' + self.__class__.__name__
-        context['title'] = type(self).__name__
-        context['filter'] = filter
-        return context
+from django_datatables.reorder_datatable import ReorderDatatableView
+from django_datatables.widgets import DataTableWidget, DataTableReorderWidget
 
 
 class Example1(MainMenu, DatatableView):
@@ -573,46 +538,6 @@ class Example13(MainMenu, DatatableView):
         return {'description': '''
         This example gets its data from a json file instead of the database
         '''}
-
-
-class Example14(MainMenu, DatatableView):
-    model = models.Tally
-
-    def setup_table(self, table):
-        table.add_columns(
-            ColumnBase(column_name='cars', field='cars', calculated=True, aggregations={'cars': Sum('cars')}),
-            ColumnBase(column_name='vans_sum', field='vans_s', calculated=True, aggregations={'vans_s': Sum('vans')}),
-            ColumnBase(column_name='vans_min', field='vans_m', calculated=True, aggregations={'vans_m': Min('vans')}),
-        )
-
-    def add_to_context(self, **kwargs):
-        return {'description': '''
-        This example shows aggregations from the tally model
-        '''}
-
-
-class DemoForm(forms.Form):
-
-    tags = forms.MultipleChoiceField(widget=DataTableWidget(fields=['id', 'tag'], model=models.Tags))
-    order = forms.CharField(
-        widget=DataTableReorderWidget(model=models.Company, order_field='order', fields=['name'])
-    )
-
-
-class WidgetView(MainMenu, FormView):
-    template_name = 'datatable_examples/widget_example.html'
-    form_class = DemoForm
-
-    ajax_commands = ['datatable', 'button']
-
-    def get_initial(self):
-        return {'tags': [1]}
-
-    def datatable_sort(self, **kwargs):
-        form = self.get_form()
-        widget = form.fields[kwargs['table_id'][3:]].widget
-        reorder(widget.attrs['table_model'], widget.order_field, kwargs['sort'])
-        return self.command_response('reload')
 
 
 class ExampleReorder(MainMenu, ReorderDatatableView):

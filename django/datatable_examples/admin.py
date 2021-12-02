@@ -1,16 +1,21 @@
 # coding=utf-8
+import datatable_examples.models as models
 from django.contrib import admin
 
-import datatable_examples.models as models
-from django.conf import settings
 
 @admin.register(models.TagsDirect)
 class TagsDirectAdmin(admin.ModelAdmin):
     pass
 
+
+class PaymentInline(admin.TabularInline):
+    model = models.Payment
+
+
 @admin.register(models.Company)
 class CompanyAdmin(admin.ModelAdmin):
-    pass
+    inlines = [PaymentInline]
+    list_display = ['name']
 
 
 @admin.register(models.Tally)

@@ -7,10 +7,13 @@ from django_datatables.columns import ColumnLink, DatatableColumn, ChoiceColumn,
 class TagsDirect(models.Model):
     tag_direct = models.CharField(max_length=40)
 
+    def __str__(self):
+        return self.tag_direct
+
 
 class Company(models.Model):
     name = models.CharField(max_length=80)
-    direct_tag = models.ManyToManyField(TagsDirect)
+    direct_tag = models.ManyToManyField(TagsDirect, blank=True)
     dissolved = models.BooleanField(default=False)
     order = models.IntegerField(null=True)
 
@@ -89,6 +92,9 @@ class Tags(models.Model):
     tag = models.CharField(max_length=40)
     company = models.ManyToManyField(Company)
 
+    def __str__(self):
+        return self.tag
+
 
 class Tally(models.Model):
     date = models.DateField()
@@ -102,3 +108,10 @@ class Tally(models.Model):
 
     class Meta:
         verbose_name_plural = 'Tallies'
+
+
+class Payment(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    date = models.DateField()
+    amount = models.IntegerField()
+    quantity = models.IntegerField(default=1)
