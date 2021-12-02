@@ -88,3 +88,17 @@ class Person(models.Model):
 class Tags(models.Model):
     tag = models.CharField(max_length=40)
     company = models.ManyToManyField(Company)
+
+
+class Tally(models.Model):
+    date = models.DateField()
+    cars = models.IntegerField()
+    vans = models.IntegerField()
+    buses = models.IntegerField()
+    lorries = models.IntegerField()
+    motor_bikes = models.IntegerField()
+    push_bikes = models.IntegerField()
+    tractors = models.IntegerField()
+
+    class Meta:
+        verbose_name_plural = 'Tallies'

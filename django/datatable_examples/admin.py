@@ -11,3 +11,15 @@ class TagsDirectAdmin(admin.ModelAdmin):
 @admin.register(models.Company)
 class CompanyAdmin(admin.ModelAdmin):
     pass
+
+
+@admin.register(models.Tally)
+class TallyAdmin(admin.ModelAdmin):
+    list_display = ('date',
+                    'cars',
+                    'vans',
+                    'buses',
+                    'lorries',
+                    'motor_bikes',
+                    'push_bikes',
+                    'tractors')
