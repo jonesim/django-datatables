@@ -137,7 +137,7 @@ class ColumnBase:
                     self._field.append(f)
         return annotations
 
-    def get_annotations(self, **kwargs):
+    def get_annotations(self, **_kwargs):
         return self._annotations
 
     @property
@@ -520,3 +520,13 @@ class MenuColumn(NoHeadingColumn):
         menu_rendered = menu.render().replace(str(DUMMY_ID), '%1%')
         kwargs['render'] = [render_replace(html=menu_rendered, column=kwargs['column_name'])]
         super().__init__(**kwargs)
+
+
+class EditColumn(DatatableColumn):
+    def __init__(self, **kwargs):
+        if not self.initialise(locals()):
+            return
+        super().__init__(**self.kwargs)
+        self.options['render'] = [render_replace(
+            column=self.column_name,
+            html='<span tabindex="0" onfocus="django_datatables.make_edit(this)" onclick="$(this).focus()">%1%</span>')]

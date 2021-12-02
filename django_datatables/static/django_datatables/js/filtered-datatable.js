@@ -1,13 +1,43 @@
 if (typeof django_datatables === 'undefined') {
     var django_datatables = function () {
-        var setup = {}
-        var DataTables = {}
+        var setup = {};
+        var DataTables = {};
 
         function b_r(button) {
-            var command = $(button).attr('data-command')
-            var row_id = $(button).closest('tr').attr('id')
-            var table_id = $(button).closest('table').attr('id')
-            DataTables[table_id].send_row(command, row_id)
+            var command = $(button).attr('data-command');
+            var row_id = $(button).closest('tr').attr('id');
+            var table_id = $(button).closest('table').attr('id');
+            DataTables[table_id].send_row(command, row_id);
+        }
+
+        function make_edit(span) {
+            var cell = $(span).closest('td');
+            $(cell).html('<input class="cell-input" onfocusout="django_datatables.row_send(this)" type="text" value="' + $(span).text() + '">');
+            $('input', cell).focus();
+        }
+
+        function row_send(button) {
+            var command = $(button).attr('data-command');
+            var row_id = $(button).closest('tr').attr('id');
+            var table_id = $(button).closest('table').attr('id');
+            var datatable = django_datatables.DataTables[table_id];
+            var row_data = datatable.table.api().row('#' + row_id).data();
+            var changed = false;
+            $('#' + row_id + ' input').each(function () {
+                var cell_index = datatable.table.api().cell($(this).closest('td')).index();
+                if (row_data[cell_index.column] != $(this).val()) {
+                    changed = true;
+                    row_data[cell_index.column] = $(this).val();
+                }
+            });
+            if (changed) {
+                var data = {
+                    'row': 'edit', 'row_data': JSON.stringify(row_data), 'row_no': row_id, 'table_id': table_id
+                };
+                ajax_helpers.post_json({data: data});
+            } else {
+                django_datatables.DataTables[table_id].table.api().row('#' + row_id).invalidate();
+            }
         }
 
         ajax_helpers.command_functions.delete_row = function (command) {
@@ -752,6 +782,8 @@ if (typeof django_datatables === 'undefined') {
             add_to_setup,
             b_r,
             PythonTable,
+            make_edit,
+            row_send,
         }
     }()
 }

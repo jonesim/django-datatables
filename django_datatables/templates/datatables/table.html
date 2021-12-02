@@ -29,5 +29,10 @@
             new django_datatables.PythonTable("{{ datatable.table_id }}", {{ datatable.table_id }}_configuration);
         })
         $('#{{ datatable.table_id }} [data-toggle="popover"]').popover({trigger:"hover"})
+        $('#{{ datatable.table_id }}').keyup(function (event) {
+            if (event.which === 13) {
+                var elem = $('.cell-input:focus').blur();
+            }
+        });
     </script>
 {% endspaceless %}
