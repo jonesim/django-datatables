@@ -3,6 +3,7 @@ from inspect import isclass
 from typing import TypeVar, Dict
 from ajax_helpers.utils import random_string
 from django.db import models
+from django.db.models import Sum
 from django.views.generic import TemplateView
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
@@ -187,11 +188,14 @@ class DatatableTable:
     def get_query(self, **_kwargs):
         annotations = {}
         annotations_value = {}
+        aggregations = {}
         for c in self.columns:
             if c.get_annotations(**self.kwargs):
                 annotations.update(c.get_annotations(**self.kwargs))
             if c.annotations_value:
                 annotations_value.update(c.annotations_value)
+            if c.aggregations:
+                aggregations.update(c.aggregations)
         query = self.model.objects
         # Use initial values to group_by for annotations
         if self.initial_values:
@@ -212,6 +216,9 @@ class DatatableTable:
             query = query[:self.max_records]
         query = self.extra_filters(query=query)
         query = self.view_filter(query, self)
+        if aggregations:
+            # this returns a dictionary hence with have to put in a list
+            query = [query.aggregate(**aggregations)]
         return query
 
     def sort(self, *columns):

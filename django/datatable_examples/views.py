@@ -1,7 +1,7 @@
 import csv
 import inspect
 import json
-from django.db.models import Count
+from django.db.models import Count, Sum, Min
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.helpers import row_button, render_replace, row_link
 from django_datatables.datatables import DatatableView
@@ -41,6 +41,7 @@ class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
             'example11',
             'example12',
             'example13',
+            'example14',
             'reorder',
             'widget',
         )
@@ -571,6 +572,22 @@ class Example13(MainMenu, DatatableView):
     def add_to_context(self, **kwargs):
         return {'description': '''
         This example gets its data from a json file instead of the database
+        '''}
+
+
+class Example14(MainMenu, DatatableView):
+    model = models.Tally
+
+    def setup_table(self, table):
+        table.add_columns(
+            ColumnBase(column_name='cars', field='cars', calculated=True, aggregations={'cars': Sum('cars')}),
+            ColumnBase(column_name='vans_sum', field='vans_s', calculated=True, aggregations={'vans_s': Sum('vans')}),
+            ColumnBase(column_name='vans_min', field='vans_m', calculated=True, aggregations={'vans_m': Min('vans')}),
+        )
+
+    def add_to_context(self, **kwargs):
+        return {'description': '''
+        This example shows aggregations from the tally model
         '''}
 
 

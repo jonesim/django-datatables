@@ -86,6 +86,7 @@ class ColumnBase:
         self.column_type = 0
         self._annotations = None
         self._annotations_value = None
+        self._aggregations = None
         self.additional_columns = []
         self.kwargs = kwargs
         self.replace_list = []
@@ -138,6 +139,18 @@ class ColumnBase:
 
     def get_annotations(self, **kwargs):
         return self._annotations
+
+    @property
+    def aggregations(self):
+        return self._aggregations
+
+    @aggregations.setter
+    def aggregations(self, value):
+        self._aggregations = self._set_aggregations(value)
+
+    def _set_aggregations(self, value):
+        aggregations = copy.deepcopy(value)
+        return aggregations
 
     @property
     def column_name(self):
