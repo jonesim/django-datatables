@@ -402,11 +402,10 @@ class DatatableView(TemplateView):
 
     def setup_tables(self, table_id=None):
         for t_id, table in self.tables.items():
-            if not table_id or t_id == table_id:
-                if t_id == type(self).__name__.lower():
-                    self.setup_table(table)
-                else:
-                    getattr(self, 'setup_' + t_id)(table)
+            if hasattr(self, 'setup_' + t_id):
+                getattr(self, 'setup_' + t_id)(table)
+            else:
+                self.setup_table(table)
             table.view_filter = self.view_filter
 
     def dispatch(self, request, *args, **kwargs):
