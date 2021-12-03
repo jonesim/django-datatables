@@ -76,6 +76,8 @@ class Example2(MainMenu,  DatatableView):
         return response
 
     def setup_table(self, table):
+        table.edit_fields = ['company__name']
+        table.edit_options = {'company__name': {'select2': True}}
 
         table.add_columns(
             'id',
@@ -157,6 +159,7 @@ class Example4(MainMenu, DatatableView):
 
     @staticmethod
     def setup_table(table):
+        table.edit_fields = ['first_name', 'title']
         table.add_columns(
             'id',
             'first_name',
