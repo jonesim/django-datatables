@@ -4,6 +4,41 @@
     background-color: transparent;
 }
 
+.cell-div{
+    min-width: 40px;
+    min-height: 22px;
+    position: relative
+}
+
+.dataTables_wrapper td select{
+    width: 100%;
+}
+
+.dataTables_wrapper td .select2{
+    margin: -5px!important;
+}
+
+.cell-div:hover .cell-edit{
+    font-size:10px;
+    display:inline;
+    position: absolute;
+    right:0;
+    top:0;
+    color: #044a91;
+}
+
+.cell-div:hover .cell-edit:before{
+    font-family: "Font Awesome 5 Free", "Font Awesome 5 Pro";
+    content: "\f304";
+    font-weight: 800;
+}
+
+
+.cell-div:hover{
+    background-color: #a2bbd333;
+}
+
+
 .tag-filter {
     font-size: 12px;
     padding: 0 2px 0 2px;

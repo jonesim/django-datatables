@@ -120,6 +120,9 @@ class ColumnInitialisor:
 class DatatableTable:
     datatable_template = 'datatables/table.html'
 
+    edit_options = {}
+    edit_fields = []
+
     def __init__(self, table_id=None, model=None, table_options=None, table_classes=None, view=None, **kwargs):
         self.columns = []
         self.table_id = table_id if table_id else random_string()
@@ -258,11 +261,11 @@ class DatatableTable:
 
     def fields(self):
 
-        def add_fields(fields, new_fields):
+        def add_fields(current_fields, new_fields):
             if isinstance(new_fields, (tuple, list)):
-                fields.update(new_fields)
+                current_fields.update(new_fields)
             else:
-                fields.add(new_fields)
+                current_fields.add(new_fields)
 
         fields = set()
         for p in self.get_result_processes():
@@ -382,11 +385,20 @@ class DatatableView(TemplateView):
     model = None
     table_classes = None
     table_options = None
+    ajax_commands = ['row']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tables = {}
         self.dispatch_context = None
+
+    def row_edit(self, **kwargs):
+        row_data = json.loads(kwargs.pop('row_data'))
+        table = self.tables[kwargs['table_id']]
+        row_object = table.model.objects.get(pk=kwargs['row_no'][1:])
+        self.setup_table(table)
+        table.columns[kwargs['changed'][0]].alter_object(row_object, row_data[kwargs['changed'][0]])
+        return table.refresh_row(self.request, kwargs['row_no'])
 
     def view_filter(self, query, table):
         if hasattr(table.model, 'query_filter'):
@@ -496,7 +508,7 @@ class DatatableView(TemplateView):
         saved_state.save()
         return self.command_response('delay', time=1)
 
-    def button_datatable_load_state(self, table_id, name, id, **kwargs):
-        saved_state = SavedState.objects.get(id=int(id))
+    def button_datatable_load_state(self, table_id, name, state_id, **kwargs):
+        saved_state = SavedState.objects.get(id=int(state_id))
         self.add_command('restore_datatable', state=saved_state.state, table_id=table_id, state_id=saved_state.id)
         return self.command_response('reload')

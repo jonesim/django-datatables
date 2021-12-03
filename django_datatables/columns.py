@@ -3,10 +3,18 @@ import copy
 import inspect
 from types import MethodType
 from typing import TypeVar, Dict
+
+from django.forms.widgets import Select
+
 from .helpers import get_url, render_replace, DUMMY_ID
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
+
+EDIT_SEND = 'django_datatables.row_send(this)'
+MAKE_EDIT = 'django_datatables.make_edit(this)'
+PENCIL = '<i class="cell-edit"></i>'
+EDIT_CELL_HTML = f'<div class="cell-div" tabindex="0" onfocus="{MAKE_EDIT}" onclick="$(this).focus()">%1%{PENCIL}</div>'
 
 
 class ColumnNameError(Exception):
@@ -95,8 +103,41 @@ class ColumnBase:
         self.setup_kwargs(kwargs)
         self.result_processes = {}
         self.col_setup()
+        self.edit_type = None
+
+        if self.table and self.column_name in getattr(self.table, 'edit_fields', []):
+            self.setup_edit()
+
         if not hasattr(self, 'row_result'):
             self.row_result = MethodType(self.__row_result, self)
+
+    def dropdown_edit(self, choices):
+        options = self.table.edit_options.get(self.column_name, {})
+        attrs = {} if options.get('select2') else {'onchange': '$(this).blur()', 'onfocusout': f'{EDIT_SEND}'}
+        return {'render': [render_replace(column=self.column_name + ':1', html=EDIT_CELL_HTML)],
+                'field_array': True,
+                'input_html': Select(choices=choices).render('', '', attrs=attrs),
+                'edit_options': options}
+
+    def setup_edit(self):
+        if '__' in self.field:
+            if self.field.count('__') > 1:
+                raise DatatableColumnError('Cannot edit this field')
+            self.edit_type = 'FK'
+            field = self.field[self.field.find('__') + 2:]
+            choices = list(self.model.objects.values_list('id', field))
+            self.field = ['id', field]
+            self.options.update(self.dropdown_edit(choices))
+        else:
+            self.options['render'] = [render_replace(column=self.column_name, html=EDIT_CELL_HTML)]
+            self.options['input_html'] = f'<input class="cell-input" onfocusout="{EDIT_SEND}" type="text">'
+
+    def alter_object(self, row_object, value):
+        if self.edit_type == 'FK':
+            setattr(row_object, self.field[0][:self.field[0].find('__')] + '_id', value[0])
+        else:
+            setattr(row_object, self.field, value)
+        row_object.save()
 
     def col_setup(self):
         pass
@@ -416,11 +457,23 @@ class ChoiceColumn(ColumnBase):
 
     def setup_kwargs(self, kwarg_dict):
         choices = kwarg_dict.pop('choices')
-        self.options = {c[0]: c[1] for c in choices}
+        self.choices = {c[0]: c[1] for c in choices}
         super().setup_kwargs(kwarg_dict)
 
     def row_result(self, data, _page_data):
-        return self.options.get(data[self.field], '')
+        return self.choices.get(data[self.field], '')
+
+    def setup_edit(self):
+        choices = list(self.choices.items())
+        self.options.update(self.dropdown_edit(choices))
+        self.row_result = self.edit_row_result
+
+    def edit_row_result(self, data, _page_data):
+        return [data[self.field], self.choices.get(data[self.field], '')]
+
+    def alter_object(self, row_object, value):
+        setattr(row_object, self.field, value[0])
+        row_object.save()
 
 
 class CurrencyPenceColumn(ColumnBase):
@@ -520,13 +573,3 @@ class MenuColumn(NoHeadingColumn):
         menu_rendered = menu.render().replace(str(DUMMY_ID), '%1%')
         kwargs['render'] = [render_replace(html=menu_rendered, column=kwargs['column_name'])]
         super().__init__(**kwargs)
-
-
-class EditColumn(DatatableColumn):
-    def __init__(self, **kwargs):
-        if not self.initialise(locals()):
-            return
-        super().__init__(**self.kwargs)
-        self.options['render'] = [render_replace(
-            column=self.column_name,
-            html='<span tabindex="0" onfocus="django_datatables.make_edit(this)" onclick="$(this).focus()">%1%</span>')]

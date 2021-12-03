@@ -11,9 +11,28 @@ if (typeof django_datatables === 'undefined') {
         }
 
         function make_edit(span) {
+            var table_id = $(span).closest('table').attr('id');
+            var datatable = django_datatables.DataTables[table_id]
             var cell = $(span).closest('td');
-            $(cell).html('<input class="cell-input" onfocusout="django_datatables.row_send(this)" type="text" value="' + $(span).text() + '">');
-            $('input', cell).focus();
+            var cell_index = datatable.table.api().cell($(cell)).index();
+            var options = datatable.initsetup.colOptions[cell_index.column].edit_options
+            $(cell).html(datatable.initsetup.colOptions[cell_index.column].input_html)
+            var inp = $(cell).children()[0]
+            if (inp.nodeName == 'SELECT'){
+                $(inp).val(datatable.table.api().row(cell_index.row).data()[cell_index.column][0])
+                if (options !== null && options.select2){
+                    $(inp).select2(
+                            {minimumResultsForSearch: 10}
+                    );
+                    $(inp).on('select2:close', function (){
+                        django_datatables.row_send(inp)
+                    })
+                    $(inp).select2('open');
+                }
+            } else{
+                $(inp).val(datatable.table.api().row(cell_index.row).data()[cell_index.column])
+            }
+            $(inp).focus();
         }
 
         function row_send(button) {
@@ -22,17 +41,26 @@ if (typeof django_datatables === 'undefined') {
             var table_id = $(button).closest('table').attr('id');
             var datatable = django_datatables.DataTables[table_id];
             var row_data = datatable.table.api().row('#' + row_id).data();
-            var changed = false;
-            $('#' + row_id + ' input').each(function () {
+            var changed = [];
+            var row = $('#' + row_id)
+            $('input, select', row).each(function () {
                 var cell_index = datatable.table.api().cell($(this).closest('td')).index();
-                if (row_data[cell_index.column] != $(this).val()) {
-                    changed = true;
-                    row_data[cell_index.column] = $(this).val();
+                if (this.nodeName=='SELECT'){
+                    if (row_data[cell_index.column][0] != $(this).val()) {
+                        changed.push(cell_index.column);
+                        row_data[cell_index.column] = [$(this).val(), $("option:selected", $(this)).text()];
+                    }
+                } else if (this.nodeName=='INPUT'){
+                    if (row_data[cell_index.column] != $(this).val()) {
+                        changed.push(cell_index.column);
+                        row_data[cell_index.column] = $(this).val();
+                    }
                 }
             });
-            if (changed) {
+            if (changed.length) {
                 var data = {
-                    'row': 'edit', 'row_data': JSON.stringify(row_data), 'row_no': row_id, 'table_id': table_id
+                    'row': 'edit', 'row_data': JSON.stringify(row_data), 'row_no': row_id, 'table_id': table_id ,
+                    'changed': changed
                 };
                 ajax_helpers.post_json({data: data});
             } else {
