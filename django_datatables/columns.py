@@ -78,7 +78,7 @@ class ColumnBase:
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
         self.options: Dict[KT, VT] = options
         self.model_path = kwargs.pop('model_path', None)
-        if not self.model_path:
+        if not self.model_path is not None:
             self.model_path = self.get_model_path(self.column_name)
             if '/' in self.model_path:
                 self.model_path = self.model_path[self.model_path.find('/') + 1:]
