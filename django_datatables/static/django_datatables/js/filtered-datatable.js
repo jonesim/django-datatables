@@ -73,7 +73,11 @@ if (typeof django_datatables === 'undefined') {
             DataTables[command.table_id].table.api().draw(false)
         }
         ajax_helpers.command_functions.refresh_row = function(command){
-            DataTables[command.table_id].table.api().row('#' + command.row_no).data(command.data).invalidate()
+            if (command.data === undefined){
+                ajax_helpers.post_json({data: {row: 'refresh', row_no: command.row_no, table_id: command.table_id}});
+            } else {
+                DataTables[command.table_id].table.api().row('#' + command.row_no).data(command.data).invalidate()
+            }
         }
 
         ajax_helpers.command_functions.reload_table = function(command){

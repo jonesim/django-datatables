@@ -400,6 +400,10 @@ class DatatableView(TemplateView):
         table.columns[kwargs['changed'][0]].alter_object(row_object, row_data[kwargs['changed'][0]])
         return table.refresh_row(self.request, kwargs['row_no'])
 
+    def row_refresh(self, **kwargs):
+        self.setup_table(self.tables[kwargs['table_id']])
+        return self.tables[kwargs['table_id']].refresh_row(self.request, kwargs['row_no'])
+
     def view_filter(self, query, table):
         if hasattr(table.model, 'query_filter'):
             return table.model.query_filter(query, self.request, table=table)
