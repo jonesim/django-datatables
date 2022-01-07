@@ -1,7 +1,5 @@
 
 
-
-
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
 
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -42,17 +40,102 @@ if (typeof django_datatables === 'undefined') {
       DataTables[table_id].send_row(command, row_id);
     }
 
+    function make_edit(span) {
+      var table_id = $(span).closest('table').attr('id');
+      var datatable = django_datatables.DataTables[table_id];
+      var cell = $(span).closest('td');
+      var cell_index = datatable.table.api().cell($(cell)).index();
+      var options = datatable.initsetup.colOptions[cell_index.column].edit_options;
+      $(cell).html(datatable.initsetup.colOptions[cell_index.column].input_html);
+      var inp = $(cell).children()[0];
+
+      if (inp.nodeName == 'SELECT') {
+        $(inp).val(datatable.table.api().row(cell_index.row).data()[cell_index.column][0]);
+
+        if (options !== null && options.select2) {
+          $(inp).select2({
+            minimumResultsForSearch: 10
+          });
+          $(inp).on('select2:close', function () {
+            django_datatables.row_send(inp);
+          });
+          $(inp).select2('open');
+        }
+      } else {
+        $(inp).val(datatable.table.api().row(cell_index.row).data()[cell_index.column]);
+      }
+
+      $(inp).focus();
+    }
+
+    function row_send(button) {
+      var command = $(button).attr('data-command');
+      var row_id = $(button).closest('tr').attr('id');
+      var table_id = $(button).closest('table').attr('id');
+      var datatable = django_datatables.DataTables[table_id];
+      var row_data = datatable.table.api().row('#' + row_id).data();
+      var changed = [];
+      var row = $('#' + row_id);
+      $('input, select', row).each(function () {
+        var cell_index = datatable.table.api().cell($(this).closest('td')).index();
+
+        if (this.nodeName == 'SELECT') {
+          if (row_data[cell_index.column][0] != $(this).val()) {
+            changed.push(cell_index.column);
+            row_data[cell_index.column] = [$(this).val(), $("option:selected", $(this)).text()];
+          }
+        } else if (this.nodeName == 'INPUT') {
+          if (row_data[cell_index.column] != $(this).val()) {
+            changed.push(cell_index.column);
+            row_data[cell_index.column] = $(this).val();
+          }
+        }
+      });
+
+      if (changed.length) {
+        var data = {
+          'row': 'edit',
+          'row_data': JSON.stringify(row_data),
+          'row_no': row_id,
+          'table_id': table_id,
+          'changed': changed
+        };
+        ajax_helpers.post_json({
+          data: data
+        });
+      } else {
+        django_datatables.DataTables[table_id].table.api().row('#' + row_id).invalidate();
+      }
+    }
+
     ajax_helpers.command_functions.delete_row = function (command) {
       DataTables[command.table_id].table.api().row('#' + command.row_no).remove();
       DataTables[command.table_id].table.api().draw(false);
     };
 
     ajax_helpers.command_functions.refresh_row = function (command) {
-      DataTables[command.table_id].table.api().row('#' + command.row_no).data(command.data).invalidate();
+      if (command.data === undefined) {
+        ajax_helpers.post_json({
+          data: {
+            row: 'refresh',
+            row_no: command.row_no,
+            table_id: command.table_id
+          }
+        });
+      } else {
+        DataTables[command.table_id].table.api().row('#' + command.row_no).data(command.data).invalidate();
+      }
     };
 
     ajax_helpers.command_functions.reload_table = function (command) {
       DataTables[command.table_id].table.api().ajax.reload(null, false);
+    };
+
+    ajax_helpers.command_functions.restore_datatable = function (command) {
+      state = JSON.parse(command.state);
+      state.time = new Date().getTime();
+      state.state_id = command.state_id;
+      localStorage.setItem('DataTables_' + command.table_id + '_' + location.pathname, JSON.stringify(state));
     };
 
     var utilities = {
@@ -877,7 +960,9 @@ if (typeof django_datatables === 'undefined') {
       utilities: utilities,
       add_to_setup: add_to_setup,
       b_r: b_r,
-      PythonTable: PythonTable
+      PythonTable: PythonTable,
+      make_edit: make_edit,
+      row_send: row_send
     };
   }();
 }
@@ -893,4 +978,5 @@ function rep_options(html, option_dict) {
 
 $(document).ready(function () {
   $.fn.dataTable.moment("DD/MM/YYYY");
+  $.fn.dataTable.moment("DD/MM/YYYY HH:mm");
 });
