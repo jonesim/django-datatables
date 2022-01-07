@@ -832,4 +832,5 @@ function rep_options(html, option_dict) {
 
 $(document).ready(function () {
     $.fn.dataTable.moment("DD/MM/YYYY");
+    $.fn.dataTable.moment("DD/MM/YYYY HH:mm");
 });
