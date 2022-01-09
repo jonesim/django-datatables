@@ -132,6 +132,7 @@ class DatatableTable:
             self.table_options.update(table_options)
 
         self.ajax_data = True
+        self.table_data = None
         self.model = model
         self.page_results = {}
 
@@ -305,6 +306,8 @@ class DatatableTable:
         options = dict(self.table_options)
         if not self.ajax_data:
             options['data'] = self.get_table_array(None, self.get_query())
+        if self.table_data:
+            options['data'] = self.get_table_array(None, self.table_data)
         options['columnDefs'] = [dict({'targets': i, 'name': c.column_name}, **c.style())
                                  for i, c in enumerate(self.columns)]
         table_vars = {
