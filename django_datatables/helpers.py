@@ -1,3 +1,4 @@
+from ajax_helpers.utils import ajax_command
 from django.urls import reverse
 DUMMY_ID = 999999
 
@@ -20,7 +21,9 @@ def row_button(command, button_text, *, function='Html', button_classes='btn btn
     return rb
 
 
-def render_replace(*, var='%1%', **kwargs):
+def render_replace(*, var='%1%', row=False, **kwargs):
+    if row:
+        return dict(var=var, function='Base64Row', **kwargs)
     return dict(var=var, function='Replace', **kwargs)
 
 
@@ -35,3 +38,9 @@ def get_url(url_name):
 
 def row_link(url_name, column_id):
     return [render_replace(column=column_id, html=get_url(url_name), var=str(DUMMY_ID))]
+
+
+def overwrite_cell(table, row_no, column_name, html):
+    return ajax_command('html',
+                        selector=f'#{table.id} #{row_no} td:nth-of-type({table.find_column(column_name)[1] + 1})',
+                        html=html)

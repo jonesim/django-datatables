@@ -484,6 +484,19 @@ if (typeof django_datatables === 'undefined') {
                 }
             },
 
+            Base64Row: function (column, params, table) {
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+                if (params.html === undefined) {
+                    this.convert = function (current, value, meta, row) {
+                        return current.replace(params.var, meta.settings.rowId(row))
+                    }
+                } else {
+                    this.convert = function (current, value, meta, row) {
+                        return params.html.replace(params.var, btoa(JSON.stringify(row)).replace(/\//g, '_').replace(/\+/g, '_'))
+                    }
+                }
+            },
+
             Replace: function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
                     if (Array.isArray(this.reg_exp) && table.initsetup.colOptions[column].field_array) {
