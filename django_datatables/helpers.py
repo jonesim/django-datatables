@@ -42,5 +42,5 @@ def row_link(url_name, column_id):
 
 def overwrite_cell(table, row_no, column_name, html):
     return ajax_command('html',
-                        selector=f'#{table.id} #{row_no} td:nth-of-type({table.find_column(column_name)[1] + 1})',
+                        selector=f'#{table.table_id} #{row_no} td:nth-of-type({table.find_column(column_name)[1] + 1})',
                         html=html)
