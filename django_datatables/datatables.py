@@ -421,11 +421,8 @@ class DatatableView(TemplateView):
         self.add_table(type(self).__name__.lower(), model=self.model)
 
     def setup_tables(self, table_id=None):
-        for t_id, table in self.tables.items():
-            if hasattr(self, 'setup_' + t_id):
-                getattr(self, 'setup_' + t_id)(table)
-            else:
-                self.setup_table(table)
+        for t_id, table in self.tables.items() if not table_id else [(table_id, self.tables[table_id])]:
+            getattr(self, 'setup_' + t_id, self.setup_table)(table)
             table.view_filter = self.view_filter
 
     def dispatch(self, request, *args, **kwargs):
