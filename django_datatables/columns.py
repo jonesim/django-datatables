@@ -481,7 +481,7 @@ class CurrencyPenceColumn(ColumnBase):
     def row_result(self, data, _page_data):
         try:
             return '{:.2f}'.format(data[self.field] / 100.0)
-        except KeyError:
+        except (KeyError, TypeError):
             return
 
     def setup_kwargs(self, kwargs):
@@ -494,7 +494,7 @@ class CurrencyColumn(ColumnBase):
     def row_result(self, data, _page_data):
         try:
             return '{:.2f}'.format(data[self.field])
-        except KeyError:
+        except (KeyError, TypeError):
             return
 
     def setup_kwargs(self, kwargs):
