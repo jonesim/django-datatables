@@ -42,6 +42,7 @@ class ColumnInitialisor:
         explicit_name = False
         if isclass(path):
             self.setup = path
+            self.next_prefix = field_prefix
             self.kwargs['column_name'] = path.__name__
         elif isinstance(path, ColumnBase):
             self.setup = path
