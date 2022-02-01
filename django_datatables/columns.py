@@ -4,6 +4,7 @@ import inspect
 from types import MethodType
 from typing import TypeVar, Dict
 
+from django.db.models.expressions import CombinedExpression
 from django.forms.widgets import Select
 
 from .helpers import get_url, render_replace, DUMMY_ID
@@ -158,6 +159,16 @@ class ColumnBase:
     def annotations_value(self, value):
         self._annotations_value = self._set_annotations(value)
 
+    def _combined_expression_annotations(self, expression):
+        if isinstance(expression.lhs, CombinedExpression):
+            self._combined_expression_annotations(expression.lhs)
+        else:
+            expression.lhs.name = self.model_path + expression.lhs.name
+        if isinstance(expression.rhs, CombinedExpression):
+            self._combined_expression_annotations(expression.rhs)
+        else:
+            expression.rhs.name = self.model_path + expression.rhs.name
+
     def _set_annotations(self, value):
         annotations = copy.deepcopy(value)
         if self.model_path:
@@ -165,7 +176,10 @@ class ColumnBase:
             for k in annotations:
                 new_annotations[self.model_path + k] = annotations[k]
                 for e in new_annotations[self.model_path + k].source_expressions:
-                    e.name = self.model_path + e.name
+                    if isinstance(e, CombinedExpression):
+                        self._combined_expression_annotations(e)
+                    else:
+                        e.name = self.model_path + e.name
             annotations = new_annotations
         for f in annotations:
             if self.field is None:
