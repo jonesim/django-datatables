@@ -518,7 +518,7 @@ class CurrencyColumn(ColumnBase):
 
 class BooleanColumn(DatatableColumn):
 
-    def __init__(self, *,  choices=None, **kwargs):
+    def __init__(self, *,  choices=None, replace=None, **kwargs):
         if not self.initialise(locals()):
             return
         super().__init__(**kwargs)
@@ -526,6 +526,11 @@ class BooleanColumn(DatatableColumn):
             self.choices = choices
         else:
             self.choices = ['true', 'false', None]
+
+        if replace:
+            self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'}]
+            self.options['lookup'] = [(self.choices[c], r) for c, r in enumerate(self.replace)]
+            self.options['no_col_search'] = True
 
     def row_result(self, data, _page_data):
         try:
