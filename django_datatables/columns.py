@@ -529,7 +529,7 @@ class BooleanColumn(DatatableColumn):
 
         if replace:
             self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'}]
-            self.options['lookup'] = [(self.choices[c], r) for c, r in enumerate(self.replace)]
+            self.options['lookup'] = [(self.choices[c], r) for c, r in enumerate(replace)]
             self.options['no_col_search'] = True
 
     def row_result(self, data, _page_data):
