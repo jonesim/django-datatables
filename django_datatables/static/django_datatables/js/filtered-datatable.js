@@ -82,6 +82,26 @@ if (typeof django_datatables === 'undefined') {
 
         ajax_helpers.command_functions.reload_table = function(command){
             DataTables[command.table_id].table.api().ajax.reload(null, false);
+            $('#' + command.table_id).off('xhr.dt')
+            $('#' + command.table_id).on('xhr.dt', function (e, settings, json, xhr) {
+                DataTables[command.table_id].filters.forEach(function (filter) {
+                    if (filter.filter_calcs != undefined) {
+                        filter.filter_calcs.calcs = {};
+                        filter.filter_calcs.count = 0;
+                        filter.filter_calcs.sorted_keys = null;
+                    }
+                });
+                DataTables[command.table_id].table.api().rows().data().each(function (row) {
+                })
+                for (var r = 0; r < json.data.length; r++) {
+                    DataTables[command.table_id].filters.forEach(function (filter) {
+                        if (filter.filter_calcs != undefined) {
+                            filter.filter_calcs.init_calcs(json.data[r]);
+                        }
+                    });
+                }
+                DataTables[command.table_id].exec_filter('html')
+            })
         }
 
         ajax_helpers.command_functions.restore_datatable = function (command) {
