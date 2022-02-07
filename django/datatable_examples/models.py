@@ -22,7 +22,7 @@ class Company(models.Model):
 
     class Datatable(DatatableModel):
         people = {'annotations': {'people': Count('person__id')}}
-        collink_1 = ColumnLink(title='Defined in Model', field='name', url_name='company')
+        collink_1 = ColumnLink(title='Defined in Model', field=['id', 'name'], url_name='example2')
         company_list = ['id', 'name']
 
         class ModelIdColumn(DatatableColumn):

@@ -30,7 +30,7 @@ class Example1(MainMenu, DatatableView):
             ('dissolved', {'choices': ['yes', 'no']}),
             ColumnLink(column_name='peoplex', field=['id', 'name'], url_name='example2'),
             ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
-            ColumnLink(column_name='view_company', field='name', url_name='example2'),
+            ColumnLink(column_name='view_company', field=['id', 'name'],  url_name='example2'),
             ColumnLink(column_name='view_company_icon', link_ref_column='id', url_name='example2', width='10px',
                        link_html='<button class="btn btn-sm btn-outline-dark"><i class="fas fa-building"></i></button>'
                        ),
@@ -183,7 +183,8 @@ class Example5(MainMenu, DatatableView):
             'name',
             'Tags',
             ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
-            ColumnLink(column_name='view_company', field='name', url_name='example2'),
+            ColumnLink(column_name='view_company_1', field=['id', 'name'], url_name='example2'),
+            ColumnLink(column_name='view_company_2', link_ref_column='id', field='name', url_name='example2'),
         )
         table.add_js_filters('tag', 'Tags')
 
