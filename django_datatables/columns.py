@@ -369,11 +369,14 @@ class ColumnLink(ColumnBase):
     def url(self, url_name):
         self._url = get_url(url_name)
 
-    def __init__(self, *, url_name, link_ref_column='id', link_html=None, link_css='', var='%1%', **kwargs):
+    def __init__(self, *, url_name, link_ref_column=None, link_html=None, link_css='', var='%1%', **kwargs):
         if not self.initialise(locals()):
             return
         super().__init__(**self.kwargs)
-        link_ref_column = self.model_path + link_ref_column
+        if link_ref_column:
+            link_ref_column = self.model_path + link_ref_column
+        else:
+            link_ref_column = self.column_name
         self.url = url_name
 
         if not link_html:
