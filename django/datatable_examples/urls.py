@@ -4,6 +4,7 @@ import datatable_examples.views.main as main_views
 import datatable_examples.views.aggregations as aggregations_views
 import datatable_examples.views.horizontal as horizontal_views
 import datatable_examples.views.widgets as widgets_views
+import datatable_examples.views.selection as selection_views
 
 urlpatterns = [
     path('', RedirectView.as_view(pattern_name='example1', )),
@@ -31,6 +32,8 @@ urlpatterns = [
     path('aggregations/standard', aggregations_views.ExampleAggregations.as_view(), name='aggregations'),
     path('aggregation/horizontal', aggregations_views.ExampleAggregationsHorizontal.as_view(),
          name='aggregations_horizontal'),
+
+    path('selection/demo/', selection_views.Selection.as_view(), name='selection_example'),
 
     path('horizontal', horizontal_views.ExampleHorizontal.as_view(),
          name='horizontal'),

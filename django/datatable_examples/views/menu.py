@@ -30,6 +30,7 @@ class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
             'horizontal',
             'reorder',
             'widget',
+            'selection_example',
         )
 
     def get_context_data(self, **kwargs):
