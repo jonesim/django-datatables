@@ -79,7 +79,7 @@ class ColumnBase:
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
         self.options: Dict[KT, VT] = options
         self.model_path = kwargs.pop('model_path', None)
-        if not self.model_path is not None:
+        if self.model_path is None:
             self.model_path = self.get_model_path(self.column_name)
             if '/' in self.model_path:
                 self.model_path = self.model_path[self.model_path.find('/') + 1:]
@@ -595,3 +595,27 @@ class MenuColumn(NoHeadingColumn):
         menu_rendered = menu.render().replace(str(DUMMY_ID), '%1%')
         kwargs['render'] = [render_replace(html=menu_rendered, column=kwargs['column_name'])]
         super().__init__(**kwargs)
+
+
+class SelectColumn(DatatableColumn):
+
+    def __init__(self, field='id', **kwargs):
+        def button(title, font_awesome, data_command=None):
+            return (
+                f'''<button class="table-select" onclick="django_datatables.column_select(this)" title="{title}"'''
+                f'''{(f' data-command="' + data_command + '"') if data_command else ''}>'''
+                f'''<i class="{font_awesome}"></i></button>'''
+            )
+        kwargs['title'] = '<div class="d-flex"><div class="m-auto">{}{}</div></div>'.format(
+            button('Select all', 'fas fa-check-square'), button('Unselect all', 'far fa-square', 'clear')
+        )
+        kwargs['render'] = [{'function': 'Replace',
+                             'html': '<input class="col-sel" type="checkbox" name="%1%" title="Select">',
+                             'var': '%1%'}]
+        kwargs['no_col_search'] = True
+        kwargs['column_defs'] = {'orderable': False, 'className': 'dt-center'}
+        super().__init__(field=field, **kwargs)
+
+    def col_setup(self):
+        # Required so select all, works on pages not viewed
+        self.table.table_options['deferRender'] = False

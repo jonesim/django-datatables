@@ -3,6 +3,14 @@ if (typeof django_datatables === 'undefined') {
         var setup = {};
         var DataTables = {};
 
+        function column_select(button) {
+            var table_id = $(button).closest('table').attr('id');
+            django_datatables.DataTables[table_id].table.api().column(0, {"filter": "applied"}).nodes().to$().each(function () {
+                $("input", this).prop('checked', $(button).attr('data-command') !== 'clear');
+            });
+            //  django_datatables.DataTables[table_id].table.api().$('input.col-sel').prop('checked', $(button).attr('data-command') !== 'clear');
+        }
+
         function b_r(button) {
             var command = $(button).attr('data-command');
             var row_id = $(button).closest('tr').attr('id');
@@ -72,6 +80,23 @@ if (typeof django_datatables === 'undefined') {
             DataTables[command.table_id].table.api().row('#' + command.row_no).remove()
             DataTables[command.table_id].table.api().draw(false)
         }
+
+        ajax_helpers.command_functions.send_selected = function (command) {
+            ids = [];
+            django_datatables.DataTables[command.table_id].table.api().$('input.col-sel:checked').each(function () {
+                ids.push(parseInt(this.name));
+            });
+            if (command.data === undefined) {
+                data = {};
+            } else {
+                data = command.data;
+            }
+            data.column_data = JSON.stringify(ids);
+            data.column = command.method;
+            data.table_id = command.table_id;
+            ajax_helpers.post_json({data: data});
+        };
+
         ajax_helpers.command_functions.refresh_row = function(command){
             if (command.data === undefined){
                 ajax_helpers.post_json({data: {row: 'refresh', row_no: command.row_no, table_id: command.table_id}});
@@ -79,6 +104,13 @@ if (typeof django_datatables === 'undefined') {
                 DataTables[command.table_id].table.api().row('#' + command.row_no).data(command.data).invalidate()
             }
         }
+
+        ajax_helpers.command_functions.send_column = function (command) {
+            if (command.data === undefined) {
+                command.data = {};
+            }
+            DataTables[command.table_id].send_column(command.method, command.column, command.data);
+        };
 
         ajax_helpers.command_functions.reload_table = function(command){
             DataTables[command.table_id].table.api().ajax.reload(null, false);
@@ -820,16 +852,19 @@ if (typeof django_datatables === 'undefined') {
             ajax_helpers.post_json({data: data})
         }
 
-        PythonTable.prototype.send_column = function (command, column) {
+        PythonTable.prototype.send_column = function (command, column, data) {
             var acc = this.table.api().column(this.find_column(column), {"filter": "applied"}).data().reduce(function (acc, current) {
-                acc.push(current)
-                return acc
-            }, [])
-            var data = {
-                column_data: JSON.stringify(acc), column: command, table_id: this.table_id
+                acc.push(current);
+                return acc;
+            }, []);
+            if (data === undefined) {
+                data = {};
             }
-            ajax_helpers.post_json({data: data})
-        }
+            data.column_data = JSON.stringify(acc);
+            data.column = command;
+            data.table_id = this.table_id;
+            ajax_helpers.post_json({data: data});
+        };
 
 
         return {
@@ -849,6 +884,7 @@ if (typeof django_datatables === 'undefined') {
             PythonTable,
             make_edit,
             row_send,
+            column_select,
         }
     }()
 }

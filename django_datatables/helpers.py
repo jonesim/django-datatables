@@ -44,3 +44,8 @@ def overwrite_cell(table, row_no, column_name, html):
     return ajax_command('html',
                         selector=f'#{table.table_id} #{row_no} td:nth-of-type({table.find_column(column_name)[1] + 1})',
                         html=html)
+
+
+def send_selected(table_id, method_name):
+    return (f"ajax_helpers.process_commands([{{function:'send_selected', "
+            f"table_id:'{table_id}', method: '{method_name}'}}])")
