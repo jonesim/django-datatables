@@ -394,7 +394,7 @@ class ColumnLink(ColumnBase):
         link = f'<a{link_css} href="{self.url}">{{}}</a>'
         if isinstance(self.field, (list, tuple)):
             self.options['render'] = [
-                render_replace(column=self.column_name + ':0', html=link.format('%1%'), var='999999'),
+                render_replace(column=self.column_name + ':0', html=link.format(link_html), var='999999'),
                 render_replace(column=self.column_name + ':1'),
             ]
         elif self.var not in link_html:
