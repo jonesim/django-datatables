@@ -384,6 +384,12 @@ class ColumnLink(ColumnBase):
 
         if not link_css:
             link_css = self.base_link_css
+
+        self.var = var
+        self.link_ref_column = link_ref_column
+        self.setup_link(link_css, link_html)
+
+    def setup_link(self, link_css, link_html):
         link_css = f' class="{link_css}"' if link_css else ''
         link = f'<a{link_css} href="{self.url}">{{}}</a>'
         if isinstance(self.field, (list, tuple)):
@@ -391,11 +397,14 @@ class ColumnLink(ColumnBase):
                 render_replace(column=self.column_name + ':0', html=link.format('%1%'), var='999999'),
                 render_replace(column=self.column_name + ':1'),
             ]
-        elif var not in link_html:
-            self.options['render'] = [render_replace(column=link_ref_column, html=link.format(link_html), var='999999')]
+        elif self.var not in link_html:
+            self.options['render'] = [render_replace(column=self.link_ref_column,
+                                                     html=link.format(link_html), var='999999')]
         else:
-            self.options['render'] = [render_replace(column=self.column_name, html=link.format(link_html), var=var),
-                                      render_replace(column=link_ref_column, var='999999')]
+            self.options['render'] = [render_replace(column=self.column_name,
+                                                     html=link.format(link_html),
+                                                     var=self.var),
+                                      render_replace(column=self.link_ref_column, var='999999')]
 
 
 class ManyToManyColumn(DatatableColumn):
