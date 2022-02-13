@@ -5,7 +5,7 @@ with open("readme.md", "r") as fh:
 
 setuptools.setup(
     name="django-filtered-datatables",
-    version="0.0.20",
+    version="0.0.21",
     author="Ian Jones",
     description="Django views with javascript filters using Datatables",
     long_description=long_description,
