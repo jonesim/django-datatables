@@ -1,4 +1,4 @@
-
+"use strict";
 
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
 
@@ -32,6 +32,15 @@ if (typeof django_datatables === 'undefined') {
   var django_datatables = function () {
     var setup = {};
     var DataTables = {};
+
+    function column_select(button) {
+      var table_id = $(button).closest('table').attr('id');
+      django_datatables.DataTables[table_id].table.api().column(0, {
+        "filter": "applied"
+      }).nodes().to$().each(function () {
+        $("input", this).prop('checked', $(button).attr('data-command') !== 'clear');
+      }); //  django_datatables.DataTables[table_id].table.api().$('input.col-sel').prop('checked', $(button).attr('data-command') !== 'clear');
+    }
 
     function b_r(button) {
       var command = $(button).attr('data-command');
@@ -113,6 +122,26 @@ if (typeof django_datatables === 'undefined') {
       DataTables[command.table_id].table.api().draw(false);
     };
 
+    ajax_helpers.command_functions.send_selected = function (command) {
+      var ids = [];
+      django_datatables.DataTables[command.table_id].table.api().$('input.col-sel:checked').each(function () {
+        ids.push(parseInt(this.name));
+      });
+
+      if (command.data === undefined) {
+        data = {};
+      } else {
+        data = command.data;
+      }
+
+      data.column_data = JSON.stringify(ids);
+      data.column = command.method;
+      data.table_id = command.table_id;
+      ajax_helpers.post_json({
+        data: data
+      });
+    };
+
     ajax_helpers.command_functions.refresh_row = function (command) {
       if (command.data === undefined) {
         ajax_helpers.post_json({
@@ -127,8 +156,37 @@ if (typeof django_datatables === 'undefined') {
       }
     };
 
+    ajax_helpers.command_functions.send_column = function (command) {
+      if (command.data === undefined) {
+        command.data = {};
+      }
+
+      DataTables[command.table_id].send_column(command.method, command.column, command.data);
+    };
+
     ajax_helpers.command_functions.reload_table = function (command) {
       DataTables[command.table_id].table.api().ajax.reload(null, false);
+      $('#' + command.table_id).off('xhr.dt');
+      $('#' + command.table_id).on('xhr.dt', function (e, settings, json, xhr) {
+        DataTables[command.table_id].filters.forEach(function (filter) {
+          if (filter.filter_calcs != undefined) {
+            filter.filter_calcs.calcs = {};
+            filter.filter_calcs.count = 0;
+            filter.filter_calcs.sorted_keys = null;
+          }
+        });
+        DataTables[command.table_id].table.api().rows().data().each(function (row) {});
+
+        for (var r = 0; r < json.data.length; r++) {
+          DataTables[command.table_id].filters.forEach(function (filter) {
+            if (filter.filter_calcs != undefined) {
+              filter.filter_calcs.init_calcs(json.data[r]);
+            }
+          });
+        }
+
+        DataTables[command.table_id].exec_filter('html');
+      });
     };
 
     ajax_helpers.command_functions.restore_datatable = function (command) {
@@ -600,6 +658,19 @@ if (typeof django_datatables === 'undefined') {
           };
         }
       },
+      Base64Row: function Base64Row(column, params, table) {
+        django_datatables.BaseProcessAjaxData.call(this, column, params, table);
+
+        if (params.html === undefined) {
+          this.convert = function (current, value, meta, row) {
+            return current.replace(params.var, meta.settings.rowId(row));
+          };
+        } else {
+          this.convert = function (current, value, meta, row) {
+            return params.html.replace(params.var, btoa(JSON.stringify(row)).replace(/\//g, '_').replace(/\+/g, '_'));
+          };
+        }
+      },
       Replace: function Replace(column, params, table) {
         django_datatables.BaseProcessAjaxData.call(this, column, params, table);
 
@@ -929,18 +1000,21 @@ if (typeof django_datatables === 'undefined') {
       });
     };
 
-    PythonTable.prototype.send_column = function (command, column) {
+    PythonTable.prototype.send_column = function (command, column, data) {
       var acc = this.table.api().column(this.find_column(column), {
         "filter": "applied"
       }).data().reduce(function (acc, current) {
         acc.push(current);
         return acc;
       }, []);
-      var data = {
-        column_data: JSON.stringify(acc),
-        column: command,
-        table_id: this.table_id
-      };
+
+      if (data === undefined) {
+        data = {};
+      }
+
+      data.column_data = JSON.stringify(acc);
+      data.column = command;
+      data.table_id = this.table_id;
       ajax_helpers.post_json({
         data: data
       });
@@ -962,7 +1036,8 @@ if (typeof django_datatables === 'undefined') {
       b_r: b_r,
       PythonTable: PythonTable,
       make_edit: make_edit,
-      row_send: row_send
+      row_send: row_send,
+      column_select: column_select
     };
   }();
 }

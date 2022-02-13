@@ -82,7 +82,7 @@ if (typeof django_datatables === 'undefined') {
         }
 
         ajax_helpers.command_functions.send_selected = function (command) {
-            ids = [];
+            var ids = [];
             django_datatables.DataTables[command.table_id].table.api().$('input.col-sel:checked').each(function () {
                 ids.push(parseInt(this.name));
             });
@@ -600,7 +600,7 @@ if (typeof django_datatables === 'undefined') {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
                 var new_value
                 this.convert = function (current, value) {
-                    if (value.includes(params.value)) {
+                    if (value.indexOf(params.value) >= 0) {
                         new_value = params.choices[0]
                     } else {
                         new_value = params.choices[1]
