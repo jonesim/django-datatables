@@ -222,8 +222,11 @@ class DatatableTable:
         query = self.extra_filters(query=query)
         query = self.view_filter(query, self)
         if aggregations:
-            # this returns a dictionary hence with have to put in a list
-            query = [query.aggregate(**aggregations)]
+            aggregations_data = {}
+            for column_name, column_config in aggregations.items():
+                aggregations_data.update(query.aggregate(**{column_name: column_config}))
+            query = [aggregations_data]
+
         return query
 
     def sort(self, *columns):
