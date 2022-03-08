@@ -23,7 +23,7 @@
                     table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
                 }
             })
-            $('#{{ table.table_id }}_wrapper .column-search').on('keyup change', function () {
+            $('#{{ table.table_id }}_wrapper .column-search').on('keyup', function () {
                 table.table.api().column($(this).attr('data-col') + ':name').search(this.value, false, true, true)
                     .draw();
             })
