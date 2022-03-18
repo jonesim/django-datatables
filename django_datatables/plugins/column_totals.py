@@ -25,7 +25,7 @@ class ColumnTotals:
         footer = [self.footer_cell() for _c in datatable.columns]
         for c, setup in column_setup.items():
             data = ''
-            column_no = datatable.find_column(c, by_field=True)[1]
+            column_no = datatable.find_column(c)[1]
             if setup.get('sum'):
                 column_totals[str(column_no)] = 0
                 data = f'%{column_no}%'
