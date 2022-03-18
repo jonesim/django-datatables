@@ -521,3 +521,10 @@ class DatatableView(TemplateView):
         saved_state = SavedState.objects.get(id=int(state_id))
         self.add_command('restore_datatable', state=saved_state.state, table_id=table_id, state_id=saved_state.id)
         return self.command_response('reload')
+
+    def row_column(self, **kwargs):
+        self.setup_tables(kwargs['table_id'])
+        column = self.tables[kwargs['table_id']].columns[kwargs['column']]
+        if hasattr(column, 'row_column'):
+            return self.command_response(getattr(column, 'row_column')(**kwargs))
+

@@ -15,7 +15,11 @@ if (typeof django_datatables === 'undefined') {
             var command = $(button).attr('data-command');
             var row_id = $(button).closest('tr').attr('id');
             var table_id = $(button).closest('table').attr('id');
-            DataTables[table_id].send_row(command, row_id);
+            if (command === undefined){
+                command = 'column'
+            }
+            var column = DataTables[table_id].table.api().cell($(button).closest('td')).index().column;
+            DataTables[table_id].send_row(command, row_id, column);
         }
 
         function make_edit(span) {
@@ -844,10 +848,10 @@ if (typeof django_datatables === 'undefined') {
             this.table.api().draw()
         }
 
-        PythonTable.prototype.send_row = function (command, row_id) {
+        PythonTable.prototype.send_row = function (command, row_id, column) {
             var row_data = this.table.api().row('#' + row_id).data()
             var data = {
-                'row': command, 'row_data': JSON.stringify(row_data), 'row_no': row_id, table_id: this.table_id
+                'row': command, 'row_data': JSON.stringify(row_data), 'row_no': row_id, 'table_id': this.table_id, 'column': column
             }
             ajax_helpers.post_json({data: data})
         }
