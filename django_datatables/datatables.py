@@ -3,7 +3,7 @@ from inspect import isclass
 from typing import TypeVar, Dict
 from ajax_helpers.utils import random_string
 from django.db import models
-from django.db.models import Sum
+from django.http.response import HttpResponseBase
 from django.views.generic import TemplateView
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
@@ -285,8 +285,8 @@ class DatatableTable:
         return [c.column_name for c in self.columns]
 
     def all_titles(self):
-         return [mark_safe(str(c.title) + ('' if not c.popover else c.popover_html.format(c.popover)))
-                 for c in self.columns]
+        return [mark_safe(str(c.title) + ('' if not c.popover else c.popover_html.format(c.popover)))
+                for c in self.columns]
 
     def render(self):
         rendered_strings = []
@@ -526,5 +526,8 @@ class DatatableView(TemplateView):
         self.setup_tables(kwargs['table_id'])
         column = self.tables[kwargs['table_id']].columns[kwargs['column']]
         if hasattr(column, 'row_column'):
-            return self.command_response(getattr(column, 'row_column')(**kwargs))
-
+            response = getattr(column, 'row_column')(**kwargs)
+            if hasattr(response, '__class__') and issubclass(response.__class__, HttpResponseBase):
+                return response
+            else:
+                return self.command_response(response)
