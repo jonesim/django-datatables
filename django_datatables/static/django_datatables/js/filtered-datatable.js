@@ -843,7 +843,7 @@ if (typeof django_datatables === 'undefined') {
                 this.table.api().order([])
             }
             for (var c=0; c<this.initsetup.colOptions.length;c++){
-                this.table.api().column(c).visible(this.initsetup.colOptions[c].hidden != true)
+                this.table.api().column(c).visible(this.initsetup.colOptions[c].hidden != true, false)
             }
             this.table.api().draw()
         }
