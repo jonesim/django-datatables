@@ -487,7 +487,7 @@ class ChoiceColumn(ColumnBase):
         super().setup_kwargs(kwarg_dict)
 
     def row_result(self, data, _page_data):
-        return self.choices.get(data[self.field], '')
+        return self.choices.get(data.get(self.field), '')
 
     def setup_edit(self):
         choices = list(self.choices.items())
