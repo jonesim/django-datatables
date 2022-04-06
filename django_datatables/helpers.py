@@ -11,10 +11,13 @@ simple_table = {
 }
 
 
-def row_button(command, button_text, *, function='Html', button_classes='btn btn-sm', **kwargs):
+def row_button(command, button_text, *, function='Html', button_classes='btn btn-sm', tooltip=False, title=None,
+               **kwargs):
+    title = f' title="{title}"' if title else ''
+    tooltip = ' data-toggle="tooltip"' if tooltip else ''
     rb = {
-        'html': (f'<button data-command="{command}" onclick="django_datatables.b_r(this)" '
-                 f'class="{button_classes}">{button_text}</button>'),
+        'html': (f'<button{title} data-command="{command}" onclick="django_datatables.b_r(this)" '
+                 f'class="{button_classes}"{tooltip}>{button_text}</button>'),
         'function': function,
     }
     rb.update(kwargs)
