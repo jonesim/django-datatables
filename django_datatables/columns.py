@@ -7,7 +7,7 @@ from typing import TypeVar, Dict
 from django.db.models.expressions import CombinedExpression
 from django.forms.widgets import Select
 
-from .helpers import get_url, render_replace, DUMMY_ID
+from .helpers import get_url, render_replace, DUMMY_ID, DUMMY_ID2
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
@@ -601,8 +601,15 @@ class MenuColumn(NoHeadingColumn):
                 )),
     """
     def __init__(self, menu, **kwargs):
-        menu_rendered = menu.render().replace(str(DUMMY_ID), '%1%')
-        kwargs['render'] = [render_replace(html=menu_rendered, column=kwargs['column_name'])]
+        column_name = kwargs['column_name']
+        menu_rendered = menu.render().replace(str(DUMMY_ID), '%1%').replace(str(DUMMY_ID2), '%2%')
+        if isinstance(kwargs['field'], (list, tuple)):
+            kwargs['render'] = [
+                    render_replace(column=column_name + ':0', html=menu_rendered, var='%1%'),
+                    render_replace(column=column_name + ':1', var='%2%'),
+                ]
+        else:
+            kwargs['render'] = [render_replace(html=menu_rendered, column=column_name)]
         super().__init__(**kwargs)
 
 

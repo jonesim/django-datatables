@@ -1,6 +1,7 @@
 from ajax_helpers.utils import ajax_command
 from django.urls import reverse
 DUMMY_ID = 999999
+DUMMY_ID2 = 888888
 
 simple_table = {
     'dom': 't',
