@@ -195,3 +195,7 @@
     padding-top: 2px!important;
     padding-bottom: 2px!important;
 }
+
+.select-panel{
+    line-height: 18px;
+}

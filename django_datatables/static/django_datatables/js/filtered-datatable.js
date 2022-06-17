@@ -3,12 +3,45 @@ if (typeof django_datatables === 'undefined') {
         var setup = {};
         var DataTables = {};
 
+        function deselect(table_id, items){
+            django_datatables.DataTables[table_id].selected = django_datatables.DataTables[table_id].selected.filter(function(v){
+                return items.indexOf(v) == -1;
+            })
+        }
+
+        function select(table_id, items){
+            for (var i =0;i<items.length; i++){
+                if (django_datatables.DataTables[table_id].selected.indexOf(items[i]) === -1){
+                    django_datatables.DataTables[table_id].selected.push(items[i])
+                }
+            }
+        }
+
+        function select_item(button) {
+            var table_id = $(button).closest('table').attr('id');
+            var id = parseInt($(button).prop('name'));
+            if ($(button).prop('checked')){
+                select(table_id, [id])
+            } else {
+                deselect(table_id, [id])
+            }
+            django_datatables.DataTables[table_id].proc_filters();
+            django_datatables.DataTables[table_id].exec_filter('refresh')
+        }
+
         function column_select(button) {
             var table_id = $(button).closest('table').attr('id');
+            var set_checked = $(button).attr('data-command') !== 'clear';
+            if (set_checked){
+                select(table_id, django_datatables.DataTables[table_id].table.api().column(0, {"filter": "applied"}).data())
+            } else {
+                deselect(table_id, django_datatables.DataTables[table_id].table.api().column(0, {"filter": "applied"}).data())
+            }
             django_datatables.DataTables[table_id].table.api().column(0, {"filter": "applied"}).nodes().to$().each(function () {
-                $("input", this).prop('checked', $(button).attr('data-command') !== 'clear');
+                $("input", this).prop('checked', set_checked);
             });
-            //  django_datatables.DataTables[table_id].table.api().$('input.col-sel').prop('checked', $(button).attr('data-command') !== 'clear');
+            django_datatables.DataTables[table_id].proc_filters();
+            django_datatables.DataTables[table_id].exec_filter('refresh')
         }
 
         function b_r(button) {
@@ -86,17 +119,14 @@ if (typeof django_datatables === 'undefined') {
         }
 
         ajax_helpers.command_functions.send_selected = function (command) {
-            var ids = [];
-            django_datatables.DataTables[command.table_id].table.api().$('input.col-sel:checked').each(function () {
-                ids.push(parseInt(this.name));
-            });
+            var ids = django_datatables.DataTables[command.table_id].selected;
             if (command.data === undefined) {
                 data = {};
             } else {
                 data = command.data;
             }
             data.column_data = JSON.stringify(ids);
-            data.column = command.method;
+            data.ajax_method = command.method;
             data.table_id = command.table_id;
             ajax_helpers.post_json({data: data});
         };
@@ -454,6 +484,7 @@ if (typeof django_datatables === 'undefined') {
 
         var BaseProcessAjaxData = function (column, params, table) {
             this.column = column
+            this.table_id = table.table_id
             if (table.initsetup.colOptions[column].field_array == true) {
                 this.field_array = true
             }
@@ -575,6 +606,21 @@ if (typeof django_datatables === 'undefined') {
                     }
             },
 
+            SelectedReplace: function (column, params, table) {
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+                if (this.params.not_selected === undefined){
+                    this.params.not_selected = ''
+                }
+                this.convert = function (current, value) {
+                    if (django_datatables.DataTables[this.table_id].selected.indexOf(value) != -1){
+                        default_value = this.params.selected
+                    } else {
+                        default_value = this.params.not_selected
+                    }
+                    return current.replace(this.reg_exp, default_value)
+                }.bind(this)
+            },
+
             ReplaceLookup: function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
                 if (Array.isArray(this.reg_exp)) {
@@ -663,6 +709,7 @@ if (typeof django_datatables === 'undefined') {
             this.filters = []
             this.plugins = []
             this.table_id = html_id
+            this.selected = []
 
             django_datatables.DataTables[html_id] = this
             for (var i = 0; i < tablesetup.colOptions.length; i++) {
@@ -676,6 +723,9 @@ if (typeof django_datatables === 'undefined') {
 
                 this.table.api().on('stateSaveParams.dt', function (e, settings, data) {
                     this.exec_filter('save_state', data)
+                    for (var c=0;c < data.columns.length;c++){
+                        data.columns[c].visible = this.initsetup.colOptions[c].hidden != true;
+                    }
                 }.bind(this))
                 if (typeof (django_datatables.setup[html_id].filters) !== 'undefined') {
                     this.filters = django_datatables.setup[html_id].filters
@@ -889,6 +939,7 @@ if (typeof django_datatables === 'undefined') {
             make_edit,
             row_send,
             column_select,
+            select_item,
         }
     }()
 }

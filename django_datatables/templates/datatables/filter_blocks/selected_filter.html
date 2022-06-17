@@ -1,0 +1,75 @@
+{% load datatable_tags %}
+<div id="{{ html_id }}">
+    <div class="card-body p-0 d-flex" id="{{ html_id }}-panel ">
+        <div class="select-button">
+            <a class="btn btn-secondary mb-1" onclick="show_selection()">Select</a>
+        </div>
+        <div class="filter-content select-panel ml-3 d-none" style="width:200px">
+        </div>
+        <div class="ml-3 select-panel d-none">
+            {{ kwargs.menu.render }}
+        </div>
+    </div>
+</div>
+
+<script>
+
+    function show_selection(){
+        if ($("#{{ html_id }} .select-panel").hasClass('d-none')){
+            django_datatables.DataTables["{{ table.table_id }}"].table.api().column(0).visible(true)
+        } else {
+            django_datatables.DataTables["{{ table.table_id }}"].table.api().column(0).visible(false)
+        }
+        $("#{{ html_id }} .select-panel").toggleClass('d-none')
+
+    }
+
+    django_datatables.SelectedFilter = function (column_no, html_id, options) {
+        django_datatables.PivotFilter.call(this, column_no, html_id, options);
+        this.table_id = '{{ table.table_id }}';
+        this.filter_calcs.calcs = {'Selected': 0, 'Not selected': 0};
+        this.filter_calcs.table_id = this.table_id;
+
+        this.filter_calcs.get_key = function (row) {
+            var selected = django_datatables.DataTables[this.table_id].selected;
+            return selected.indexOf(row[column_no]) !== -1 ? 'Selected' : 'Not selected';
+        };
+
+        this.filter_calcs.clear_calcs = function () {
+            this.calcs['Selected'] = [0, django_datatables.DataTables[this.table_id].selected.length];
+            this.calcs['Not selected'] = [0, django_datatables.DataTables[this.table_id].table.api().rows().count() - this.calcs['Selected'][1]];
+        };
+
+        this.filter_calcs.sort_keys = function* () {
+            this.sorted_keys = ['Selected', 'Not selected'];
+            yield this.sorted_keys[0];
+            yield this.sorted_keys[1];
+        };
+
+        this.filter_calcs.add_calcs = function (row) {
+            if (django_datatables.DataTables[this.table_id].selected.indexOf(row[column_no]) != -1) {
+                this.calcs['Selected'][0] += 1;
+            } else {
+                this.calcs['Not selected'][0] += 1;
+            }
+        };
+        this.storage_key = 'selected_totals';
+        this.filter = function (data) {
+            if (this.pTable.selected.indexOf(data[0]) !== -1) {
+                return this.filter_data.indexOf('Selected') !== -1;
+            } else {
+                return this.filter_data.indexOf('Not selected') !== -1;
+            }
+        };
+    };
+    django_datatables.SelectedFilter.prototype = Object.create(django_datatables.PivotFilter.prototype);
+    options = {'htmlcheckbox': "{% include_escape 'datatables/filter_rows/checkbox_filter.html' %}"};
+    var new_filter = new django_datatables.SelectedFilter({{ column_no }}, '{{ html_id }}', options);
+
+    $("#{{ html_id }} .filter-header").click(function () {
+        $($(this).attr('data-target')).toggle(200);
+    });
+
+    django_datatables.add_filter('{{ table.table_id }}', new_filter);
+
+</script>

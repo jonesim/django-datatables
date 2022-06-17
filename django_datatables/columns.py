@@ -622,16 +622,14 @@ class SelectColumn(DatatableColumn):
                 f'''{(f' data-command="' + data_command + '"') if data_command else ''}>'''
                 f'''<i class="{font_awesome}"></i></button>'''
             )
-        kwargs['title'] = '<div class="d-flex"><div class="m-auto">{}{}</div></div>'.format(
+        kwargs['title'] = '<div class="d-flex" style="width:40px;line-height:14px"><div class="m-auto">{}{}</div></div>'.format(
             button('Select all', 'fas fa-check-square'), button('Unselect all', 'far fa-square', 'clear')
         )
         kwargs['render'] = [{'function': 'Replace',
-                             'html': '<input class="col-sel" type="checkbox" name="%1%" title="Select">',
-                             'var': '%1%'}]
+                             'html': ('<input class="col-sel" type="checkbox"%2% name="%1%" title="Select" '
+                                      'onchange="django_datatables.select_item(this)">'),
+                             'var': '%1%'} ,
+                            {'function': 'SelectedReplace', 'var': '%2%', 'selected': ' checked'}]
         kwargs['no_col_search'] = True
         kwargs['column_defs'] = {'orderable': False, 'className': 'dt-center'}
         super().__init__(field=field, **kwargs)
-
-    def col_setup(self):
-        # Required so select all, works on pages not viewed
-        self.table.table_options['deferRender'] = False
