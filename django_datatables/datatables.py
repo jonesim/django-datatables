@@ -1,7 +1,7 @@
 import json
 from inspect import isclass
 from typing import TypeVar, Dict
-from ajax_helpers.utils import random_string
+from ajax_helpers.utils import random_string, is_ajax
 from django.db import models
 from django.http.response import HttpResponseBase
 from django.views.generic import TemplateView
@@ -474,7 +474,7 @@ class DatatableView(TemplateView):
         if hasattr(super(), 'post'):
             # noinspection PyUnresolvedReferences
             return super().post(request, *args, **kwargs)
-        elif request.is_ajax() and request.content_type == 'application/json':
+        elif is_ajax(request) and request.content_type == 'application/json':
             response = json.loads(request.body)
             raise Exception(f'May need to use AjaxHelpers Mixin or'
                             f' add one of these \n{", ".join(response.keys())}\nto ajax_commands ')
