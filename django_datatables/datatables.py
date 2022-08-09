@@ -153,6 +153,10 @@ class DatatableTable:
 
         self.kwargs = kwargs
 
+        self.cache_data = False
+        self.cached_linked_tables = []
+        self.cache_expiry = None
+
         if table_classes:
             self.table_classes = table_classes
         else:
@@ -450,10 +454,6 @@ class DatatableView(TemplateView):
         pass
 
     @staticmethod
-    def locked():
-        return False
-
-    @staticmethod
     def get_table_query(table, **kwargs):
         return table.get_query(**kwargs)
 
@@ -461,16 +461,17 @@ class DatatableView(TemplateView):
         if request.POST.get('datatable_data'):
             table = self.tables[request.POST['table_id']]
             self.setup_tables(table_id=table.table_id)
+            if table.cache_data is True:
+                from .cache import DataTableCache
+                datatable_cache = DataTableCache()
+                cache = datatable_cache.get_cache(table)
+                if cache:
+                    return HttpResponse(cache, content_type='application/json')
             results = self.get_table_query(table, **kwargs)
-            if self.locked():
-                secure_fields = [c.field for c in table.columns if c.options.get('secure')]
-                if secure_fields:
-                    for r in results:
-                        for f in secure_fields:
-                            data = r.get(f)
-                            if data:
-                                r[f] = '<i class="fas fa-key"></i>'
-            return HttpResponse(table.get_json(request, results), content_type='application/json')
+            table_data = table.get_json(request, results)
+            if table.cache_data is True:
+                datatable_cache.store_cache(table, table_data)
+            return HttpResponse(table_data, content_type='application/json')
         if hasattr(super(), 'post'):
             # noinspection PyUnresolvedReferences
             return super().post(request, *args, **kwargs)
