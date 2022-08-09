@@ -11,6 +11,7 @@ except PackageNotFoundError:
 class DataTables(SourceBase):
     cdn_path = 'cdn.datatables.net/v/dt/dt-1.10.18/b-1.5.6/b-html5-1.5.6/rg-1.1.0/rr-1.2.4/'
     filename = 'datatables.min'
+    static_path = 'django_datatables/datatables/'
     cdn_js_path = ''
     cdn_css_path = ''
 
