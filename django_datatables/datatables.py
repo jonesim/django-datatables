@@ -355,14 +355,15 @@ class DatatableTable:
         return_data = {'data': self.get_table_array(request, results)}
         return json.dumps(return_data, separators=(',', ':'), default=str)
 
-    def refresh_row(self, request, row_id):
+    def refresh_row_command(self, request, row_id):
         id_column = self.setup_column_id()
         if id_column:
             self.filter[id_column.field] = int(row_id[1:])
             results = self.get_table_array(request, self.get_query())[0]
-            return JsonResponse([{'function': 'refresh_row', 'row_no': row_id, 'data': results,
-                                  'table_id': self.table_id}],
-                                safe=False)
+            return {'function': 'refresh_row', 'row_no': row_id, 'data': results, 'table_id': self.table_id}
+
+    def refresh_row(self, request, row_id):
+        return JsonResponse([self.refresh_row_command(request, row_id)], safe=False)
 
     def delete_row(self, _request, row_id):
         commands = [{'command': 'delete_row', 'row': row_id, 'table': self.table_id}]
