@@ -1,6 +1,6 @@
 {% if not table.table_options.no_col_search %}
 {% for c in table.columns %}
-    <th>
+    <th style="padding-left: 0; padding-right: 4px">
         {% if not c.options.no_col_search %}
             <input name="{{ c.column_name }}" type="text" class="form-control form-control-sm small column-search"
                    data-col="{{ c.column_name }}"/>
