@@ -22,6 +22,7 @@ class Selection(MainMenu, DatatableView):
             ('stats()', 'States', MenuItem.JAVASCRIPT),
 
         )
+
     @ajax_method
     def selected(self, column_data, table_id):
         selection = json.loads(column_data)

@@ -312,10 +312,11 @@ class DatatableTable:
     def col_def_str(self):
         self.setup_column_id()
         options = dict(self.table_options)
-        if not self.ajax_data:
-            options['data'] = self.get_table_array(None, self.get_query())
         if self.table_data:
             options['data'] = self.get_table_array(None, self.table_data)
+        elif not self.ajax_data:
+            options['data'] = self.get_table_array(None, self.get_query())
+
         options['columnDefs'] = [dict({'targets': i, 'name': c.column_name}, **c.style())
                                  for i, c in enumerate(self.columns)]
         table_vars = {

@@ -3,8 +3,6 @@ import json
 
 from datatable_examples import models
 from datatable_examples.views.menu import MainMenu
-from django import forms
-from django.conf import settings
 from django.db.models import Count
 from django.http import HttpResponse
 
@@ -16,7 +14,6 @@ from django_datatables.plugins.column_totals import ColumnTotals
 from django_datatables.plugins.reorder import Reorder
 from django_datatables.plugins.save_filters import add_save_filters
 from django_datatables.reorder_datatable import ReorderDatatableView
-from django_datatables.widgets import DataTableWidget, DataTableReorderWidget
 
 
 class Example1(MainMenu, DatatableView):
@@ -510,37 +507,6 @@ class Example12(MainMenu, DatatableView):
         return {'description': '''
         Examples of render functions <B>Replace, ReplaceLookup, HTML</B> <br>
         also shows how lists can be accessed and displayed  
-        '''}
-
-
-class Example13(MainMenu, DatatableView):
-    template_name = 'datatable_examples/table13.html'
-
-    @staticmethod
-    def setup_table(table):
-        table.add_columns(
-            'id',
-            'first_name',
-            'last_name',
-            'company_name',
-            ColumnBase(column_name='seconds', field='seconds', render=[
-                {'function': 'hhmm', 'column': 'seconds', 'var': '%1%'},
-
-               ], column_defs={'className': 'dt-right'}),
-        )
-        table.table_options['scrollX'] = True
-        table.add_plugin(ColumnTotals, {'seconds': {'sum': True}})
-
-    @staticmethod
-    def get_table_query(table, **kwargs):
-        path = str(settings.BASE_DIR.joinpath('datatable_examples', 'data', 'example13.json'))
-        with open(path) as json_file:
-            data = json.load(json_file)
-        return data
-
-    def add_to_context(self, **kwargs):
-        return {'description': '''
-        This example gets its data from a json file instead of the database
         '''}
 
 
