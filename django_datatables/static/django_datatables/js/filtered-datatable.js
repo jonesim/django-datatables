@@ -696,6 +696,26 @@ if (typeof django_datatables === 'undefined') {
                         }
                     }.bind(this)
                 }
+            },
+
+            currency:  function (column, params, table) {
+                django_datatables.BaseProcessAjaxData.call(this, column, params, table)
+
+                this.convert = function (current, value) {
+                    var colour = null;
+                    if(Array.isArray(current)) {
+                        colour = current[1];
+                        current = current[0];
+                    }
+                    if (current === null) {
+                        return ''
+                    }
+                    value = parseFloat(current).toLocaleString("en-GB", {style:"currency", currency:params.currency_code});
+                    if (colour) {
+                        value = `<span style="color: ${colour}">${value}</span>`;
+                    }
+                    return value;
+                }.bind(this)
             }
         }
 
