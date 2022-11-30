@@ -536,6 +536,9 @@ if (typeof django_datatables === 'undefined') {
             if (this.params.gte != undefined && value >= this.params.gte){
                 return this.params.alt_html
             }
+            else if (this.params.eq != undefined && value == this.params.eq){
+                return this.params.alt_html
+            }
             if (this.params.html == undefined)
                 return String(current)
             return this.params.html

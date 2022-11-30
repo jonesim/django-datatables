@@ -472,6 +472,9 @@ class Example12(MainMenu, DatatableView):
             ('_array1', {'title': 'Alternative result for gte (>) 50 and then gte 100', 'field_array': True,
                          'render': [render_replace(column='array:1', html=': %1%', gte=50, alt_html='GTE 50 : %1%'),
                                     render_replace(column='array:1', gte=100, alt_html='GTE 100 : %1%')]}),
+            ('_array1', {'title': 'Alternative result for eq (=) 50 and then eq 100', 'field_array': True,
+                         'render': [render_replace(column='array:1', html=': %1%', eq=50, alt_html='EQ 50: %1%'),
+                                    render_replace(column='array:1', eq=110, alt_html='EQ 110 : %1%')]}),
 
             ('_array', {'title': 'Replace with multiple items from list', 'field_array': True,
                         'render': [{'function': 'Replace', 'var': ['%1%', '%2%'], 'html': 'first %1% Second %2%'}]}),
