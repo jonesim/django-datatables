@@ -2,7 +2,7 @@ from django_datatables.datatables import DatatableView, DatatableTable
 
 
 def reorder(model, order_field, sort_data):
-    current_sort = dict(model.objects.values_list('pk', order_field))
+    current_sort = dict(model.objects.filter(id__in=[s[1] for s in sort_data]).values_list('pk', order_field))
     for s in sort_data:
         if current_sort[s[1]] != s[0]:
             o = model.objects.get(id=s[1])
