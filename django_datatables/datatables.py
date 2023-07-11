@@ -313,9 +313,11 @@ class DatatableTable:
         self.setup_column_id()
         options = dict(self.table_options)
         if self.table_data is not None:
-            options['data'] = self.get_table_array(None, self.table_data)
+            request = getattr(self.view, 'request', None)
+            options['data'] = self.get_table_array(request, self.table_data)
         elif not self.ajax_data:
-            options['data'] = self.get_table_array(None, self.get_query())
+            request = getattr(self.view, 'request', None)
+            options['data'] = self.get_table_array(request, self.get_query())
 
         options['columnDefs'] = [dict({'targets': i, 'name': c.column_name}, **c.style())
                                  for i, c in enumerate(self.columns)]
