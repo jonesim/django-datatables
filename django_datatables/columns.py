@@ -344,6 +344,8 @@ class TextFieldColumn(ColumnBase):
 
     def row_result(self, data_dict, _page_results):
         result = data_dict.get(self.field, '')
+        if result is None:
+            return ''
         if len(result) > self.kwargs.get('max_chars'):
             result = result[:self.kwargs.get('max_chars')] + '...'
         return result.replace('\n', '<br>')
