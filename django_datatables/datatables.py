@@ -87,8 +87,12 @@ class ColumnInitialisor:
         elif isinstance(self.setup, list):
             del self.kwargs['column_name']
             for c in self.setup:
-                self.columns += ColumnInitialisor(start_model=self.start_model, path=c, field_prefix=self.next_prefix,
-                                                  name_prefix=self.field, **self.kwargs).get_columns()
+                new_column_initialisor_cls = type(self)  # calls it's self (ColumnInitialisor)
+                self.columns += new_column_initialisor_cls(start_model=self.start_model,
+                                                           path=c,
+                                                           field_prefix=self.next_prefix,
+                                                           name_prefix=self.field,
+                                                           **self.kwargs).get_columns()
         elif self.callable:
             if self.setup is None:
                 self.setup = {}
@@ -120,9 +124,11 @@ class ColumnInitialisor:
 
 class DatatableTable:
     datatable_template = 'datatables/table.html'
+    column_initialisor_cls = ColumnInitialisor
 
     edit_options = {}
     edit_fields = []
+
 
     def __init__(self, table_id=None, model=None, table_options=None, table_classes=None, view=None, **kwargs):
         self.columns = []
@@ -264,7 +270,7 @@ class DatatableTable:
 
     def add_columns(self, *columns):
         for c in columns:
-            new_columns = ColumnInitialisor(self.model, c, table=self).get_columns()
+            new_columns = self.column_initialisor_cls(self.model, c, table=self).get_columns()
             self.columns += [nc for nc in new_columns if nc.enabled]
         return self
 
