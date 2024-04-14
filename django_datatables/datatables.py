@@ -1,7 +1,7 @@
 import json
 from inspect import isclass
 from typing import TypeVar, Dict
-from ajax_helpers.utils import random_string, is_ajax
+from ajax_helpers.utils import random_string, is_ajax, ajax_command
 from django.db import models
 from django.http.response import HttpResponseBase
 from django.views.generic import TemplateView
@@ -142,6 +142,7 @@ class DatatableTable:
         self.table_data = None
         self.model = model
         self.page_results = {}
+        self.results_limited = False
 
         # django query attributes
         self.initial_filter = {}
@@ -229,7 +230,7 @@ class DatatableTable:
         if self.distinct is not None:
             query = query.distinct(*self.distinct)
         if self.max_records:
-            query = query[:self.max_records]
+            query = query[:self.max_records + 1]
         query = self.extra_filters(query=query)
         query = self.view_filter(query, self)
         if aggregations:
@@ -352,6 +353,11 @@ class DatatableTable:
         for c in self.columns:
             c.setup_results(request, self.page_results)
         results_list = []
+        if self.max_records and len(results) > self.max_records:
+            results = results[:self.max_records]
+            self.results_limited = True
+            if hasattr(self.view, 'max_records_warning'):
+                self.view.max_records_warning(self)
         for data_dict in results:
             try:
                 for p in result_processes:
@@ -445,6 +451,13 @@ class DatatableView(TemplateView):
         for t_id, table in self.tables.items() if not table_id else [(table_id, self.tables[table_id])]:
             getattr(self, 'setup_' + t_id, self.setup_table)(table)
             table.view_filter = self.view_filter
+
+    def max_records_warning(self, table):
+        table.ajax_commands.append(
+            ajax_command('html', selector=f'#{table.table_id}-above',
+                         html=f'<div class="alert alert-warning"><b>Not all results shown.</b> '
+                              f'Limited to {table.max_records}</div>')
+        )
 
     def dispatch(self, request, *args, **kwargs):
         self.add_tables()

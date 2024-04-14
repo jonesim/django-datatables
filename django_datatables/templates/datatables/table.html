@@ -1,4 +1,5 @@
 {% spaceless %}
+    <div id="{{ datatable.table_id }}-above"></div>
     <table id="{{ datatable.table_id }}" class="{{ datatable.table_class }}" data-url="{{ request.path }}">
         <thead>
         <tr{% if datatable.table_options.no_titles %} class="d-none"{% endif %}>
