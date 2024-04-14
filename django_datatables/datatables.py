@@ -162,6 +162,7 @@ class DatatableTable:
         self.cache_data = False
         self.cached_linked_tables = []
         self.cache_expiry = None
+        self.ajax_commands = []
 
         if table_classes:
             self.table_classes = table_classes
@@ -362,6 +363,8 @@ class DatatableTable:
 
     def get_json(self, request, results):
         return_data = {'data': self.get_table_array(request, results)}
+        if self.ajax_commands:
+            return_data['ajax_commands'] = self.ajax_commands
         return json.dumps(return_data, separators=(',', ':'), default=str)
 
     def refresh_row_command(self, request, row_id):
