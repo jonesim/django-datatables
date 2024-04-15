@@ -6,6 +6,7 @@ import datatable_examples.views.horizontal as horizontal_views
 import datatable_examples.views.widgets as widgets_views
 import datatable_examples.views.selection as selection_views
 import datatable_examples.views.no_model as no_model_views
+from datatable_examples.views.modal_filter import ModalFilterExample
 
 urlpatterns = [
     path('', RedirectView.as_view(pattern_name='example1', )),
@@ -39,6 +40,6 @@ urlpatterns = [
 
     path('horizontal', horizontal_views.ExampleHorizontal.as_view(),
          name='horizontal'),
-
-
+    path('modal-filter/', ModalFilterExample.as_view(), name='modal_filter'),
+    path('modal-filter/<str:base64>/', ModalFilterExample.as_view(), name='modal_filter'),
 ]
