@@ -1,9 +1,10 @@
 Django==3.2.7
-#django-ajax-helpers==0.0.17
-django-ajax-helpers @ git+https://github.com/jonesim/ajax-helpers@ce720aaa850f371f773efaccb53c05623419e981
-django-tab-menus==0.0.15
+django-ajax-helpers==0.0.22
+django-crispy-forms==1.14.0
+django-tab-menus==0.0.16
 django-show-source-code==0.0.8
-django-nested-modals==0.0.18
+#django-nested-modals==0.0.23
+django-nested-modals @ git+https://github.com/jonesim/django-modals@5fa75c0a44b14624032d7f96936a852f441cae85
 
 #git+https://github.com/jonesim/django-modals.git@a403c80476ac9bb108ba7d7d5498a1e1b0892d16
 modal-examples @ git+https://github.com/jonesim/django-modals@2b784ba1879bb44a972513848a764f85a01c0115#subdirectory=django_examples
