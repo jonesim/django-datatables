@@ -774,6 +774,16 @@ if (typeof django_datatables === 'undefined') {
                     this.proc_filters(this)
                     this.exec_filter('refresh')
                     this.exec_plugins('refresh', this)
+                    $('form input', this.table).keydown(function (e) {
+                        if (e.keyCode === 38) {
+                            $(e.target).closest('tr').prev().find('input').focus();
+                            e.preventDefault();
+                        }
+                        if (e.keyCode === 13 | e.keyCode === 40) {
+                            $(e.target).closest('tr').next().find('input').focus();
+                            e.preventDefault();
+                        }
+                    });
                 }.bind(this));
                 this.exec_filter('reset')
                 this.table.api().draw()
@@ -929,9 +939,12 @@ if (typeof django_datatables === 'undefined') {
         }
 
         PythonTable.prototype.send_row = function (command, row_id, column) {
-            var row_data = this.table.api().row('#' + row_id).data()
+            var row = this.table.api().row('#' + row_id)
+            var row_data = row.data()
+            var row_inputs = $('form', row.node()).serialize()
             var data = {
-                'row': command, 'row_data': JSON.stringify(row_data), 'row_no': row_id, 'table_id': this.table_id, 'column': column
+                'row': command, 'row_data': JSON.stringify(row_data), 'row_no': row_id, 'table_id': this.table_id,
+                'column': column, 'inputs': row_inputs
             }
             ajax_helpers.post_json({data: data})
         }
