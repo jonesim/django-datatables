@@ -24,6 +24,9 @@ class DatatableFilterField:
         return {f.field_id: f.field for f in field_list}
 
     def get_filter(self, value, table=None):
+        if value is None:
+            if self.datatable_field[-4:] == '__in':
+                return {self.datatable_field[:-2] + 'isnull': True}
         if self.datatable_field:
             return {self.datatable_field: value}
         elif self.filter_function:
