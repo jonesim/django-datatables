@@ -8,6 +8,8 @@ from django.http import HttpResponse
 
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.datatables import DatatableView
+from django_datatables.downloads.clipboard import ClipboardCopy
+from django_datatables.downloads.excel_download import ExcelDownload
 from django_datatables.helpers import row_button, render_replace, row_link
 from django_datatables.plugins.colour_rows import ColourRows
 from django_datatables.plugins.column_totals import ColumnTotals
@@ -50,11 +52,15 @@ class Example1(MainMenu, DatatableView):
         # table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
         table.add_plugin(ColumnTotals, {'id': {'sum': 'over1000'}}, template='add_sum_calc.html')
 
-
-class Example2(MainMenu,  DatatableView):
+class Example2(MainMenu, ExcelDownload, ClipboardCopy, DatatableView):
     model = models.Person
     template_name = 'datatable_examples/csv_button_table.html'
     ajax_commands = ['row', 'column']
+
+    def setup_menu(self):
+        self.add_menu('menu', 'buttons').add_items(self.download_menu_item(), self.clipboard_menu_item())
+        super().setup_menu()
+
 
     def column_get_csv(self, **kwargs):
 
