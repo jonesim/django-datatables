@@ -320,6 +320,12 @@ class ColumnBase:
                 self.options[a] = value
         return self
 
+    @staticmethod
+    def excel(value):
+        if isinstance(value, list):
+            return value[1]
+        return value
+
 
 class DatatableColumn(ColumnBase):
     def __init__(self, **kwargs):
