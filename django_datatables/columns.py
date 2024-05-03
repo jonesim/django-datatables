@@ -322,9 +322,9 @@ class ColumnBase:
 
     @staticmethod
     def excel(value):
-        if isinstance(value, list):
-            return value[1]
-        return value
+        if isinstance(value, (int, float, str)):
+            return value
+        return str(value)
 
 
 class DatatableColumn(ColumnBase):
