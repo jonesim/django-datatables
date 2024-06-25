@@ -49,6 +49,11 @@ class JSuites(SourceBase):
     css_filename = 'jsuites.css'
 
 
+class Spreadsheet(SourceBase):
+    static_path = 'django_datatables/'
+    js_filename = 'spreadsheet.js'
+
+
 packages = {
     'datatable': [DataTables, FilteredDataTables, Moment, MomentDatatable],
     'JSpreadsheet': [JSpreadsheet, JSuites]

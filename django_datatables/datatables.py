@@ -159,6 +159,7 @@ class DatatableTable:
         self.omit_columns = []
 
         self.kwargs = kwargs
+        self.spreadsheet_config = {}
 
         self.cache_data = False
         self.cached_linked_tables = []
@@ -339,6 +340,36 @@ class DatatableTable:
         # col_def_str = col_def_str.replace('"&', "")
         # col_def_str = col_def_str.replace('&"', "")
         return col_def_str
+
+    def table_json_data(self):
+        request = getattr(self.view, 'request', None)
+        return json.dumps(self.get_table_array(request, self.get_query()))
+
+    def spreadsheet_params(self):
+        params = [f'columns: [{",".join([c.spreadsheet_init() for c in self.columns])}]',
+                  f'data: {self.table_json_data()}',
+        ]
+        if self.table_options.get('on_change') == 'row':
+            params.append('onchange: spreadsheets.spreadsheet_change')
+        elif self.table_options.get('on_change') == 'whole':
+            params.append('onchange: spreadsheets.spreadsheet_change_whole')
+
+        for k, v in self.spreadsheet_config.items():
+            if isinstance(v, bool):
+                params.append(f'{k}: {str(v).lower()}')
+            elif isinstance(v, (dict, list)):
+                params.append(f'{k}: {json.dumps(v)}')
+            elif isinstance(v, int):
+                params.append(f'{k}: {v}')
+            else:
+                params.append(f'{k}: "{v}"')
+        return mark_safe(f"{{{','.join(params)}}}")
+
+    def spreadsheet_options(self):
+        commands = [f'sheet.hideColumn({c_no})' for c_no, c in enumerate(self.columns) if c.options.get('hidden')]
+        if self.table_options.get('hide_index'):
+            commands.append('sheet.hideIndex()')
+        return ';'.join(commands)
 
     def get_result_processes(self):
         result_processes = {}

@@ -1,0 +1,9 @@
+<div class='sheet-div' id="{{ datatable.table_id }}"></div>
+<script>
+    $(document).ready(function () {
+        var sheet = jspreadsheet($('#{{ datatable.table_id }}')[0], {{ datatable.spreadsheet_params }});
+        spreadsheets.sheets['{{ datatable.table_id}}'] = sheet;
+        sheet.options.stripHTML = false;
+        {{ datatable.spreadsheet_options }}
+    });
+</script>
