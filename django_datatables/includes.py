@@ -35,6 +35,21 @@ class MomentDatatable(SourceBase):
     cdn_js_path = ''
 
 
+class JSpreadsheet(SourceBase):
+    static_path = 'django_datatables/jspreadsheet/'
+    css_path = js_path = ''
+    js_filename = 'index.js'
+    css_filename = 'jspreadsheet.css'
+
+
+class JSuites(SourceBase):
+    static_path = 'django_datatables/jsuites/'
+    css_path = js_path = ''
+    js_filename = 'jsuites.js'
+    css_filename = 'jsuites.css'
+
+
 packages = {
     'datatable': [DataTables, FilteredDataTables, Moment, MomentDatatable],
+    'JSpreadsheet': [JSpreadsheet, JSuites]
 }
