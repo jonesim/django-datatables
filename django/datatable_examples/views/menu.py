@@ -34,6 +34,7 @@ class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
             'widget',
             'selection_example',
             'modal_filter',
+            'spreadsheet',
         )
 
     def get_context_data(self, **kwargs):

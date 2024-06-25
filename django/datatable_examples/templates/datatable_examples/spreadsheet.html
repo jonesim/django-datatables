@@ -1,0 +1,12 @@
+{% extends 'datatable_examples/base.html' %}
+{% load ajax_helpers %}
+
+
+{% load datatable_tags %}
+{% block contents %}
+    {% lib_include 'Spreadsheet' module='django_datatables.includes' %}
+    {{ menus.top_menu.render }}
+        <div >
+            {{ datatable.render|safe }}
+        </div>
+{% endblock %}
