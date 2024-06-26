@@ -102,9 +102,10 @@ class ColumnBase:
         self.replace_list = []
         self.blank = None
         self.popover = None
+        self.spreadsheet = kwargs.pop('spreadsheet', {})
         self.setup_kwargs(kwargs)
         self.result_processes = {}
-        self.spreadsheet = {}
+
         self.col_setup()
         self.edit_type = None
 
@@ -331,11 +332,12 @@ class ColumnBase:
     def spreadsheet_init(self):
         column_init = {'title': self.title, 'width': self.column_defs.get('width', 100)}
         column_init.update(self.spreadsheet)
+        
         def allow_javascript(key_pair):
             return key_pair.replace('"', '') if key_pair.startswith(' "editor":') else key_pair
 
-        return  '{' + ','.join([(allow_javascript(v))
-                                for v in json.dumps(column_init).strip('{').strip('}').split(',')]) + '}'
+        return '{' + ','.join([(allow_javascript(v))
+                               for v in json.dumps(column_init).strip('{').strip('}').split(',')]) + '}'
 
 class DatatableColumn(ColumnBase):
     def __init__(self, **kwargs):
