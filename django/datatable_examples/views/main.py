@@ -1,28 +1,24 @@
 import csv
 import json
 
-from ajax_helpers.utils import ajax_command
-from django.forms.fields import CharField
-
 from datatable_examples import models
 from datatable_examples.models import Tags
 from datatable_examples.views.menu import MainMenu
 from django.db.models import Count
+from django.forms.fields import CharField
 from django.http import HttpResponse
 
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.datatables import DatatableView
 from django_datatables.downloads.clipboard import ClipboardCopy
 from django_datatables.downloads.excel_download import ExcelDownload
-from django_datatables.helpers import row_button, render_replace, row_link
+from django_datatables.helpers import row_button, render_replace
 from django_datatables.modal_filter.filter_fields import FilterModelMultipleChoiceField
 from django_datatables.modal_filter.mixins import DatatableFilterMixin, DatatableFilterField
 from django_datatables.plugins.colour_rows import ColourRows
 from django_datatables.plugins.column_totals import ColumnTotals
 from django_datatables.plugins.reorder import Reorder
-from django_datatables.plugins.save_filters import add_save_filters
 from django_datatables.reorder_datatable import ReorderDatatableView
-
 
 
 class NumberEdit(DatatableColumn):
