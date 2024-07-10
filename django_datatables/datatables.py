@@ -128,7 +128,7 @@ class DatatableTable:
 
     edit_options = {}
     edit_fields = []
-
+    query_manager = 'objects'
 
     def __init__(self, table_id=None, model=None, table_options=None, table_classes=None, view=None, **kwargs):
         self.columns = []
@@ -214,7 +214,7 @@ class DatatableTable:
                 annotations_value.update(c.annotations_value)
             if c.aggregations:
                 aggregations.update(c.aggregations)
-        query = self.model.objects
+        query = getattr(self.model, self.query_manager)
         # Use initial values to group_by for annotations
         if self.initial_values:
             query = query.values(*self.initial_values)
