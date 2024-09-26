@@ -865,13 +865,19 @@ if (typeof django_datatables === 'undefined') {
                 }
             })
             if (this.initsetup.tableOptions.row_href) {
-                $('#' + html_id + ' tbody').on('click', 'tr', function () {
-                    var p_table = django_datatables.DataTables[html_id]
-                    var row_id = $(this).attr('id')
-                    var row_data = p_table.table.api().row('#' + row_id).data()
-                    var href_render = new django_datatables.column_render(0, p_table.initsetup.tableOptions.row_href, p_table)
-                    window.location.href = href_render('', null, row_data)
-                })
+                $('#' + html_id + ' tbody').on('click', 'tr', function (event) {
+                    // Check if the clicked element is a checkbox or if the checkbox is within the clicked td
+                    if ($(event.target).is('input[type="checkbox"]') || $(event.target).closest('td').find('input[type="checkbox"]').length > 0) {
+                        event.stopPropagation(); // Stop the event from bubbling up
+                        return; // Exit the function to prevent navigation
+                    }
+
+                    var p_table = django_datatables.DataTables[html_id];
+                    var row_id = $(this).attr('id');
+                    var row_data = p_table.table.api().row('#' + row_id).data();
+                    var href_render = new django_datatables.column_render(0, p_table.initsetup.tableOptions.row_href, p_table);
+                    window.location.href = href_render('', null, row_data);
+                });
             }
         }
 
