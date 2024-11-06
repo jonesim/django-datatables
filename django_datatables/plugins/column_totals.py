@@ -23,6 +23,7 @@ class ColumnTotals:
             self.template_name = self.base_template
 
         footer = [self.footer_cell() for _c in datatable.columns]
+        column_map = {}
         for c, setup in column_setup.items():
             data = ''
             column_no = datatable.find_column(c)[1]
@@ -33,6 +34,7 @@ class ColumnTotals:
                 data = setup['text'].replace(f'%{c}%', f'%{column_no}%')
             footer[column_no] = self.footer_cell(data, setup.get('css_class'))
             setup_dict[str(column_no)] = setup
+            column_map[c] = column_no
 
         html_footer = ''
         for c, f in enumerate(footer):
@@ -43,6 +45,7 @@ class ColumnTotals:
         self.context = {'datatable': datatable,
                         'footer': html_footer,
                         'totals': json.dumps(column_totals),
+                        'column_map': json.dumps(column_map),
                         'setup': json.dumps(setup_dict)}
 
     def render(self):

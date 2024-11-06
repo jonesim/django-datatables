@@ -4,7 +4,8 @@ import json
 from datatable_examples import models
 from datatable_examples.models import Tags
 from datatable_examples.views.menu import MainMenu
-from django.db.models import Count
+from django.db.models import Count, ExpressionWrapper, FloatField, F
+from django.db.models.functions import NullIf
 from django.forms.fields import CharField
 from django.http import HttpResponse
 
@@ -565,3 +566,64 @@ class ExampleReorder(MainMenu, ReorderDatatableView):
     def setup_table(table):
         table.add_columns('name')
         table.add_plugin(Reorder)
+
+
+
+class ExampleTotaling(MainMenu, DatatableView):
+    model = models.Tally
+    ajax_commands = ['row']
+
+    @staticmethod
+    def percentage(_column, data_dict, _page_results):
+        number = data_dict.get(_column.field)
+        if number is None:
+            return ''
+        else:
+            number = f'{number:.1f}'
+        if '.' in number:
+            return number.rstrip('0').rstrip('.')
+        else:
+            return number
+
+    def setup_table(self, table):
+        total_vehicles_ew = ExpressionWrapper(F('cars') + F('vans'), output_field=FloatField())
+        percentage_that_are_vans_ew = ExpressionWrapper(F('vans') * 100.0 / F('total_vehicles'),
+                                                        output_field=FloatField())
+        percentage_that_are_cars_ew = ExpressionWrapper(F('cars') * 100.0 / F('total_vehicles'),
+                                                        output_field=FloatField())
+
+        table.add_columns(
+            'id',
+            'cars',
+            'vans',
+            ColumnBase(column_name='total_vehicles',
+                       field='total_vehicles',
+                       annotations={'total_vehicles': total_vehicles_ew}),
+            ColumnBase(column_name='percentage_that_are_vans',
+                       field='percentage_that_are_vans',
+                       annotations={'percentage_that_are_vans': percentage_that_are_vans_ew},
+                       row_result=self.percentage,
+                       render=[render_replace(html='%1%&thinsp;%', column='percentage_that_are_vans')],
+                       column_defs={'className': 'dt-right'}
+                       ),
+            ColumnBase(column_name='percentage_that_are_cars',
+                       field='percentage_that_are_cars',
+                       annotations={'percentage_that_are_cars': percentage_that_are_cars_ew},
+                       row_result=self.percentage,
+                       render=[render_replace(html='%1%&thinsp;%', column='percentage_that_are_cars')],
+                       column_defs={'className': 'dt-right'}
+                       )
+        )
+        table.add_plugin(ColumnTotals, {'id': {'css_class': 'text-danger', 'text': 'Total'},
+                                        'cars': {'sum': True},
+                                        'vans': {'sum': True},
+                                        'total_vehicles': {'sum': True},
+                                        'percentage_that_are_vans': {'css_class': 'dt-right',
+                                                                     'sum': 'percentage',
+                                                                     'denominator': 'total_vehicles',
+                                                                     'numerator': 'vans'},
+                                        'percentage_that_are_cars': {'css_class': 'dt-right',
+                                                                     'sum': 'percentage',
+                                                                     'denominator': 'total_vehicles',
+                                                                     'numerator': 'cars'}
+                                        })
