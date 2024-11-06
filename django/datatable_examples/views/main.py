@@ -621,9 +621,11 @@ class ExampleTotaling(MainMenu, DatatableView):
                                         'percentage_that_are_vans': {'css_class': 'dt-right',
                                                                      'sum': 'percentage',
                                                                      'denominator': 'total_vehicles',
-                                                                     'numerator': 'vans'},
+                                                                     'numerator': 'vans',
+                                                                     'decimal_places': 1},
                                         'percentage_that_are_cars': {'css_class': 'dt-right',
                                                                      'sum': 'percentage',
                                                                      'denominator': 'total_vehicles',
-                                                                     'numerator': 'cars'}
+                                                                     'numerator': 'cars',
+                                                                     'decimal_places': 1}
                                         })
