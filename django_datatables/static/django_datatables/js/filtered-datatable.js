@@ -31,6 +31,11 @@ if (typeof django_datatables === 'undefined') {
 
         function column_select(button) {
             var table_id = $(button).closest('table').attr('id');
+            if(table_id === undefined) {
+                var table = $(button).closest('table').closest('.dataTables_wrapper').find('.dataTables_scrollBody table.display');
+                table_id = table.attr('id');
+            }
+
             var set_checked = $(button).attr('data-command') !== 'clear';
             if (set_checked){
                 select(table_id, django_datatables.DataTables[table_id].table.api().column(0, {"filter": "applied"}).data())
