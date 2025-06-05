@@ -706,8 +706,13 @@ if (typeof django_datatables === 'undefined') {
 
             currency:  function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-
-                this.convert = function (current, value) {
+                if(params.decimal_places === undefined) {
+                    params.decimal_places = 2;
+                }
+                if(params.locale === undefined) {
+                    params.locale = "en-GB";
+                }
+                this.convert = function (current, value, meta, row, type){
                     var colour = null;
                     if(Array.isArray(current)) {
                         colour = current[1];
@@ -716,11 +721,17 @@ if (typeof django_datatables === 'undefined') {
                     if (current === null) {
                         return ''
                     }
-                    value = parseFloat(current).toLocaleString("en-GB", {style:"currency", currency:params.currency_code});
-                    if (colour) {
-                        value = `<span style="color: ${colour}">${value}</span>`;
+                    if (type === 'display' || type === 'filter') {
+                        value = parseFloat(current).toLocaleString(params.locale,
+                            {style: "currency", currency: params.currency_code,
+                                    minimumFractionDigits: params.decimal_places
+                            });
+                        if (colour) {
+                            value = `<span style="color: ${colour}">${value}</span>`;
+                        }
+                        return value;
                     }
-                    return value;
+                    return current
                 }.bind(this)
             }
         }
