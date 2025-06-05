@@ -27,6 +27,7 @@ urlpatterns = [
     path('example-10', main_views.Example10.as_view(), name='example10'),
     path('example-11', main_views.Example11.as_view(), name='example11'),
     path('example-12', main_views.Example12.as_view(), name='example12'),
+    path('example-total', main_views.ExampleTotaling.as_view(), name='example_totaling'),
     path('search-boxes', SearchBoxes.as_view(), name='search_boxes'),
     path('no-model-ajax', no_model_views.NoModelAjaxVersion.as_view(), name='no_model_ajax_version'),
     path('no-model-non-ajax', no_model_views.NoModelNonAjaxVersion.as_view(), name='no_model_non_ajax_version'),

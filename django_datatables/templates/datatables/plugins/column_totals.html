@@ -26,6 +26,32 @@
                 }
                 return value;
             },
+            'percentage': function (sum, column_setup, column_totals, pos, column_map) {
+                var denominator, numerator, value = 0;
+                if(Number.isInteger(column_setup.denominator)) {
+                    denominator = column_setup.denominator
+                } else {
+                    var denominator_pos = column_map[column_setup.denominator];
+                    denominator = column_totals[denominator_pos];
+                }
+                if(Number.isInteger(column_setup.sell)) {
+                    numerator = column_setup.numerator
+                } else {
+                    var numerator_pos = column_map[column_setup.numerator];
+                    numerator = column_totals[numerator_pos];
+                }
+                if (numerator == 0){
+                    return '';
+                }
+                value = (numerator * 100.0 / denominator);
+                if (column_setup.decimal_places !== undefined) {
+                    value = value.toFixed(column_setup.decimal_places)
+                } else {
+                    value = value.toFixed(2)
+                }
+                value = parseFloat(value).toString();
+                return value + '&thinsp;%'
+            },
 
             {% block formatting_functions %}
             {% endblock %}
@@ -33,7 +59,8 @@
 
         refresh: function (table) {
             var page_data = table.table.api().rows({page: 'current'}).data()
-            var column_totals = {{ totals|safe }}
+            var column_totals = {{ totals|safe }};
+            var column_map = {{ column_map|safe }};
             for (var r = 0; r < page_data.length; r++) {
                 for (var c in column_totals) {
                     var n = parseFloat(page_data[r][c]);
@@ -47,7 +74,7 @@
                 if (this.setup[c].sum === true) {
                     footer = footer.replace('%' + c + '%', column_totals[c])
                 } else {
-                    footer = footer.replace('%' + c + '%', this.formatting_functions[this.setup[c].sum](column_totals[c], this.setup[c]))
+                    footer = footer.replace('%' + c + '%', this.formatting_functions[this.setup[c].sum](column_totals[c], this.setup[c], column_totals, c, column_map))
                 }
             }
             $(table.table.api().table().footer()).html(footer)

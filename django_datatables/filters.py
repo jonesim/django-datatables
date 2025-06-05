@@ -13,6 +13,7 @@ class DatatableFilter:
         'select2': 'datatables/filter_blocks/select2_filter.html',
         'date': 'datatables/filter_blocks/date_filter.html',
         'expand': 'datatables/filter_blocks/row_tree.html',
+        'selected': 'datatables/filter_blocks/selected_filter.html',
     }
 
     def __init__(self, name_or_template, datatable, column=None, collapsed=False, filter_title=None, html_id=None,

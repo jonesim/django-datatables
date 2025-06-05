@@ -23,6 +23,7 @@ class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
                                'example10',
                                'example11',
                                'example12',
+                               'example_totaling',
                                MenuItem('search_boxes', menu_display='Search Boxes')]),
             MenuItem(menu_display='No model', placement='bottom-end',
                      dropdown=[MenuItem('no_model_ajax_version', menu_display='AJAX version'),
