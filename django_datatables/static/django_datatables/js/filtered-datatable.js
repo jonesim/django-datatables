@@ -559,7 +559,7 @@ if (typeof django_datatables === 'undefined') {
                 }
                 return column_val.join(' ')
             } else {
-                return this.convert(column_data, row[this.params.column], meta, row)
+                return this.convert(column_data, row[this.params.column], meta, row, type)
             }
         }
 
