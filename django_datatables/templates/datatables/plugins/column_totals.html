@@ -11,7 +11,7 @@
                 }
             },
             'currency': function (sum, column_setup) {
-                var language_code = 'GB';
+                var language_code = column_setup['locale'] ?? 'GB';
                 var value = parseFloat(sum).toLocaleString(language_code, {style:"currency", currency:column_setup['currency_code']});
                 var colour = null;
                  if (sum < 0) {
