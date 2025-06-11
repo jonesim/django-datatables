@@ -597,24 +597,24 @@ if (typeof django_datatables === 'undefined') {
 
             Replace: function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-                    if (Array.isArray(this.reg_exp) && table.initsetup.colOptions[column].field_array) {
-                        this.convert = function (current, value) {
-                            var html = this.determine_html(value, current)
-                            try{
-                                for (var v = 0; v < this.reg_exp.length; v++) {
-                                    html = html.replace(this.reg_exp[v], this.determine_value(value[v]))
-                                }
-                                return html
-                            } catch (e) {
-                                return ''
+                if (Array.isArray(this.reg_exp) && table.initsetup.colOptions[column].field_array){
+                    this.convert = function (current, value) {
+                        var html = this.determine_html(value, current)
+                        try {
+                            for (var v = 0; v < this.reg_exp.length; v++) {
+                                html = html.replace(this.reg_exp[v], this.determine_value(value[v]))
                             }
-                        }.bind(this)
-                    } else {
-                        this.convert = function (current, value) {
-                            var convert_value = this.determine_value(value)
-                            return this.determine_html(convert_value, current).replace(this.reg_exp, convert_value)
-                        }.bind(this)
-                    }
+                            return html
+                        } catch (e) {
+                            return ''
+                        }
+                    }.bind(this)
+                } else {
+                    this.convert = function (current, value) {
+                        var convert_value = this.determine_value(value)
+                        return this.determine_html(convert_value, current).replace(this.reg_exp, convert_value)
+                    }.bind(this)
+                }
             },
 
             SelectedReplace: function (column, params, table) {
@@ -720,8 +720,13 @@ if (typeof django_datatables === 'undefined') {
                 this.convert = function (current, value, meta, row, type){
                     var colour = null;
                     if(Array.isArray(current)) {
-                        colour = current[1];
-                        current = current[0];
+                        if(params.multi_currency===true){
+                            params.currency_code = current[1];
+                            current = current[0];
+                        } else {
+                            colour = current[1];
+                            current = current[0];
+                        }
                     }
                     if (current === null) {
                         return ''
