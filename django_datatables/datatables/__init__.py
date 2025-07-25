@@ -1,3 +1,4 @@
-from .datatables import (DatatableView, DatatableError, DatatableExcludedRow, ColumnInitialisor,
-    DatatableTable, HorizontalTable)
-
+from .column_initialiser import ColumnInitialisor
+from .datatables import DatatableExcludedRow,  DatatableTable, HorizontalTable
+from .datatable_error import DatatableError
+from .views import DatatableView

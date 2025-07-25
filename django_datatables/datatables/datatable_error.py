@@ -1,0 +1,2 @@
+class DatatableError(Exception):
+    pass
