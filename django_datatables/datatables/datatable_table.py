@@ -224,11 +224,10 @@ class DatatableTable:
     def col_def_str(self):
         self.setup_column_id()
         options = dict(self.table_options)
+        request = getattr(self.view, 'request', None)
         if self.table_data is not None:
-            request = getattr(self.view, 'request', None)
             options['data'] = self.get_table_array(request, self.table_data)
         elif not self.ajax_data:
-            request = getattr(self.view, 'request', None)
             options['data'] = self.get_table_array(request, self.get_query())
 
         options['columnDefs'] = [dict({'targets': i, 'name': c.column_name}, **c.style())
