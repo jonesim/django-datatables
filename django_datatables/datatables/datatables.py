@@ -8,11 +8,11 @@ from django.views.generic import TemplateView
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
-from .detect_device import detect_device
-from .columns import ColumnBase, DateColumn, ChoiceColumn, BooleanColumn, CallableColumn
-from .model_def import DatatableModel
-from .filters import DatatableFilter
-from .models import SavedState
+from django_datatables.detect_device import detect_device
+from django_datatables.columns import ColumnBase, DateColumn, ChoiceColumn, BooleanColumn, CallableColumn
+from django_datatables.model_def import DatatableModel
+from django_datatables.filters import DatatableFilter
+from django_datatables.models import SavedState
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
@@ -519,7 +519,7 @@ class DatatableView(TemplateView):
             table = self.tables[request.POST['table_id']]
             self.setup_tables(table_id=table.table_id)
             if table.cache_data is True:
-                from .cache import DataTableCache
+                from django_datatables.cache import DataTableCache
                 datatable_cache = DataTableCache()
                 cache = datatable_cache.get_cache(table)
                 if cache:
