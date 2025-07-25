@@ -216,6 +216,11 @@ class DatatableTable:
         else:
             return self.columns[self.table_options['column_id']]
 
+    @property
+    def local_storage_key(self):
+        view = self.view.__class__.__name__ if self.view else 'NoView'
+        return f'Datatable_{view}_{self.table_id}'
+
     def col_def_str(self):
         self.setup_column_id()
         options = dict(self.table_options)
