@@ -1,25 +1,30 @@
 {% load datatable_tags %}
-
-<div id="{{ html_id }}" class="card">
-    <div class="card-header py-1 px-2 filter-header">{{ filter_title }}
-        <div class="float-right">
-            {% clear_table datatable %}
-            <a class="filter-header-icon collapse-all" href="javascript:collapse_all('{{ datatable.table_id }}')">
-                <i class="fas fa-caret-square-up"></i>
-            </a>
-            <a class="expand-all" href="javascript:show_all('{{ datatable.table_id }}')">
-                <i class="filter-header-icon select-none fas fa-caret-square-down"></i></a>
+<div class="d-flex">
+    <div id="fb-{{ datatable.table_id }}" class="side-filter card">
+        <div class="py-1 px-2">{{ filter_title }}
+            <div class="float-right">
+                <a id="collapse-{{ datatable.table_id }}"><i class="fas fa-angle-double-left"></i></a>
+                {% clear_table datatable %}
+                <a class="filter-header-icon collapse-all" href="javascript:collapse_all('{{ datatable.table_id }}')">
+                    <i class="fas fa-caret-square-up"></i>
+                </a>
+                <a class="expand-all" href="javascript:show_all('{{ datatable.table_id }}')">
+                    <i class="filter-header-icon select-none fas fa-caret-square-down"></i></a>
+            </div>
+            {% no_of_results datatable %}
+            {% no_of_rows datatable %}
         </div>
-        {% no_of_results datatable %}
-        {% no_of_rows datatable %}
+        <div class="card-body p-2">
+            <div id="{{ datatable.table_id }}-filter-block">
+                {% table_search datatable %}
+                {% for f in datatable.js_filter_list %}
+                    {{ f.render }}
+                {% endfor %}
+            </div>
+        </div>
     </div>
-    <div class="card-body p-2">
-        <div id="{{ datatable.table_id }}-filter-block">
-            {% table_search datatable %}
-            {% for f in datatable.js_filter_list %}
-                {{ f.render }}
-            {% endfor %}
-        </div>
+    <div id="fb-c-{{ datatable.table_id }}" class="collapsed-bar fb-collapsed">
+        <i style="margin-left: 1px" class="fas fa-angle-double-right"></i>
     </div>
 </div>
 
@@ -33,6 +38,50 @@
         function show_all(html_id) {
             $("#" + html_id + "-filter-block .card-body").collapse('show')
         }
+
+        var data = localStorage.getItem('{{ datatable.local_storage_key }}');
+        data = data ? JSON.parse(data) : null;
+        if (data != null){
+            show_hide_filter_block('{{ datatable.table_id }}', !data.hidden_side_bar)
+        } else {
+            show_hide_filter_block('{{ datatable.table_id }}', {% if datatable.hidden_side_bar %}false{% else %}true{% endif %})
+        }
+        function show_hide_filter_block(table_id, show) {
+            if (show) {
+                $('#fb-c-' + table_id).addClass('fb-collapsed');
+                $('#fb-' + table_id).removeClass('fb-collapsed');
+            } else {
+                $('#fb-' + table_id).addClass('fb-collapsed');
+                $('#fb-c-' + table_id).removeClass('fb-collapsed');
+            }
+        }
+
+        $('#collapse-{{ datatable.table_id }}').on('click', function(){
+            show_hide_filter_block('{{ datatable.table_id }}', false)
+            django_datatables.DataTables.{{ datatable.table_id }}.table.api().state.save()
+        })
+
+        $('#fb-c-{{ datatable.table_id }}').on('click', function(){
+            show_hide_filter_block('{{ datatable.table_id }}', true)
+            django_datatables.DataTables.{{ datatable.table_id }}.table.api().state.save()
+        })
+
+        function filter_control(){
+            this.init = function (table) {
+                this.pTable = table;
+            }
+            this.filter = function (data) {
+                return true
+            }
+            this.save_state = function(data){
+                data.hidden_side_bar=$('#fb-' + this.pTable.table_id).hasClass('fb-collapsed')
+            }
+            this.load_state = function (state_data){
+                show_hide_filter_block('{{ datatable.table_id }}', !state_data.hidden_side_bar)
+            }
+        }
+        var new_filter = new filter_control()
+        django_datatables.add_filter('{{ datatable.table_id }}', new_filter)
     </script>
 {% endblock %}
 

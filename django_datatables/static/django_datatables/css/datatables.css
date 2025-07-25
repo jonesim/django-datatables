@@ -199,3 +199,29 @@
 .select-panel{
     line-height: 18px;
 }
+
+.side-filter {
+    /*transition: width 0.3s ease, padding 0.3s ease;*/
+    overflow: hidden;
+    width: 300px;
+    will-change: width;
+}
+
+.collapsed-bar {
+    width: 22px;
+    color: white;
+    padding: 3px;
+    display: flow;
+    cursor: pointer;
+    transition: opacity 0.3s;
+    border-radius: .25rem;
+    opacity: 70%;
+    background-color: #212529;
+}
+
+.fb-collapsed {
+    width: 0;
+    padding: 0;
+    border-width: 0;
+    flex-wrap: wrap;
+}
