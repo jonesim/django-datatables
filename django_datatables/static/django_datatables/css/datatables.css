@@ -201,7 +201,7 @@
 }
 
 .side-filter {
-    /*transition: width 0.3s ease, padding 0.3s ease;*/
+    transition: width 0.3s ease, padding 0.3s ease;
     overflow: hidden;
     width: 300px;
     will-change: width;
