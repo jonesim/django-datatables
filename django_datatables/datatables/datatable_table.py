@@ -82,8 +82,11 @@ class DatatableTable:
             if isinstance(column_ids[0], (list, tuple)):
                 column_ids = column_ids[0]
             for c in column_ids:
-                self.js_filter_list.append(filter_class(name_or_template, self, column=self.find_column(c)[0],
-                                                        **kwargs))
+                try:
+                    self.js_filter_list.append(filter_class(name_or_template, self, column=self.find_column(c)[0],
+                                                            **kwargs))
+                except DatatableError as e:
+                    pass
         else:
             self.js_filter_list.append(filter_class(name_or_template, self, **kwargs))
 
