@@ -773,6 +773,7 @@ if (typeof django_datatables === 'undefined') {
                     for (var c=0;c < data.columns.length;c++){
                         data.columns[c].visible = this.initsetup.colOptions[c].hidden != true;
                     }
+                    data['session_id'] = tablesetup.session_id
                 }.bind(this))
                 if (typeof (django_datatables.setup[html_id].filters) !== 'undefined') {
                     this.filters = django_datatables.setup[html_id].filters
@@ -810,6 +811,20 @@ if (typeof django_datatables === 'undefined') {
                 this.table.api().draw()
             }.bind(this)
 
+            this.set_key = function (settings, data) {
+                localStorage.setItem(tablesetup.local_storage_key, JSON.stringify(data));
+            }
+
+            this.get_key = function (settings) {
+                var data = localStorage.getItem(tablesetup.local_storage_key);
+                if (data) {
+                    data = JSON.parse(data);
+                    if (tablesetup.session_id == data.session_id) {
+                        return data;
+                    }
+                }
+                return tablesetup.state ? tablesetup.state: null;
+            }
 
             var dataTable_setup = {
                 /*  stripeClasses:['a', 'a'], */
@@ -821,6 +836,9 @@ if (typeof django_datatables === 'undefined') {
                 deferRender: true,
                 dom: 'rtip',
                 initComplete: this.postInit,
+                stateSaveCallback: this.set_key,
+                stateLoadCallback: this.get_key,
+                stateDuration:0
             }
             if (tablesetup.tableOptions.data === undefined) {
                 var csrf = ajax_helpers.getCookie('csrftoken');

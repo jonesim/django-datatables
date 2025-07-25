@@ -232,7 +232,10 @@ class DatatableTable:
             'field_ids': self.all_names(),
             'colOptions': [c.options for c in self.columns],
             'tableOptions': options,
+            'local_storage_key': self.local_storage_key,
         }
+        if request and hasattr(request, 'session'):
+            table_vars['session_id'] = getattr(request.session, 'session_key', '-')
         col_def_str = json.dumps(table_vars, separators=(',', ':'))
         # legacy modifications to col_def_str
         # col_def_str = col_def_str.replace('"&', "")
