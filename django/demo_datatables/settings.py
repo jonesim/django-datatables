@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'ajax_helpers',
     'show_src_code',
     'modal_examples',
-    'menu_examples',
+  # 'menu_examples',
     'ajax_examples',
 ]
 
