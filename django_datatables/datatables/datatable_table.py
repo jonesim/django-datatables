@@ -185,14 +185,17 @@ class DatatableTable:
     @cached_property
     def session_or_default(self):
         state = self.get_saved_state('_session')
-        if state:
+        if state and state.state:
             browser_state = json.loads(state.state)
             if self.session_id() and browser_state['session_id'] == self.session_id():
                 return state
         return self.get_saved_state('_default')
 
     def session_or_default_state(self):
-        return json.loads(self.session_or_default.state) if self.session_or_default else None
+        try:
+            return json.loads(self.session_or_default.state) if self.session_or_default else None
+        except json.JSONDecodeError:
+            pass
 
     def session_column_visibility(self):
         return self.session_or_default.column_visibility if self.session_or_default else {}
