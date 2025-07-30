@@ -346,7 +346,6 @@ if (typeof django_datatables === 'undefined') {
             try {
                 var state_data = this.pTable.table.api().state.loaded().columns[this.column_no][this.storage_key]
             } catch (e) {
-                console.log(e)
                 return
             }
             if (typeof (state_data) !== 'undefined') {
