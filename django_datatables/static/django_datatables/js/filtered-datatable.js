@@ -470,7 +470,18 @@ if (typeof django_datatables === 'undefined') {
             }
 
             this.clear = function () {
-                this.checkall(true)
+                const self = this
+                $("#" + this.html_id + " .filtercheck").each(function () {
+                    $(this).prop('checked', true)
+                }).promise().done(function () {
+                    try {
+                        state_data = self.pTable.initsetup.colOptions[self.column_no].initial_filter
+                        self.load_state(state_data);
+                        self.buildfilter(true)
+                    } catch (e) {
+                        self.buildfilter(true)
+                    }
+                })
             }
         }
 
