@@ -1,6 +1,8 @@
 import json
 from django.template.loader import render_to_string
 
+from django_datatables.datatables import DatatableError
+
 
 class ColumnTotals:
 
@@ -26,16 +28,19 @@ class ColumnTotals:
         footer = [self.footer_cell(css_style=css_style) for _c in datatable.columns]
         column_map = {}
         for c, setup in column_setup.items():
-            data = ''
-            column_no = datatable.find_column(c)[1]
-            if setup.get('sum'):
-                column_totals[str(column_no)] = 0
-                data = f'%{column_no}%'
-            if 'text' in setup:
-                data = setup['text'].replace(f'%{c}%', f'%{column_no}%')
-            footer[column_no] = self.footer_cell(data, setup.get('css_class'), css_style)
-            setup_dict[str(column_no)] = setup
-            column_map[c] = column_no
+            try:
+                data = ''
+                column_no = datatable.find_column(c)[1]
+                if setup.get('sum'):
+                    column_totals[str(column_no)] = 0
+                    data = f'%{column_no}%'
+                if 'text' in setup:
+                    data = setup['text'].replace(f'%{c}%', f'%{column_no}%')
+                footer[column_no] = self.footer_cell(data, setup.get('css_class'), css_style)
+                setup_dict[str(column_no)] = setup
+                column_map[c] = column_no
+            except DatatableError:
+                pass
 
         html_footer = ''
         for c, f in enumerate(footer):
