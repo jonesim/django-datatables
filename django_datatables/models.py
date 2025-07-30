@@ -4,6 +4,9 @@ from django.conf import settings
 
 class SavedState(models.Model):
     table_id = models.CharField(max_length=80)
+    view_class = models.CharField(max_length=80, blank=True, null=True)
+    column_order = models.JSONField(default=dict, blank=True, null=True)
+    column_visibility = models.JSONField(default=dict, blank=True, null=True)
     state = models.CharField(max_length=8192)
     name = models.CharField(max_length=80)
     public = models.BooleanField(verbose_name='Public/Private')
