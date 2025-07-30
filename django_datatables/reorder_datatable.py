@@ -24,7 +24,7 @@ class OrderedDatatable(DatatableTable):
         }
         if not kwargs:
             kwargs = {}
-        elif kwargs.get('table_options') is None:
+        if kwargs.get('table_options') is None:
             kwargs['table_options'] = table_options
         else:
             kwargs['table_options'] = table_options.update(kwargs.get('table_options', {}))
