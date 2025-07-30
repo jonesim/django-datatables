@@ -1,9 +1,13 @@
 {% load datatable_tags %}
 <div class="d-flex">
-    <div id="fb-{{ datatable.table_id }}" class="side-filter card">
+    <div id="fb-{{ datatable.table_id }}" class="side-filter card{% if datatable.hidden_side_bar %} fb-collapsed{% endif %}">
         <div class="py-1 px-2">{{ filter_title }}
             <div class="float-right">
                 <a id="collapse-{{ datatable.table_id }}"><i class="fas fa-angle-double-left"></i></a>
+                <a class="filter-header-icon collapse-all"
+                   href="javascript:ajax_helpers.post_json({data:{ajax_method: 'datatable_columns', datatable: '{{ datatable.table_id }}'}})">
+                    <i class="fas fa-columns"></i>
+                </a>
                 {% clear_table datatable %}
                 <a class="filter-header-icon collapse-all" href="javascript:collapse_all('{{ datatable.table_id }}')">
                     <i class="fas fa-caret-square-up"></i>
@@ -23,13 +27,19 @@
             </div>
         </div>
     </div>
-    <div id="fb-c-{{ datatable.table_id }}" class="collapsed-bar fb-collapsed">
+    <div id="fb-c-{{ datatable.table_id }}" class="collapsed-bar {% if not datatable.hidden_side_bar %} fb-collapsed{% endif %}">
         <i style="margin-left: 1px" class="fas fa-angle-double-right"></i>
-    </div>
+        <i class="filter-modal fas fa-columns"></i>
+        </div>
 </div>
 
 {% block javascript %}
     <script>
+        $('.filter-modal').on('click', function(e){
+            e.stopPropagation()
+            ajax_helpers.post_json({data:{ajax_method: 'datatable_columns', datatable: '{{ datatable.table_id }}'}})
+        })
+
         $("#{{ datatable.table_id }}-filter-block").sortable();
         $("#{{ datatable.table_id }}-filter-block").disableSelection();
         function collapse_all(html_id) {

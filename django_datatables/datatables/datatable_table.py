@@ -1,4 +1,5 @@
 import json
+from functools import cached_property
 from inspect import isclass
 from typing import TypeVar, Dict
 
@@ -11,6 +12,7 @@ from django.utils.safestring import mark_safe
 from django_datatables.datatables.column_initialiser import ColumnInitialisor
 from django_datatables.datatables.datatable_error import DatatableError
 from django_datatables.filters import DatatableFilter
+from django_datatables.models import SavedState
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
@@ -172,10 +174,58 @@ class DatatableTable:
                 return c, n
         raise DatatableError('Unable to find column ' + column_name)
 
+    def session_key(self):
+        return f'{self.view.__class__.__name__}.{self.table_id}'
+
+    def session_id(self):
+        request = getattr(self.view, 'request', None)
+        if request and hasattr(request, 'session'):
+            return getattr(request.session, 'session_key', '-')
+
+    @cached_property
+    def session_or_default(self):
+        state = self.get_saved_state('_session')
+        if state:
+            browser_state = json.loads(state.state)
+            if self.session_id() and browser_state['session_id'] == self.session_id():
+                return state
+        return self.get_saved_state('_default')
+
+    def session_or_default_state(self):
+        return json.loads(self.session_or_default.state) if self.session_or_default else None
+
+    def session_column_visibility(self):
+        return self.session_or_default.column_visibility if self.session_or_default else {}
+
+    def session_column_order(self):
+        return self.session_or_default.column_order if self.session_or_default else None
+
+    def get_saved_state(self, name):
+        if self.view:
+            return SavedState.objects.filter(name=name, user_id=self.view.request.user.id,
+                                             table_id=self.table_id, view_class=self.view.__class__.__name__).first()
+
+    def show_column(self, column):
+        if not column.enabled:
+            return False
+        if self.view and getattr(self.view,'all_columns', False):
+            return True
+        if not self.session_column_visibility():
+            return not column.optional
+        return self.session_column_visibility().get(column.column_name, True)
+
     def add_columns(self, *columns):
+        order = self.session_column_order()
         for c in columns:
             new_columns = self.column_initialisor_cls(self.model, c, table=self).get_columns()
-            self.columns += [nc for nc in new_columns if nc.enabled]
+            if order:
+                for nc in new_columns:
+                    nc.order = order.get(nc.column_name, 9999)
+            self.columns += [nc for nc in new_columns if (nc.enabled and self.show_column(nc))]
+        if order:
+            def sort_order(column):
+                return getattr(column, 'order', 9999)
+            self.columns.sort(key=sort_order)
         return self
 
     def fields(self):
@@ -201,6 +251,11 @@ class DatatableTable:
     def all_titles(self):
         return [mark_safe(str(c.title) + ('' if not c.popover else c.popover_html.format(c.popover)))
                 for c in self.columns]
+
+    def hidden_side_bar(self):
+        if self.session_or_default:
+            return self.session_or_default_state().get('hidden_side_bar')
+        return self.table_options.get('hidden_side_bar', False)
 
     def render(self):
         rendered_strings = []
@@ -241,12 +296,11 @@ class DatatableTable:
             'tableOptions': options,
             'local_storage_key': self.local_storage_key,
         }
+        if self.session_or_default:
+            table_vars['state'] = self.session_or_default_state()
         if request and hasattr(request, 'session'):
             table_vars['session_id'] = getattr(request.session, 'session_key', '-')
         col_def_str = json.dumps(table_vars, separators=(',', ':'))
-        # legacy modifications to col_def_str
-        # col_def_str = col_def_str.replace('"&', "")
-        # col_def_str = col_def_str.replace('&"', "")
         return col_def_str
 
     def table_json_data(self):
