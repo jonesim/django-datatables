@@ -178,6 +178,11 @@ if (typeof django_datatables === 'undefined') {
             })
         }
 
+        ajax_helpers.command_functions.get_datatable_state = function(command){
+            command.data.val = JSON.stringify(django_datatables.DataTables[command.table_id].table.api().state());
+            ajax_helpers.post_json({url:command.url, data: command.data});
+        };
+
         ajax_helpers.command_functions.restore_datatable = function (command) {
             state = JSON.parse(command.state)
             state.time = new Date().getTime()
