@@ -26,7 +26,7 @@
                 try {
                     $(this).val(state_data.columns[table.table.api().column($(this).attr('data-col') + ':name').index()].search.search)
                 } catch (e) {
-                    console.log(e)
+                    // console.log(e)
                 }
                 if ($(this).attr('data-col') != '' && this.value != '') {
                     table.table.api().draw(false)
