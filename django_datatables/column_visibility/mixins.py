@@ -17,7 +17,7 @@ class ColumnVisibilityMixin:
     command_response: Callable
     request: HttpRequest
     all_columns : bool
-    ajax_commands = ['datatable']
+    ajax_commands = ['datatable', 'column']
 
     def session_states(self, table_id, name='_default'):
         return SavedState.objects.filter(user_id=self.request.user.id, name=name,
