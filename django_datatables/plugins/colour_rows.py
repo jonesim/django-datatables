@@ -1,5 +1,7 @@
 from django.template.loader import render_to_string
 
+from django_datatables.datatables import DatatableError
+
 
 class ColourRows:
 
@@ -9,7 +11,10 @@ class ColourRows:
         else:
             self.colour_dict = [colour_dict]
         for c in self.colour_dict:
-            c['column'] = datatable.find_column(c['column'])[1]
+            try:
+                c['column'] = datatable.find_column(c['column'])[1]
+            except DatatableError:
+                pass
         self.datatable = datatable
 
     def render(self):
