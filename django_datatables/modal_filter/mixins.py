@@ -2,13 +2,14 @@ import base64
 import binascii
 import json
 
+from django.forms import CharField, HiddenInput
 from django.urls import reverse
 from django_menus.menu import MenuItem
 from django_modals.forms import CrispyForm
 from django_modals.helper import ajax_modal_replace
 
 from django_datatables.helpers import add_filters
-from .modals import DatatableFilterModal
+from .modals import DatatableFilterModal, modal_identifier
 
 
 class DatatableFilterField:
@@ -43,6 +44,7 @@ class DatatableFilterMixin:
 
     filter_fields = []
     kwargs: dict
+    id_field = DatatableFilterField(modal_identifier, CharField(widget=HiddenInput, initial='dt-filter-modal'))
 
     def filter_menu_items(self):
 
@@ -61,7 +63,8 @@ class DatatableFilterMixin:
         pass
 
     def filter_form(self):
-        new_form = type('FilterForm', (CrispyForm,), DatatableFilterField.form_fields(self.filter_fields))
+        new_form = type('FilterForm', (CrispyForm,),
+                        DatatableFilterField.form_fields(self.filter_fields + [self.id_field]))
         return new_form
 
     # noinspection PyUnresolvedReferences
@@ -82,7 +85,7 @@ class DatatableFilterMixin:
         return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, **kwargs):
-        if 'modal_id' in request.POST and 'ajax_method' not in request.POST:
+        if request.POST.get('modal_name') == 'dt-filter-modal':
             return DatatableFilterModal.as_view()(request, filter_clean=self.filter_clean,
                                                   form_class=self.filter_form(),
                                                   url_name=request.resolver_match.url_name,

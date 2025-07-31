@@ -5,6 +5,7 @@ from django.urls import reverse
 from django_modals.helper import base64_json
 from django_modals.modals import FormModal
 
+modal_identifier = 'modal_name'
 
 class DatatableFilterModal(FormModal):
     form_class = None
@@ -25,7 +26,7 @@ class DatatableFilterModal(FormModal):
         return value
 
     def form_valid(self, form):
-        query_filter = {k: self.convert_field(v) for k, v in form.cleaned_data.items() if v}
+        query_filter = {k: self.convert_field(v) for k, v in form.cleaned_data.items() if v and k != modal_identifier}
         url_kwargs = self.kwargs['url_kwargs']
         if query_filter:
             url_kwargs['base64'] = base64_json(query_filter)
