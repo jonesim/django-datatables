@@ -433,16 +433,16 @@ class DatatableTable:
                         font_awesome='fas fa-caret-square-down')
 
     def filter_menu(self):
-        return HtmlMenu(None, template='icon_menu.html').add_items(self.clear_table_menu_item(),
-                                                                   self.column_menu_item(),
-                                                                   self.collapse_all(),
-                                                                   self.expand_all(),
-                                                                   self.collapse_filter_menu_item()).render()
+        return HtmlMenu(None, template='datatables/icon_menu.html').add_items(self.clear_table_menu_item(),
+                                                                              self.column_menu_item(),
+                                                                              self.collapse_all(),
+                                                                              self.expand_all(),
+                                                                              self.collapse_filter_menu_item()).render()
 
     def collapsed_filter_menu(self):
-        return HtmlMenu(None, template='icon_menu.html').add_items(self.expand_filter_menu_item(),
-                                                                   self.column_menu_item(),
-                                                                   self.clear_table_menu_item(),).render()
+        return HtmlMenu(None, template='datatables/icon_menu.html').add_items(self.expand_filter_menu_item(),
+                                                                              self.column_menu_item(),
+                                                                              self.clear_table_menu_item(),).render()
 
 
 class HorizontalTable(DatatableTable):
