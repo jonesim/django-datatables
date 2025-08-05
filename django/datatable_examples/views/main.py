@@ -9,6 +9,7 @@ from django.db.models.functions import NullIf
 from django.forms.fields import CharField
 from django.http import HttpResponse
 
+from django_datatables.column_visibility.mixins import ColumnVisibilityMixin
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.datatables import DatatableView
 from django_datatables.downloads.clipboard import ClipboardCopy
@@ -19,6 +20,7 @@ from django_datatables.modal_filter.mixins import DatatableFilterMixin, Datatabl
 from django_datatables.plugins.colour_rows import ColourRows
 from django_datatables.plugins.column_totals import ColumnTotals
 from django_datatables.plugins.reorder import Reorder
+from django_datatables.plugins.save_filters import add_save_filters
 from django_datatables.reorder_datatable import ReorderDatatableView
 
 
@@ -73,7 +75,7 @@ class Example1(DatatableFilterMixin,ExcelDownload, ClipboardCopy,  MainMenu, Dat
         table.ajax_data = False
        # table.add_js_filters('tag', 'Tags')
        # table.add_js_filters('totals', 'people', filter_title='Number of People', collapsed=False)
-       #  add_save_filters(table, self.request.user)
+        add_save_filters(table, self.request.user)
         # table.add_js_filters('tag', 'DirectTag')
         # table.table_options['row_href'] = [ajax_command('send_row')]
         table.table_options['no_col_search'] = True
@@ -89,7 +91,7 @@ class Example1(DatatableFilterMixin,ExcelDownload, ClipboardCopy,  MainMenu, Dat
         print (row_data, inputs )
         return self.command_response('null')
 
-class Example2(MainMenu, ExcelDownload, ClipboardCopy, DatatableView):
+class Example2(ColumnVisibilityMixin, MainMenu, ExcelDownload, ClipboardCopy, DatatableView):
     model = models.Person
     template_name = 'datatable_examples/csv_button_table.html'
     ajax_commands = ['row', 'column']
@@ -120,20 +122,22 @@ class Example2(MainMenu, ExcelDownload, ClipboardCopy, DatatableView):
         table.edit_options = {'company__name': {'select2': True}}
 
         table.add_columns(
-            'id',
-            'first_name',
+            ('id',{'options': {'initial_filter': {'1':  False, '102': False}}} ),
+            ('first_name', {'optional': True}),
             ('company__name', {'title': 'Company Name'}),
             'company__collink_1'
         )
         if 'pk' in self.kwargs:
             table.filter = {'company__id': self.kwargs['pk']}
         table.add_js_filters('select2', 'company__name')
-        table.add_js_filters('totals', 'id')
+        table.add_js_filters('pivot', 'id')
+        #table.add_js_filters('totals', 'id')
         # self.add_options({
         #     'rowGroup': {'dataSrc': 'company__name',
         #                  }
         #  })
         table.table_options['ajax_url'] = self.request.path
+        table.show_column_modal = True
 
     def add_to_context(self, **kwargs):
         context = {'description': '''
