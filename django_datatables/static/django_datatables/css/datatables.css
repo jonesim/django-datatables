@@ -225,3 +225,23 @@
     border-width: 0;
     flex-wrap: wrap;
 }
+
+.fb-collapsed a{
+    display: none
+}
+
+.collapsed-bar a{
+    color: white;
+    font-size: 16px;
+}
+
+.side-filter a {
+    font-size: large;
+    color: #303030d6;
+    text-decoration: none;
+    margin-right: 4px;
+}
+
+.side-filter a:hover {
+    text-decoration: none;
+}

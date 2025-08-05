@@ -8,6 +8,7 @@ from django.db import models
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
+from django_menus.menu import MenuItem, HtmlMenu
 
 from django_datatables.datatables.column_initialiser import ColumnInitialisor
 from django_datatables.datatables.datatable_error import DatatableError
@@ -65,6 +66,7 @@ class DatatableTable:
         self.cached_linked_tables = []
         self.cache_expiry = None
         self.ajax_commands = []
+        self.show_column_modal = True
 
         if table_classes:
             self.table_classes = table_classes
@@ -386,6 +388,61 @@ class DatatableTable:
     def remove_columns(self, *column_names):
         for n in column_names:
             del self.columns[self.find_column(n)[1]]
+
+    def clear_table_menu_item(self):
+        return MenuItem(f"django_datatables.DataTables['{self.table_id}'].reset_table()", '',
+                        css_classes=f'{self.table_id}-reset-button mr-1',
+                        tooltip='Reset Table',
+                        link_type=MenuItem.JAVASCRIPT,
+                        font_awesome='fas fa-minus-circle')
+
+    def column_menu_item(self):
+        return MenuItem(f"ajax_helpers.post_json({{data:"
+                        f"{{ajax_method: 'datatable_columns', datatable: '{self.table_id}'}}}})", ' ',
+                        css_classes=' ',
+                        tooltip='Hide/Order Columns',
+                        visible=self.show_column_modal,
+                        link_type=MenuItem.JAVASCRIPT,
+                        font_awesome='fas fa-columns')
+
+    def collapse_filter_menu_item(self):
+        return MenuItem(f"show_hide_filter_block('{self.table_id}', false, true)", '',
+                        font_awesome='fas fa-angle-double-left',
+                        css_classes=' ',
+                        tooltip='Collapse Filter',
+                        link_type=MenuItem.JAVASCRIPT,
+                        attributes={'id': f'collapse-{self.table_id}'})
+
+    def expand_filter_menu_item(self):
+        return MenuItem(f"show_hide_filter_block('{self.table_id}', true, true)", '',
+                        font_awesome='fas fa-angle-double-right',
+                        link_type=MenuItem.JAVASCRIPT,
+                        css_classes=' ',
+                        attributes={'id': f'collapse-{self.table_id}'})
+
+    def collapse_all(self):
+        return MenuItem(f"collapse_all('{ self.table_id }')", '',
+                        link_type=MenuItem.JAVASCRIPT,
+                        css_classes=' ',
+                        font_awesome='fas fa-caret-square-up')
+
+    def expand_all(self):
+        return MenuItem(f"show_all('{ self.table_id }')", '',
+                        link_type=MenuItem.JAVASCRIPT,
+                        css_classes=' ',
+                        font_awesome='fas fa-caret-square-down')
+
+    def filter_menu(self):
+        return HtmlMenu(None, template='icon_menu.html').add_items(self.clear_table_menu_item(),
+                                                                   self.column_menu_item(),
+                                                                   self.collapse_all(),
+                                                                   self.expand_all(),
+                                                                   self.collapse_filter_menu_item()).render()
+
+    def collapsed_filter_menu(self):
+        return HtmlMenu(None, template='icon_menu.html').add_items(self.expand_filter_menu_item(),
+                                                                   self.column_menu_item(),
+                                                                   self.clear_table_menu_item(),).render()
 
 
 class HorizontalTable(DatatableTable):
