@@ -22,7 +22,9 @@ class DatatableFilterField:
 
     @staticmethod
     def form_fields(field_list):
-        return {f.field_id: f.field for f in field_list}
+        fields = {f.field_id: f.field for f in field_list}
+        fields[modal_identifier] = CharField(widget=HiddenInput, initial='dt-filter-modal')
+        return fields
 
     def get_filter(self, value, table=None):
         if value is None:
@@ -44,7 +46,6 @@ class DatatableFilterMixin:
 
     filter_fields = []
     kwargs: dict
-    id_field = DatatableFilterField(modal_identifier, CharField(widget=HiddenInput, initial='dt-filter-modal'))
 
     def filter_menu_items(self):
 
@@ -63,8 +64,7 @@ class DatatableFilterMixin:
         pass
 
     def filter_form(self):
-        new_form = type('FilterForm', (CrispyForm,),
-                        DatatableFilterField.form_fields(self.filter_fields + [self.id_field]))
+        new_form = type('FilterForm', (CrispyForm,), DatatableFilterField.form_fields(self.filter_fields))
         return new_form
 
     # noinspection PyUnresolvedReferences
@@ -85,7 +85,7 @@ class DatatableFilterMixin:
         return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, **kwargs):
-        if request.POST.get('modal_name') == 'dt-filter-modal':
+        if request.POST.get(modal_identifier) == 'dt-filter-modal':
             return DatatableFilterModal.as_view()(request, filter_clean=self.filter_clean,
                                                   form_class=self.filter_form(),
                                                   url_name=request.resolver_match.url_name,
@@ -106,5 +106,7 @@ class DatatableFilterMixin:
         if table.max_records is None:
             table.max_records = filtered_max_records if self.filter_dict else max_records
         for k, v in self.filter_dict.items():
+            if k == modal_identifier:
+                continue
             table.filter = add_filters(table.filter,
                                        DatatableFilterField.get_field(self.filter_fields, k).get_filter(v, table))
