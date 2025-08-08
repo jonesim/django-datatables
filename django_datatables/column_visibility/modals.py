@@ -6,6 +6,7 @@ from django.forms import BooleanField
 from django_modals.forms import CrispyForm
 from django_modals.modals import FormModal
 
+from django_datatables.constants import HIDE_OPTIONAL
 from django_datatables.datatables import DatatableTable
 from django_datatables.models import SavedState
 from django_datatables.reorder_datatable import OrderedDatatable
@@ -80,7 +81,7 @@ class ColumnForm(CrispyForm):
                 'column': column.title,
                 'col': column.column_name,
                 'enable': str(BooleanField().widget.render(name=column.column_name, value=session.get(
-                    column.column_name) if session else not column.optional))
+                    column.column_name) if session else not column.hide_options==HIDE_OPTIONAL))
             })
         new_form = type('ColumnForm', (cls,), dict(
             datatable=table.table_id, initial=table.session_column_visibility, table=modal_table,

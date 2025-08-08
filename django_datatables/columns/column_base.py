@@ -86,7 +86,7 @@ class ColumnBase:
         self.model = kwargs.pop('model', None)
         self.table = kwargs.pop('table', None)
         self.enabled = kwargs.pop('enabled', True)
-        self.optional = kwargs.pop('optional', False)
+        self.hide_options = kwargs.pop('hide_options', None)
 
         if kwargs.pop('column_name', None) == field:
             self.field = self.column_name

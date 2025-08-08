@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from django_menus.menu import MenuItem, HtmlMenu
 
+from django_datatables.constants import HIDE_OPTIONAL, HIDE_VISIBILTY
 from django_datatables.datatables.column_initialiser import ColumnInitialisor
 from django_datatables.datatables.datatable_error import DatatableError
 from django_datatables.filters import DatatableFilter
@@ -67,6 +68,7 @@ class DatatableTable:
         self.cache_expiry = None
         self.ajax_commands = []
         self.show_column_modal = True
+        self.hide_options = HIDE_VISIBILTY
 
         if table_classes:
             self.table_classes = table_classes
@@ -213,11 +215,19 @@ class DatatableTable:
     def show_column(self, column):
         if not column.enabled:
             return False
+        if column.options.get('hidden'):
+            return True
         if self.view and getattr(self.view,'all_columns', False):
             return True
+        hide_options = column.hide_options or self.hide_options
         if not self.session_column_visibility():
-            return not column.optional
-        return self.session_column_visibility().get(column.column_name, True)
+            return not hide_options == HIDE_OPTIONAL
+        if not self.session_column_visibility().get(column.column_name, True):
+            if hide_options == HIDE_VISIBILTY:
+                column.options['hidden'] = True
+            else:
+                return False
+        return True
 
     def add_columns(self, *columns):
         order = self.session_column_order()
