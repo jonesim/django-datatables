@@ -1,7 +1,9 @@
 from django.db import models
 from django.db.models import Count
+
+from django_datatables.helpers import render_replace
 from django_datatables.model_def import DatatableModel
-from django_datatables.columns import ColumnLink, DatatableColumn, ChoiceColumn, ManyToManyColumn, render_replace
+from django_datatables.columns import ColumnLink, DatatableColumn, ChoiceColumn, ManyToManyColumn
 
 
 class TagsDirect(models.Model):
