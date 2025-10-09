@@ -7,10 +7,13 @@ class SavedState(models.Model):
     view_class = models.CharField(max_length=80, blank=True, null=True)
     column_order = models.JSONField(default=dict, blank=True, null=True)
     column_visibility = models.JSONField(default=dict, blank=True, null=True)
-    state = models.CharField(max_length=32768)
+    state = models.CharField(max_length=32768, blank=True, null=True)
     name = models.CharField(max_length=80)
-    public = models.BooleanField(verbose_name='Public/Private')
+    public = models.BooleanField(verbose_name='Public/Private', default=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        unique_together = ['table_id', 'view_class', 'name', 'user']
 
     def __str__(self):
         return self.name

@@ -1,7 +1,7 @@
 import base64
 
 from crispy_forms.layout import HTML
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.forms import BooleanField
 from django_modals.forms import CrispyForm
 from django_modals.modals import FormModal
@@ -12,18 +12,24 @@ from django_datatables.models import SavedState
 from django_datatables.reorder_datatable import OrderedDatatable
 
 
-@transaction.atomic()
 def save_table_state(user_id, table_id, view_class, name, column_order=None, column_visibility=None, state=None,
                      session_key=None):
-    existing, created = SavedState.objects.get_or_create(user_id=user_id, table_id=table_id,
-                                                         name=name, view_class=view_class, public=False)
-    if column_order is not None:
-        existing.column_order = column_order
-    if column_visibility is not None:
-        existing.column_visibility = column_visibility
-    if state is not None:
-        existing.state = state
-    existing.save()
+    try:
+        with transaction.atomic():
+            SavedState(user_id=user_id, table_id=table_id, name=name, view_class=view_class,
+                       column_order=column_order, column_visibility=column_visibility, state=state).save()
+    except IntegrityError:
+        pass
+    with transaction.atomic():
+        existing = SavedState.objects.select_for_update().get(user_id=user_id, table_id=table_id, name=name,
+                                                              view_class=view_class)
+        if column_order is not None:
+            existing.column_order = column_order
+        if column_visibility is not None:
+            existing.column_visibility = column_visibility
+        if state is not None:
+            existing.state = state
+        existing.save()
 
 
 class ColumnForm(CrispyForm):
