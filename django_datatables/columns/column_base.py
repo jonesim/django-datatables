@@ -328,6 +328,8 @@ class ColumnBase:
     def excel(value):
         if isinstance(value, (int, float, str)):
             return value
+        elif value is None:
+            return ''
         return str(value)
 
     def spreadsheet_init(self):
