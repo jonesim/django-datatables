@@ -5,3 +5,4 @@ build/
 dist/
 /django/db.sqlite3
 /django_filtered_datatables.egg-info/
+.DS_Store
