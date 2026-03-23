@@ -55,7 +55,7 @@
                 var sorted_keys = this.filter_calcs.sort_keys()
                 var k = sorted_keys.next()
                 while (!k.done){
-                    htmldata += optionhtml.replace(/%1/g, k.value).replace(/%6/g, encodeURI(k))
+                    htmldata += optionhtml.replace(/%1/g, k.value).replace(/%6/g, encodeURI(k.value))
                     k = sorted_keys.next()
                 }
                 var context = $('#' + this.html_id)

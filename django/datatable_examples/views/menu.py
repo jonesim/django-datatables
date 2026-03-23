@@ -9,20 +9,22 @@ class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
     template_name = 'datatable_examples/table.html'
 
     def setup_menu(self):
-
         self.add_menu('main_menu').add_items(
-            'example1',
-            'example2',
-            'example3',
-            'example4',
-            'example5',
-            'example6',
-            'example7',
-            'example8',
-            'example9',
-            'example10',
-            'example11',
-            'example12',
+            MenuItem(menu_display='Main Examples', placement='bottom-end',
+                     dropdown=['example1',
+                               'example2',
+                               'example3',
+                               'example4',
+                               'example5',
+                               'example6',
+                               'example7',
+                               'example8',
+                               'example9',
+                               'example10',
+                               'example11',
+                               'example12',
+                               'example_totaling',
+                               MenuItem('search_boxes', menu_display='Search Boxes')]),
             MenuItem(menu_display='No model', placement='bottom-end',
                      dropdown=[MenuItem('no_model_ajax_version', menu_display='AJAX version'),
                                MenuItem('no_model_non_ajax_version', menu_display='Non AJAX version')]),
@@ -33,6 +35,8 @@ class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
             'reorder',
             'widget',
             'selection_example',
+            'modal_filter',
+            'spreadsheet',
         )
 
     def get_context_data(self, **kwargs):

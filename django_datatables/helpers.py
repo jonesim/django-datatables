@@ -1,4 +1,5 @@
 from ajax_helpers.utils import ajax_command
+from django.db.models import Q
 from django.urls import reverse
 DUMMY_ID = 999999
 DUMMY_ID2 = 888888
@@ -53,3 +54,25 @@ def overwrite_cell(table, row_no, column_name, html):
 def send_selected(table_id, method_name):
     return (f"ajax_helpers.process_commands([{{function:'send_selected', "
             f"table_id:'{table_id}', method: '{method_name}'}}])")
+
+
+def convert_to_q(filter_dict):
+    if isinstance(filter_dict, Q):
+        return filter_dict
+    q_obj = Q()
+    if filter_dict:
+        for k, v in filter_dict.items():
+            q_obj.children.append((k, v))
+    return q_obj
+
+
+def add_filters(filter1, filter2):
+    if not filter2:
+        return filter1
+    if isinstance(filter1, dict) and isinstance(filter2, dict):
+        return {**filter1, **filter2}
+    if not isinstance(filter1, Q):
+        filter1 = convert_to_q(filter1)
+    if not isinstance(filter2, Q):
+        filter2 = convert_to_q(filter2)
+    return Q(filter1 & filter2)

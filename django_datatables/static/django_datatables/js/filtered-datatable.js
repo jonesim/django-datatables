@@ -31,6 +31,11 @@ if (typeof django_datatables === 'undefined') {
 
         function column_select(button) {
             var table_id = $(button).closest('table').attr('id');
+            if(table_id === undefined) {
+                var table = $(button).closest('table').closest('.dataTables_wrapper').find('.dataTables_scrollBody table.display');
+                table_id = table.attr('id');
+            }
+
             var set_checked = $(button).attr('data-command') !== 'clear';
             if (set_checked){
                 select(table_id, django_datatables.DataTables[table_id].table.api().column(0, {"filter": "applied"}).data())
@@ -150,6 +155,9 @@ if (typeof django_datatables === 'undefined') {
             DataTables[command.table_id].table.api().ajax.reload(null, false);
             $('#' + command.table_id).off('xhr.dt')
             $('#' + command.table_id).on('xhr.dt', function (e, settings, json, xhr) {
+                if (json.ajax_commands != undefined){
+                    ajax_helpers.process_commands(json.ajax_commands)
+                }
                 DataTables[command.table_id].filters.forEach(function (filter) {
                     if (filter.filter_calcs != undefined) {
                         filter.filter_calcs.calcs = {};
@@ -556,7 +564,7 @@ if (typeof django_datatables === 'undefined') {
                 }
                 return column_val.join(' ')
             } else {
-                return this.convert(column_data, row[this.params.column], meta, row)
+                return this.convert(column_data, row[this.params.column], meta, row, type)
             }
         }
 
@@ -589,24 +597,24 @@ if (typeof django_datatables === 'undefined') {
 
             Replace: function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-                    if (Array.isArray(this.reg_exp) && table.initsetup.colOptions[column].field_array) {
-                        this.convert = function (current, value) {
-                            var html = this.determine_html(value, current)
-                            try{
-                                for (var v = 0; v < this.reg_exp.length; v++) {
-                                    html = html.replace(this.reg_exp[v], this.determine_value(value[v]))
-                                }
-                                return html
-                            } catch (e) {
-                                return ''
+                if (Array.isArray(this.reg_exp) && table.initsetup.colOptions[column].field_array){
+                    this.convert = function (current, value) {
+                        var html = this.determine_html(value, current)
+                        try {
+                            for (var v = 0; v < this.reg_exp.length; v++) {
+                                html = html.replace(this.reg_exp[v], this.determine_value(value[v]))
                             }
-                        }.bind(this)
-                    } else {
-                        this.convert = function (current, value) {
-                            var convert_value = this.determine_value(value)
-                            return this.determine_html(convert_value, current).replace(this.reg_exp, convert_value)
-                        }.bind(this)
-                    }
+                            return html
+                        } catch (e) {
+                            return ''
+                        }
+                    }.bind(this)
+                } else {
+                    this.convert = function (current, value) {
+                        var convert_value = this.determine_value(value)
+                        return this.determine_html(convert_value, current).replace(this.reg_exp, convert_value)
+                    }.bind(this)
+                }
             },
 
             SelectedReplace: function (column, params, table) {
@@ -703,21 +711,37 @@ if (typeof django_datatables === 'undefined') {
 
             currency:  function (column, params, table) {
                 django_datatables.BaseProcessAjaxData.call(this, column, params, table)
-
-                this.convert = function (current, value) {
+                if(params.decimal_places === undefined) {
+                    params.decimal_places = 2;
+                }
+                if(params.locale === undefined) {
+                    params.locale = "en-GB";
+                }
+                this.convert = function (current, value, meta, row, type){
                     var colour = null;
                     if(Array.isArray(current)) {
-                        colour = current[1];
-                        current = current[0];
+                        if(params.multi_currency===true){
+                            params.currency_code = current[1];
+                            current = current[0];
+                        } else {
+                            colour = current[1];
+                            current = current[0];
+                        }
                     }
                     if (current === null) {
                         return ''
                     }
-                    value = parseFloat(current).toLocaleString("en-GB", {style:"currency", currency:params.currency_code});
-                    if (colour) {
-                        value = `<span style="color: ${colour}">${value}</span>`;
+                    if (type === 'display' || type === 'filter') {
+                        value = parseFloat(current).toLocaleString(params.locale,
+                            {style: "currency", currency: params.currency_code,
+                                    minimumFractionDigits: params.decimal_places
+                            });
+                        if (colour) {
+                            value = `<span style="color: ${colour}">${value}</span>`;
+                        }
+                        return value;
                     }
-                    return value;
+                    return current
                 }.bind(this)
             }
         }
@@ -771,6 +795,16 @@ if (typeof django_datatables === 'undefined') {
                     this.proc_filters(this)
                     this.exec_filter('refresh')
                     this.exec_plugins('refresh', this)
+                    $('form input', this.table).keydown(function (e) {
+                        if (e.keyCode === 38) {
+                            $(e.target).closest('tr').prev().find('input').focus();
+                            e.preventDefault();
+                        }
+                        if (e.keyCode === 13 | e.keyCode === 40) {
+                            $(e.target).closest('tr').next().find('input').focus();
+                            e.preventDefault();
+                        }
+                    });
                 }.bind(this));
                 this.exec_filter('reset')
                 this.table.api().draw()
@@ -846,15 +880,25 @@ if (typeof django_datatables === 'undefined') {
             }
 
             $('#' + this.table_id).dataTable(dataTable_setup);
-
+            $('#' + this.table_id).on('xhr.dt', function (e, settings, json, xhr) {
+                if (json.ajax_commands != undefined){
+                    ajax_helpers.process_commands(json.ajax_commands)
+                }
+            })
             if (this.initsetup.tableOptions.row_href) {
-                $('#' + html_id + ' tbody').on('click', 'tr', function () {
-                    var p_table = django_datatables.DataTables[html_id]
-                    var row_id = $(this).attr('id')
-                    var row_data = p_table.table.api().row('#' + row_id).data()
-                    var href_render = new django_datatables.column_render(0, p_table.initsetup.tableOptions.row_href, p_table)
-                    window.location.href = href_render('', null, row_data)
-                })
+                $('#' + html_id + ' tbody').on('click', 'tr', function (event) {
+                    // Check if the clicked element is a checkbox or if the checkbox is within the clicked td
+                    if ($(event.target).is('input[type="checkbox"]') || $(event.target).closest('td').find('input[type="checkbox"]').length > 0) {
+                        event.stopPropagation(); // Stop the event from bubbling up
+                        return; // Exit the function to prevent navigation
+                    }
+
+                    var p_table = django_datatables.DataTables[html_id];
+                    var row_id = $(this).attr('id');
+                    var row_data = p_table.table.api().row('#' + row_id).data();
+                    var href_render = new django_datatables.column_render(0, p_table.initsetup.tableOptions.row_href, p_table);
+                    window.location.href = href_render('', null, row_data);
+                });
             }
         }
 
@@ -922,9 +966,12 @@ if (typeof django_datatables === 'undefined') {
         }
 
         PythonTable.prototype.send_row = function (command, row_id, column) {
-            var row_data = this.table.api().row('#' + row_id).data()
+            var row = this.table.api().row('#' + row_id)
+            var row_data = row.data()
+            var row_inputs = $('form', row.node()).serialize()
             var data = {
-                'row': command, 'row_data': JSON.stringify(row_data), 'row_no': row_id, 'table_id': this.table_id, 'column': column
+                'row': command, 'row_data': JSON.stringify(row_data), 'row_no': row_id, 'table_id': this.table_id,
+                'column': column, 'inputs': row_inputs
             }
             ajax_helpers.post_json({data: data})
         }

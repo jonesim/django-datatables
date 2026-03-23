@@ -1,7 +1,7 @@
 import json
 from inspect import isclass
 from typing import TypeVar, Dict
-from ajax_helpers.utils import random_string, is_ajax
+from ajax_helpers.utils import random_string, is_ajax, ajax_command
 from django.db import models
 from django.http.response import HttpResponseBase
 from django.views.generic import TemplateView
@@ -128,7 +128,7 @@ class DatatableTable:
 
     edit_options = {}
     edit_fields = []
-
+    query_manager = 'objects'
 
     def __init__(self, table_id=None, model=None, table_options=None, table_classes=None, view=None, **kwargs):
         self.columns = []
@@ -142,6 +142,7 @@ class DatatableTable:
         self.table_data = None
         self.model = model
         self.page_results = {}
+        self.results_limited = False
 
         # django query attributes
         self.initial_filter = {}
@@ -158,10 +159,12 @@ class DatatableTable:
         self.omit_columns = []
 
         self.kwargs = kwargs
+        self.spreadsheet_config = {}
 
         self.cache_data = False
         self.cached_linked_tables = []
         self.cache_expiry = None
+        self.ajax_commands = []
 
         if table_classes:
             self.table_classes = table_classes
@@ -211,7 +214,7 @@ class DatatableTable:
                 annotations_value.update(c.annotations_value)
             if c.aggregations:
                 aggregations.update(c.aggregations)
-        query = self.model.objects
+        query = getattr(self.model, self.query_manager)
         # Use initial values to group_by for annotations
         if self.initial_values:
             query = query.values(*self.initial_values)
@@ -228,7 +231,7 @@ class DatatableTable:
         if self.distinct is not None:
             query = query.distinct(*self.distinct)
         if self.max_records:
-            query = query[:self.max_records]
+            query = query[:self.max_records + 1]
         query = self.extra_filters(query=query)
         query = self.view_filter(query, self)
         if aggregations:
@@ -338,6 +341,36 @@ class DatatableTable:
         # col_def_str = col_def_str.replace('&"', "")
         return col_def_str
 
+    def table_json_data(self):
+        request = getattr(self.view, 'request', None)
+        return json.dumps(self.get_table_array(request, self.get_query()))
+
+    def spreadsheet_params(self):
+        params = [f'columns: [{",".join([c.spreadsheet_init() for c in self.columns])}]',
+                  f'data: {self.table_json_data()}',
+        ]
+        if self.table_options.get('on_change') == 'row':
+            params.append('onchange: spreadsheets.spreadsheet_change')
+        elif self.table_options.get('on_change') == 'whole':
+            params.append('onchange: spreadsheets.spreadsheet_change_whole')
+
+        for k, v in self.spreadsheet_config.items():
+            if isinstance(v, bool):
+                params.append(f'{k}: {str(v).lower()}')
+            elif isinstance(v, (dict, list)):
+                params.append(f'{k}: {json.dumps(v)}')
+            elif isinstance(v, int):
+                params.append(f'{k}: {v}')
+            else:
+                params.append(f'{k}: "{v}"')
+        return mark_safe(f"{{{','.join(params)}}}")
+
+    def spreadsheet_options(self):
+        commands = [f'sheet.hideColumn({c_no})' for c_no, c in enumerate(self.columns) if c.options.get('hidden')]
+        if self.table_options.get('hide_index'):
+            commands.append('sheet.hideIndex()')
+        return ';'.join(commands)
+
     def get_result_processes(self):
         result_processes = {}
         for c in self.columns:
@@ -351,6 +384,11 @@ class DatatableTable:
         for c in self.columns:
             c.setup_results(request, self.page_results)
         results_list = []
+        if self.max_records and len(results) > self.max_records:
+            results = results[:self.max_records]
+            self.results_limited = True
+            if hasattr(self.view, 'max_records_warning'):
+                self.view.max_records_warning(self)
         for data_dict in results:
             try:
                 for p in result_processes:
@@ -362,6 +400,8 @@ class DatatableTable:
 
     def get_json(self, request, results):
         return_data = {'data': self.get_table_array(request, results)}
+        if self.ajax_commands:
+            return_data['ajax_commands'] = self.ajax_commands
         return json.dumps(return_data, separators=(',', ':'), default=str)
 
     def refresh_row_command(self, request, row_id):
@@ -442,6 +482,13 @@ class DatatableView(TemplateView):
         for t_id, table in self.tables.items() if not table_id else [(table_id, self.tables[table_id])]:
             getattr(self, 'setup_' + t_id, self.setup_table)(table)
             table.view_filter = self.view_filter
+
+    def max_records_warning(self, table):
+        table.ajax_commands.append(
+            ajax_command('html', selector=f'#{table.table_id}-above',
+                         html=f'<div class="alert alert-warning"><b>Not all results shown.</b> '
+                              f'Limited to {table.max_records}</div>')
+        )
 
     def dispatch(self, request, *args, **kwargs):
         self.add_tables()

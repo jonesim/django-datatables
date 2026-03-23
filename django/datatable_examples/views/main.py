@@ -2,59 +2,102 @@ import csv
 import json
 
 from datatable_examples import models
+from datatable_examples.models import Tags
 from datatable_examples.views.menu import MainMenu
-from django.db.models import Count
+from django.db.models import Count, ExpressionWrapper, FloatField, F
+from django.db.models.functions import NullIf
+from django.forms.fields import CharField
 from django.http import HttpResponse
 
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
 from django_datatables.datatables import DatatableView
-from django_datatables.helpers import row_button, render_replace, row_link
+from django_datatables.downloads.clipboard import ClipboardCopy
+from django_datatables.downloads.excel_download import ExcelDownload
+from django_datatables.helpers import row_button, render_replace
+from django_datatables.modal_filter.filter_fields import FilterModelMultipleChoiceField
+from django_datatables.modal_filter.mixins import DatatableFilterMixin, DatatableFilterField
 from django_datatables.plugins.colour_rows import ColourRows
 from django_datatables.plugins.column_totals import ColumnTotals
 from django_datatables.plugins.reorder import Reorder
-from django_datatables.plugins.save_filters import add_save_filters
 from django_datatables.reorder_datatable import ReorderDatatableView
 
 
-class Example1(MainMenu, DatatableView):
+class NumberEdit(DatatableColumn):
+
+    def row_result(self, data_dict, _page_results):
+        return '<form><input style="text-align:right" type="number" name="count" onblur=django_datatables.b_r(this) ></form>'
+
+
+class NumberEdit2(DatatableColumn):
+
+    def row_result(self, data_dict, _page_results):
+        return '<form><input style="text-align:right" type="number" name="count2" onblur=django_datatables.b_r(this) value=4></form>'
+
+
+
+
+class Example1(DatatableFilterMixin,ExcelDownload, ClipboardCopy,  MainMenu, DatatableView):
     model = models.Company
+
+    filter_fields = [
+        DatatableFilterField('Company Name', CharField(help_text='Name contains', required=False), datatable_field='name__contains'),
+        DatatableFilterField('Tags', FilterModelMultipleChoiceField(queryset=Tags.objects.all()), datatable_field='tags__in')
+
+    ]
+
+    def setup_menu(self):
+        self.add_menu('menu', 'buttons').add_items(*self.filter_menu_items(), self.download_menu_item(), self.clipboard_menu_item())
+        super().setup_menu()
 
     def setup_table(self, table):
         table.add_columns(
             ('id', {'column_defs': {'width': '30px'}}),
+            NumberEdit,
+            NumberEdit2,
+            ColumnBase(column_name='BasicButton', render=[row_button('toggle_tag', 'toggle TAG1')]),
             'name',
-            'Tags',
-            ('dissolved', {'choices': ['yes', 'no']}),
-            ColumnLink(column_name='peoplex', field=['id', 'name'], url_name='example2'),
-            ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
-            ColumnLink(column_name='view_company', field=['id', 'name'],  url_name='example2'),
-            ColumnLink(column_name='view_company_icon', link_ref_column='id', url_name='example2', width='10px',
-                       link_html='<button class="btn btn-sm btn-outline-dark"><i class="fas fa-building"></i></button>'
-                       ),
-            'reverse_tag',
-            ManyToManyColumn(column_name='DirectTag', field='direct_tag__tag_direct', model=models.Company,
-                             html='<span class="badge badge-primary"> %1% </span>'),
+            # 'Tags',
+            # ('dissolved', {'choices': ['yes', 'no']}),
+            # ColumnLink(column_name='peoplex', field=['id', 'name'], url_name='example2'),
+            # ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
+            # ColumnLink(column_name='view_company', field=['id', 'name'],  url_name='example2'),
+            # ColumnLink(column_name='view_company_icon', link_ref_column='id', url_name='example2', width='10px',
+            #            link_html='<button class="btn btn-sm btn-outline-dark"><i class="fas fa-building"></i></button>'
+            #            ),
+            # 'reverse_tag',
+            # ManyToManyColumn(column_name='DirectTag', field='direct_tag__tag_direct', model=models.Company,
+            #                  html='<span class="badge badge-primary"> %1% </span>'),
         )
         table.column('name').column_defs['orderable'] = False
         table.add_plugin(ColourRows, [{'column': 'id', 'values': {'1': 'table-danger'}}])
         table.ajax_data = False
-        table.add_js_filters('tag', 'Tags')
-        table.add_js_filters('totals', 'people', filter_title='Number of People', collapsed=False)
-        add_save_filters(table, self.request.user)
+       # table.add_js_filters('tag', 'Tags')
+       # table.add_js_filters('totals', 'people', filter_title='Number of People', collapsed=False)
+       #  add_save_filters(table, self.request.user)
         # table.add_js_filters('tag', 'DirectTag')
-        table.table_options['row_href'] = row_link('example2', 'id')
+        # table.table_options['row_href'] = [ajax_command('send_row')]
         table.table_options['no_col_search'] = True
         table.table_options['pageLength'] = '22'
+        table.max_records = 94
+        self.add_modal_filter(table)
 
         # table.table_options['scrollX'] = True
         # table.table_options['row_href'] = [render_replace(column='id', html='javascript:console.log("%1%")')]
         table.add_plugin(ColumnTotals, {'id': {'sum': 'over1000'}}, template='add_sum_calc.html')
+#
+    def row_column(self, row_data, inputs, **kwargs):
+        print (row_data, inputs )
+        return self.command_response('null')
 
-
-class Example2(MainMenu,  DatatableView):
+class Example2(MainMenu, ExcelDownload, ClipboardCopy, DatatableView):
     model = models.Person
     template_name = 'datatable_examples/csv_button_table.html'
     ajax_commands = ['row', 'column']
+
+    def setup_menu(self):
+        self.add_menu('menu', 'buttons').add_items(self.download_menu_item(), self.clipboard_menu_item())
+        super().setup_menu()
+
 
     def column_get_csv(self, **kwargs):
 
@@ -523,3 +566,66 @@ class ExampleReorder(MainMenu, ReorderDatatableView):
     def setup_table(table):
         table.add_columns('name')
         table.add_plugin(Reorder)
+
+
+
+class ExampleTotaling(MainMenu, DatatableView):
+    model = models.Tally
+    ajax_commands = ['row']
+
+    @staticmethod
+    def percentage(_column, data_dict, _page_results):
+        number = data_dict.get(_column.field)
+        if number is None:
+            return ''
+        else:
+            number = f'{number:.1f}'
+        if '.' in number:
+            return number.rstrip('0').rstrip('.')
+        else:
+            return number
+
+    def setup_table(self, table):
+        total_vehicles_ew = ExpressionWrapper(F('cars') + F('vans'), output_field=FloatField())
+        percentage_that_are_vans_ew = ExpressionWrapper(F('vans') * 100.0 / F('total_vehicles'),
+                                                        output_field=FloatField())
+        percentage_that_are_cars_ew = ExpressionWrapper(F('cars') * 100.0 / F('total_vehicles'),
+                                                        output_field=FloatField())
+
+        table.add_columns(
+            'id',
+            'cars',
+            'vans',
+            ColumnBase(column_name='total_vehicles',
+                       field='total_vehicles',
+                       annotations={'total_vehicles': total_vehicles_ew}),
+            ColumnBase(column_name='percentage_that_are_vans',
+                       field='percentage_that_are_vans',
+                       annotations={'percentage_that_are_vans': percentage_that_are_vans_ew},
+                       row_result=self.percentage,
+                       render=[render_replace(html='%1%&thinsp;%', column='percentage_that_are_vans')],
+                       column_defs={'className': 'dt-right'}
+                       ),
+            ColumnBase(column_name='percentage_that_are_cars',
+                       field='percentage_that_are_cars',
+                       annotations={'percentage_that_are_cars': percentage_that_are_cars_ew},
+                       row_result=self.percentage,
+                       render=[render_replace(html='%1%&thinsp;%', column='percentage_that_are_cars')],
+                       column_defs={'className': 'dt-right'}
+                       )
+        )
+        table.add_plugin(ColumnTotals, {'id': {'css_class': 'text-danger', 'text': 'Total'},
+                                        'cars': {'sum': True},
+                                        'vans': {'sum': True},
+                                        'total_vehicles': {'sum': True},
+                                        'percentage_that_are_vans': {'css_class': 'dt-right',
+                                                                     'sum': 'percentage',
+                                                                     'denominator': 'total_vehicles',
+                                                                     'numerator': 'vans',
+                                                                     'decimal_places': 1},
+                                        'percentage_that_are_cars': {'css_class': 'dt-right',
+                                                                     'sum': 'percentage',
+                                                                     'denominator': 'total_vehicles',
+                                                                     'numerator': 'cars',
+                                                                     'decimal_places': 1}
+                                        })

@@ -21,6 +21,7 @@
                     {% filter_control datatable %}
                 </div>
                 <div class="px-4 d-block float-left">
+                    {{ menus.menu.render }}
                     {{ datatable.render|safe }}
                 </div>
             </div>

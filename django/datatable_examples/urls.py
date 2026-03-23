@@ -1,11 +1,14 @@
 from django.urls import path
 from django.views.generic.base import RedirectView
 import datatable_examples.views.main as main_views
+from datatable_examples.views.search_boxes import SearchBoxes
 import datatable_examples.views.aggregations as aggregations_views
 import datatable_examples.views.horizontal as horizontal_views
 import datatable_examples.views.widgets as widgets_views
 import datatable_examples.views.selection as selection_views
 import datatable_examples.views.no_model as no_model_views
+from datatable_examples.views.modal_filter import ModalFilterExample
+from datatable_examples.views.spreadsheet import SpreadsheetExample, SpreadsheetModal
 
 urlpatterns = [
     path('', RedirectView.as_view(pattern_name='example1', )),
@@ -24,6 +27,8 @@ urlpatterns = [
     path('example-10', main_views.Example10.as_view(), name='example10'),
     path('example-11', main_views.Example11.as_view(), name='example11'),
     path('example-12', main_views.Example12.as_view(), name='example12'),
+    path('example-total', main_views.ExampleTotaling.as_view(), name='example_totaling'),
+    path('search-boxes', SearchBoxes.as_view(), name='search_boxes'),
     path('no-model-ajax', no_model_views.NoModelAjaxVersion.as_view(), name='no_model_ajax_version'),
     path('no-model-non-ajax', no_model_views.NoModelNonAjaxVersion.as_view(), name='no_model_non_ajax_version'),
 
@@ -39,6 +44,8 @@ urlpatterns = [
 
     path('horizontal', horizontal_views.ExampleHorizontal.as_view(),
          name='horizontal'),
-
-
+    path('modal-filter/', ModalFilterExample.as_view(), name='modal_filter'),
+    path('modal-filter/<str:base64>/', ModalFilterExample.as_view(), name='modal_filter'),
+    path('spreadsheet', SpreadsheetExample.as_view(), name='spreadsheet'),
+    path('spreadsheet_modal', SpreadsheetModal.as_view(), name='spreadsheet_modal')
 ]

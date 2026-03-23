@@ -7,7 +7,7 @@ from datatable_examples import models
 from datatable_examples.views.menu import MainMenu
 from django_datatables.columns import SelectColumn
 from django_datatables.datatables import DatatableView
-from django_datatables.helpers import send_selected
+from django_datatables.helpers import send_selected, row_link
 
 
 class Selection(MainMenu, DatatableView):
@@ -33,6 +33,6 @@ class Selection(MainMenu, DatatableView):
         table.add_columns(
             SelectColumn(hidden=True),
             'id',
-            'name'
+            'name',
         )
-        table.add_js_filters('datatables/filter_blocks/selected_filter.html', 'SelectColumn')
+        table.add_js_filters('selected', 'SelectColumn')  # can take menu=
