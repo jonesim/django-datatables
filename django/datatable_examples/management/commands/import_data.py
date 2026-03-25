@@ -7,6 +7,9 @@ from datatable_examples import models
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
+        if models.Company.objects.exists():
+            self.stdout.write('Data already imported, skipping.')
+            return
         self.import_companies()
         self.import_tallies()
 
