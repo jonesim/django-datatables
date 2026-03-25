@@ -26,6 +26,7 @@
 
     <script>
         $(document).ready(function () {
+            {% with moment_js=datatable.moment_formats_js %}{% if moment_js %}{{ moment_js }}{% endif %}{% endwith %}
             {{ datatable.table_id }}_configuration = {{ datatable.col_def_str|safe }};
             new django_datatables.PythonTable("{{ datatable.table_id }}", {{ datatable.table_id }}_configuration);
         })

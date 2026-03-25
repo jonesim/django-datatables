@@ -143,6 +143,7 @@ class DatatableTable:
         self.model = model
         self.page_results = {}
         self.results_limited = False
+        self.date_formats = set()
 
         # django query attributes
         self.initial_filter = {}
@@ -300,6 +301,12 @@ class DatatableTable:
     def all_titles(self):
         return [mark_safe(str(c.title) + ('' if not c.popover else c.popover_html.format(c.popover)))
                 for c in self.columns]
+
+    def moment_formats_js(self):
+        if not self.date_formats:
+            return ''
+        lines = [f'$.fn.dataTable.moment("{fmt}");' for fmt in sorted(self.date_formats)]
+        return mark_safe('\n            '.join(lines))
 
     def render(self):
         rendered_strings = []
