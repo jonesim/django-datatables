@@ -165,12 +165,19 @@ class DatatableTable:
         self.cache_data = False
         self.cached_linked_tables = []
         self.cache_expiry = None
+        self.cache_prefix = ''
         self.ajax_commands = []
 
         if table_classes:
             self.table_classes = table_classes
         else:
             self.table_classes = ['display', 'compact', 'smalltext', 'table-sm', 'table', 'w-100']
+
+    @property
+    def cache_key(self):
+        if self.cache_prefix:
+            return f'{self.cache_prefix}:{self.table_id}'
+        return self.table_id
 
     def table_class(self):
         return ' '.join(self.table_classes)

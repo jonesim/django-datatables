@@ -54,16 +54,16 @@ class DataTableCache:
 
     def get_cache(self, table):
         try:
-            return self.redis_instance.get(table.table_id)
+            return self.redis_instance.get(table.cache_key)
         except (redis.exceptions.TimeoutError, redis.exceptions.ConnectionError):
             return
 
     def store_cache(self, table, data):
         try:
             self.redis_instance.sadd(self.cached_tables, json.dumps(
-                {'key': table.table_id,
+                {'key': table.cache_key,
                  'models': getattr(table, 'cached_linked_tables', [])}
             ))
-            self.redis_instance.set(table.table_id, data, ex=table.cache_expiry)
+            self.redis_instance.set(table.cache_key, data, ex=table.cache_expiry)
         except (redis.exceptions.TimeoutError, redis.exceptions.ConnectionError):
             return
