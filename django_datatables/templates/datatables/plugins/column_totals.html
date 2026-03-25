@@ -4,11 +4,16 @@
 
         formatting_functions: {
             'to_fixed': function (sum, column_setup) {
+                var value;
                 if (column_setup.decimal_places !== undefined) {
-                    return sum.toFixed(column_setup.decimal_places)
+                    value = sum.toFixed(column_setup.decimal_places);
                 } else {
-                    return sum.toFixed(2)
+                    value = sum.toFixed(2);
                 }
+                if (column_setup.prefix) {
+                    value = column_setup.prefix + value;
+                }
+                return value;
             },
             'currency': function (sum, column_setup) {
                 var language_code = column_setup['locale'] ?? 'GB';
