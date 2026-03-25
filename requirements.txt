@@ -1,7 +1,7 @@
 Django==5.0.4
 django-ajax-helpers==0.0.22
 django-crispy-forms==1.14.0
-django-tab-menus==0.0.16
+django-tab-menus @ git+https://github.com/jonesim/django-menus
 django-show-source-code==0.0.8
 #django-nested-modals==0.0.23
 django-nested-modals @ git+https://github.com/jonesim/django-modals@5fa75c0a44b14624032d7f96936a852f441cae85

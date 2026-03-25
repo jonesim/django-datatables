@@ -1,8 +1,11 @@
 /django_datatables/django_datatable_link.egg-info/
 *.pyc
+__pycache__/
 .idea/
 build/
 dist/
 /django/db.sqlite3
 /django_filtered_datatables.egg-info/
 .DS_Store
+tests_venv/
+.pytest_cache/
