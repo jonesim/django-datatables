@@ -63,7 +63,8 @@
             var column_map = {{ column_map|safe }};
             for (var r = 0; r < page_data.length; r++) {
                 for (var c in column_totals) {
-                    var n = parseFloat(page_data[r][c]);
+                    var raw = String(page_data[r][c]).replace(/[^0-9.\-]/g, '');
+                    var n = parseFloat(raw);
                     if(!isNaN(n)) {
                         column_totals[c] += n;
                     }
