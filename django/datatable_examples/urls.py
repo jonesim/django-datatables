@@ -47,5 +47,7 @@ urlpatterns = [
     path('modal-filter/', ModalFilterExample.as_view(), name='modal_filter'),
     path('modal-filter/<str:base64>/', ModalFilterExample.as_view(), name='modal_filter'),
     path('spreadsheet', SpreadsheetExample.as_view(), name='spreadsheet'),
-    path('spreadsheet_modal', SpreadsheetModal.as_view(), name='spreadsheet_modal')
+    path('spreadsheet_modal', SpreadsheetModal.as_view(), name='spreadsheet_modal'),
+
+    path('server-side', main_views.ServerSidePaginationExample.as_view(), name='server_side'),
 ]

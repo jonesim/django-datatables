@@ -11,7 +11,7 @@ from django.http import HttpResponse
 
 from django_datatables.column_visibility.mixins import ColumnVisibilityMixin
 from django_datatables.columns import ColumnLink, ColumnBase, DatatableColumn, ManyToManyColumn, DateColumn
-from django_datatables.datatables import DatatableView
+from django_datatables.datatables import DatatableView, ServerSideTable
 from django_datatables.downloads.clipboard import ClipboardCopy
 from django_datatables.downloads.excel_download import ExcelDownload
 from django_datatables.helpers import row_button, render_replace
@@ -633,3 +633,42 @@ class ExampleTotaling(MainMenu, DatatableView):
                                                                      'numerator': 'cars',
                                                                      'decimal_places': 1}
                                         })
+
+
+class ServerSidePaginationExample(MainMenu, DatatableView):
+    """
+    Demonstrates server-side pagination for large datasets.
+
+    Each page request is sent to the server; the database applies the
+    filtering, ordering, and slicing rather than loading all rows at once.
+    The global search box and column-header search boxes send their values
+    to the server and are applied via ORM icontains queries.
+    """
+    model = models.Person
+
+    def add_tables(self):
+        self.add_table(
+            'serverside',
+            model=models.Person,
+            table_class=ServerSideTable,
+        )
+
+    def setup_serverside(self, table):
+        table.add_columns(
+            'id',
+            ('first_name', {'title': 'First Name'}),
+            ('surname', {'title': 'Surname'}),
+            ('company__name', {'title': 'Company'}),
+        )
+        # Fields searched by the global search box.
+        table.search_fields = ['first_name', 'surname', 'company__name']
+        # Default ordering.
+        table.order_by = ['surname', 'first_name']
+
+    def add_to_context(self, **kwargs):
+        return {'description': (
+            'Server-side pagination example. Each page, sort, and search '
+            'request is handled by the database rather than loaded into the '
+            'browser. Column-header search boxes and the global DataTables '
+            'search input are applied as ORM <code>icontains</code> filters.'
+        )}
