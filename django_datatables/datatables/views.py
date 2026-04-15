@@ -81,15 +81,19 @@ class DatatableView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         if request.POST.get('datatable_data'):
+            from django_datatables.datatables.server_side import ServerSideTable
             table = self.tables[request.POST['table_id']]
             self.setup_tables(table_id=table.table_id)
+            results = self.get_table_query(table, **kwargs)
+            if isinstance(table, ServerSideTable):
+                table_data = table.get_server_side_json(request, results, request.POST)
+                return HttpResponse(table_data, content_type='application/json')
             if table.cache_data is True:
                 from django_datatables.cache import DataTableCache
                 datatable_cache = DataTableCache()
                 cache = datatable_cache.get_cache(table)
                 if cache:
                     return HttpResponse(cache, content_type='application/json')
-            results = self.get_table_query(table, **kwargs)
             table_data = table.get_json(request, results)
             if table.cache_data is True:
                 datatable_cache.store_cache(table, table_data)
