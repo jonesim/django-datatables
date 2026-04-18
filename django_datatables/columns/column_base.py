@@ -267,6 +267,13 @@ class ColumnBase:
     def setup_results(self, request, all_results):
         return
 
+    def html_result(self, data_dict, page_results):
+        from django.utils.html import conditional_escape
+        value = self.row_result(data_dict, page_results)
+        if value is None:
+            return ''
+        return conditional_escape(str(value))
+
     @staticmethod
     def __list_row_result(self, data_dict, _page_results):
         return [data_dict.get(f) for f in self.field]

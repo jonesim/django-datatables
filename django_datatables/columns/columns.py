@@ -72,6 +72,19 @@ class ColumnLink(ColumnBase):
         self.link_ref_column = link_ref_column
         self.setup_link(link_css, link_html)
 
+    def html_result(self, data_dict, page_results):
+        from django.utils.html import conditional_escape, escape
+        from django.utils.safestring import mark_safe
+        from django_datatables.helpers import DUMMY_ID
+        value = self.row_result(data_dict, page_results)
+        text = value[0] if isinstance(value, list) else value
+        ref_value = data_dict.get(self.link_ref_column)
+        if ref_value is None:
+            return conditional_escape(str(text)) if text is not None else ''
+        url = self._url.replace(str(DUMMY_ID), str(ref_value))
+        css = f' class="{self.base_link_css}"' if self.base_link_css else ''
+        return mark_safe(f'<a{css} href="{escape(url)}">{escape(str(text))}</a>')
+
     def setup_link(self, link_css, link_html):
         link_css = f' class="{link_css}"' if link_css else ''
         link = f'<a{link_css} href="{self.url}">{{}}</a>'
