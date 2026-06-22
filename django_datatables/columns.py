@@ -163,14 +163,24 @@ class ColumnBase:
         self._annotations_value = self._set_annotations(value)
 
     def _combined_expression_annotations(self, expression):
-        if isinstance(expression.lhs, CombinedExpression):
+        # Recursively prefix model_path onto every field reference (F/Col) in the
+        # expression tree. Recurse through CombinedExpressions and through any
+        # expression that has child source_expressions (Func/Aggregate, e.g. a
+        # Round(Sum(...)) wrapper), and skip leaves with no field name (e.g. Value
+        # literals) so a wrapped annotation no longer raises
+        # "'Value' object has no attribute 'name'".
+        if isinstance(expression, CombinedExpression):
             self._combined_expression_annotations(expression.lhs)
-        else:
-            expression.lhs.name = self.model_path + expression.lhs.name
-        if isinstance(expression.rhs, CombinedExpression):
             self._combined_expression_annotations(expression.rhs)
-        else:
-            expression.rhs.name = self.model_path + expression.rhs.name
+            return
+        source_expressions = getattr(expression, 'source_expressions', None)
+        if source_expressions:
+            for source_expression in source_expressions:
+                self._combined_expression_annotations(source_expression)
+            return
+        name = getattr(expression, 'name', None)
+        if isinstance(name, str):
+            expression.name = self.model_path + name
 
     def _set_annotations(self, value):
         annotations = copy.deepcopy(value)
@@ -178,11 +188,8 @@ class ColumnBase:
             new_annotations = {}
             for k in annotations:
                 new_annotations[self.model_path + k] = annotations[k]
-                for e in new_annotations[self.model_path + k].source_expressions:
-                    if isinstance(e, CombinedExpression):
-                        self._combined_expression_annotations(e)
-                    else:
-                        e.name = self.model_path + e.name
+                for e in getattr(new_annotations[self.model_path + k], 'source_expressions', None) or []:
+                    self._combined_expression_annotations(e)
             annotations = new_annotations
         for f in annotations:
             if self.field is None:
