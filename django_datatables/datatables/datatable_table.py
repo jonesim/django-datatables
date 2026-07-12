@@ -231,11 +231,13 @@ class DatatableTable:
 
     def add_columns(self, *columns):
         order = self.session_column_order()
+        hidden_order = -1000
         for c in columns:
             new_columns = self.column_initialisor_cls(self.model, c, table=self).get_columns()
             if order:
                 for nc in new_columns:
-                    nc.order = order.get(nc.column_name, 9999)
+                    nc.order = order.get(nc.column_name, hidden_order)
+                    hidden_order += 1
             self.columns += [nc for nc in new_columns if (nc.enabled and self.show_column(nc))]
         if order:
             def sort_order(column):

@@ -72,6 +72,14 @@ class ColumnVisibilityMixin:
             del val['session_id']
         else:
             val['session_id'] = self.request.session.session_key
+        saved_state = SavedState.objects.filter(user_id=self.request.user.id, name=name, table_id=table_id,
+                                                view_class=view_class).first()
+        self.setup_tables()
+        if saved_state and saved_state.column_order:
+            old_columns = {c['name']: c for c in val['columns']}
+            val['columns'] = []
+            for c in self.tables[table_id].columns:
+                val['columns'].append(old_columns.get(c.column_name, {}))
         val = json.dumps(val)
         save_table_state(self.request.user.id, table_id, view_class, state=val, name=name)
         return self.command_response('post_modal', button = {'datatable': table_id, 'view_class': view_class,

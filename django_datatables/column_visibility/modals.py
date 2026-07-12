@@ -78,7 +78,7 @@ class ColumnForm(CrispyForm):
             if column.options.get('hidden'):
                 continue
             order = (col_order.get(column.column_name)
-                     if col_order and col_order.get(column.column_name) else c)
+                     if (col_order and (col_order.get(column.column_name) is not None)) else c)
             modal_table.table_data.append({
                 'index': order,
                 'pk': column.column_name,
