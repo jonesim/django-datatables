@@ -1,0 +1,118 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+
+{% block content %}
+    <select class="filter-content" style="width:100%" multiple="multiple">
+    </select>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        function ServerSelect2Filter(column_no, html_id, options) {
+
+            this.storage_key = 'select2_filter'
+            django_datatables.FilterBase.call(this, column_no, html_id, options)
+            this.is_server_filter = true
+            this.facets_loaded = false
+            this.dom_built = false
+
+            this.load_state = function (state_data) {
+                var context = $('#' + this.html_id)
+                $("select", context).val(state_data).trigger('change')
+            }
+
+            this.save_data = function (data) {
+                var selected_ids = []
+                var selected = $("#" + this.html_id + " select").select2('data');
+                for (var i = 0; i < selected.length; i++) {
+                    selected_ids.push(selected[i].id)
+                }
+                return selected_ids
+            }
+
+            this.buildfilter = function () {
+                var refresh = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+                this.filter_data = [];
+                var selected = $("#" + this.html_id + " select").select2('data');
+                for (var i = 0; i < selected.length; i++) {
+                    this.filter_data.push(selected[i].text)
+                }
+                if (refresh){
+                    this.pTable.table.api().draw();
+                }
+            }
+
+            // Filtering happens server-side; every in-browser row passes.
+            this.filter = function (data) {
+                return true;
+            }
+
+            this.set_facets = function (data) {
+                if (data === null) {
+                    $('#' + this.html_id + '-panel').html('<i>Too many values to filter</i>')
+                    return
+                }
+                this.filter_calcs.calcs = data
+                this.filter_calcs.sorted_keys = null
+                this.facets_loaded = true
+                if (!this.dom_built) {
+                    this.html()
+                }
+                // Badges render lazily via format_template when the dropdown opens.
+            }
+
+            this.server_state = function (loaded_state) {
+                if (this.dom_built) {
+                    if (this.filter_data.length === 0) return null
+                    return {type: 'select2', values: this.filter_data}
+                }
+                // Before the DOM exists derive the selection from the saved state.
+                try {
+                    var saved = loaded_state.columns[this.column_no][this.storage_key]
+                } catch (e) {
+                    return null
+                }
+                if (saved == null || saved.length === 0) return null
+                var values = []
+                for (var i = 0; i < saved.length; i++) {
+                    values.push(decodeURI(saved[i]))
+                }
+                return {type: 'select2', values: values}
+            }
+
+            this.html = function () {
+                // The option list is built from server facet counts; wait for them.
+                if (!this.facets_loaded) return
+                var optionhtml = '<option value="%6">%1</option>'
+                var htmldata = '';
+                var sorted_keys = this.filter_calcs.sort_keys()
+                var k = sorted_keys.next()
+                while (!k.done){
+                    htmldata += optionhtml.replace(/%1/g, k.value).replace(/%6/g, encodeURI(k.value))
+                    k = sorted_keys.next()
+                }
+                var context = $('#' + this.html_id)
+                $('.filter-content', context).html(htmldata);
+                this.restore_state()
+                $("select", context).select2({
+                    templateResult: this.this_fn_parameter('format_template')
+                }).change(this.this_fn('buildfilter', true))
+                this.buildfilter(false)
+                this.dom_built = true
+            }
+
+            this.clear = function () {
+                var context = $('#' + this.html_id)
+                $("select", context).val('').trigger('change')
+            }
+            this.format_template = function (state) {
+                var dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill %3">%2</span></span>';
+                if (state.loading) return;
+                return $(dropdown_item.replace('%1', state.text).replace('%2', this.filter_calcs.badge_string(state.text)).replace('%3', this.filter_calcs.badge_colour(state.text)[0]));
+            }
+        }
+
+        ServerSelect2Filter.prototype = Object.create(django_datatables.FilterBase.prototype);
+        var options = {};
+        var new_filter = new ServerSelect2Filter({{ column_no }}, '{{ html_id }}', options);
+    </script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+
+{% block content %}
+     <div class="form-group row">
+         <label class="col-sm-3 col-form-label" for="{{ html_id }}-after">After</label>
+         <div class="col-sm-9">
+         <input type="text" class="form-control filtertext after">
+         </div>
+     </div>
+     <div class="form-group row">
+         <label class="col-sm-3 col-form-label" for="{{ html_id }}-before">Before</label>
+         <div class="col-sm-9">
+            <input type="text" class="form-control filtertext before">
+         </div>
+     </div>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        function filter(column_no, html_id, options) {
+            this.column_no = {{ column_no }}
+            this.storage_key = 'date_filter'
+            django_datatables.FilterBase.call(this, column_no, html_id, options)
+            this.is_server_filter = true
+            this.dom_built = false
+
+            this.load_state = function (state_data) {
+                $('.after', '#' + this.html_id).val(state_data['after'])
+                $('.before', '#' + this.html_id).val(state_data['before'])
+            }
+
+            this.save_data = function () {
+                return {
+                    after: $('.after', '#' + this.html_id).val(),
+                    before: $('.before', '#' + this.html_id).val()
+                }
+            }
+
+            this.buildfilter = function (refresh) {
+                if (refresh) {
+                    this.pTable.table.api().draw()
+                }
+            }
+
+            // Filtering happens server-side; every in-browser row passes.
+            this.filter = function (data) {
+                return true
+            }
+
+            this.server_state = function (loaded_state) {
+                var after, before
+                if (this.dom_built) {
+                    after = $('.after', '#' + this.html_id).val()
+                    before = $('.before', '#' + this.html_id).val()
+                } else {
+                    // Before init derive the range from the saved state.
+                    try {
+                        var saved = loaded_state.columns[this.column_no][this.storage_key]
+                        after = saved['after']
+                        before = saved['before']
+                    } catch (e) {
+                        return null
+                    }
+                }
+                after = after || ''
+                before = before || ''
+                if (after === '' && before === '') return null
+                return {type: 'date', after: after, before: before}
+            }
+
+            this.html = function () {
+                $('input', '#' + this.html_id).change(this.this_fn('buildfilter', true))
+                this.restore_state()
+                this.dom_built = true
+            }
+        }
+        filter.prototype = Object.create(django_datatables.FilterBase.prototype);
+        options = {}
+        var new_filter = new filter({{ column_no }}, '{{ html_id }}', options)
+    </script>
+{% endblock %}
