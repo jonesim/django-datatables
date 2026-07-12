@@ -1,8 +1,15 @@
 import json
+import logging
 
 from django.db.models import Q
 
+from django_datatables.datatables.datatable_error import DatatableError
 from django_datatables.datatables.datatable_table import DatatableTable
+from django_datatables.filters import DatatableFilter
+from django_datatables.server_side_filters import (ServerDatatableFilter, ServerDateFilter, ServerPivotFilter,
+                                                   ServerSelect2Filter)
+
+logger = logging.getLogger(__name__)
 
 
 class ServerSideTable(DatatableTable):
@@ -61,14 +68,39 @@ class ServerSideTable(DatatableTable):
     ``recordsFiltered`` only when a search is active.  On other databases the
     flag is silently ignored and a normal COUNT is used.
 
+    JS filters
+    ----------
+    ``add_js_filters`` supports the ``pivot``, ``select2``, and ``date``
+    filters.  They are transparently swapped for server-side equivalents
+    (see ``django_datatables.server_side_filters``): selections are applied
+    as ORM WHERE clauses and the ``[filtered / total]`` count badges are
+    computed with GROUP BY aggregate queries.
+
+    Facet counts are only recomputed when the filter/search state changes —
+    the client sends ``need_facets=1`` on those requests and the response
+    carries a ``facets`` key.  Paging and sorting never trigger the aggregate
+    queries.  Each state change costs two GROUP BY queries per counted facet
+    (totals on the base queryset, filtered counts on the searched/filtered
+    queryset).  Columns with more distinct values than ``max_facet_values``
+    (default 200, pass as a kwarg to ``add_js_filters``) skip counts and show
+    a message instead.
+
     Limitations
     -----------
-    * Client-side JS filters (``add_js_filters``) are not applied because only
-      the current page is present in the browser.  Move any required filtering
-      to ORM-level ``self.filter`` / ``extra_filters`` / ``view_filter``.
+    * The ``tag``, ``totals``, ``expand``, and ``selected`` JS filters are not
+      supported server-side; requesting one raises ``DatatableError``.
+    * Facet totals are recomputed on every filter/search change; caching them
+      (e.g. in Redis via ``django_datatables.cache``) is possible future work
+      for very large tables.
     * ``ColumnTotalsPlugin`` footer sums only cover the current page.
-    * The ``reload_table`` ajax command does not recalculate JS filter badges.
     """
+
+    # JS filter types that have a server-side implementation.
+    server_js_filters = {
+        'pivot': ServerPivotFilter,
+        'select2': ServerSelect2Filter,
+        'date': ServerDateFilter,
+    }
 
     # Override in a subclass or instance to restrict global search to specific
     # ORM paths, e.g. ['name', 'company__name', 'email'].
@@ -82,6 +114,61 @@ class ServerSideTable(DatatableTable):
         super().__init__(*args, **kwargs)
         # Tell DataTables.js to operate in server-side mode.
         self.table_options['serverSide'] = True
+
+    # ------------------------------------------------------------------
+    # JS filters
+    # ------------------------------------------------------------------
+
+    def add_js_filters(self, name_or_template, *column_ids, filter_class=DatatableFilter, **kwargs):
+        """Substitute server-side filter classes for the supported types.
+
+        ``table.add_js_filters('pivot', 'column')`` works unchanged on a
+        server-side table.  Unsupported built-in types raise a clear error;
+        explicit ``filter_class=`` or custom template paths pass through.
+        """
+        if filter_class is DatatableFilter and isinstance(name_or_template, str):
+            if name_or_template in self.server_js_filters:
+                filter_class = self.server_js_filters[name_or_template]
+            elif name_or_template in DatatableFilter.template_library:
+                raise DatatableError(f"JS filter '{name_or_template}' is not supported with ServerSideTable. "
+                                     f"Supported types: {', '.join(self.server_js_filters)}")
+        super().add_js_filters(name_or_template, *column_ids, filter_class=filter_class, **kwargs)
+
+    def _server_filters(self):
+        return [f for f in self.js_filter_list if isinstance(f, ServerDatatableFilter)]
+
+    @staticmethod
+    def _parse_js_filter_state(post_data):
+        try:
+            state = json.loads(post_data.get('js_filter_state') or '{}')
+        except (ValueError, TypeError):
+            return {}
+        return state if isinstance(state, dict) else {}
+
+    def _apply_js_filters(self, queryset, filter_state):
+        """Apply posted filter selections; returns (queryset, any_applied)."""
+        applied = False
+        for js_filter in self._server_filters():
+            state = filter_state.get(js_filter.column.column_name)
+            if not isinstance(state, dict):
+                continue
+            try:
+                queryset = js_filter.apply_filter(queryset, state)
+                applied = True
+            except Exception:
+                logger.exception('Error applying server-side js filter on %s', js_filter.column.column_name)
+        return queryset, applied
+
+    def _build_facets(self, base_queryset, filtered_queryset):
+        facets = {}
+        for js_filter in self._server_filters():
+            if not js_filter.has_facets:
+                continue
+            try:
+                facets[js_filter.column.column_name] = js_filter.get_facets(base_queryset, filtered_queryset)
+            except Exception:
+                logger.exception('Error building facets for %s', js_filter.column.column_name)
+        return facets
 
     # ------------------------------------------------------------------
     # Column search-box visibility
@@ -165,6 +252,13 @@ class ServerSideTable(DatatableTable):
         max_page = self.max_records or 500
         length = min(length, max_page)
 
+        # Base queryset (view filters only) feeds facet totals.
+        base_queryset = queryset
+        js_filter_state = self._parse_js_filter_state(post_data)
+        # The client asks for facet counts only when the filter/search state
+        # changed; paging and sorting draws skip the aggregate queries.
+        need_facets = post_data.get('need_facets') == '1' or draw == 1
+
         # Total records matching the view's base filters (not the user search).
         # Use the fast approximate estimate when requested, otherwise COUNT(*).
         records_total = self._count_total(queryset)
@@ -186,9 +280,16 @@ class ServerSideTable(DatatableTable):
         if has_column_search:
             queryset = self._apply_column_searches(queryset, post_data)
 
+        # Apply the js filter selections (pivot/select2/date filter blocks).
+        queryset, js_filters_applied = self._apply_js_filters(queryset, js_filter_state)
+        filters_active = search_active or js_filters_applied
+
         # Count after search/filter for the "x of y records" footer.
-        # Skip the second COUNT when nothing is being searched — it equals total.
-        records_filtered = queryset.count() if search_active else records_total
+        # Skip the second COUNT when nothing is being filtered — it equals total.
+        records_filtered = queryset.count() if filters_active else records_total
+
+        # Fully-filtered queryset (before ordering/slicing) feeds facet counts.
+        filtered_queryset = queryset
 
         # Apply ordering sent by DataTables (overrides default order_by).
         ordering = self._build_ordering(post_data)
@@ -205,6 +306,10 @@ class ServerSideTable(DatatableTable):
             'recordsFiltered': records_filtered,
             'data': data,
         }
+        if need_facets:
+            facets = self._build_facets(base_queryset, filtered_queryset)
+            if facets:
+                result['facets'] = facets
         if self.ajax_commands:
             result['ajax_commands'] = self.ajax_commands
 

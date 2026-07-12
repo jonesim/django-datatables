@@ -152,6 +152,13 @@ if (typeof django_datatables === 'undefined') {
         };
 
         ajax_helpers.command_functions.reload_table = function(command){
+            if (DataTables[command.table_id].initsetup.tableOptions.serverSide) {
+                // Force the next request to recompute the facet counts; the
+                // client-side calc rebuild below only suits full datasets.
+                DataTables[command.table_id].last_filter_signature = null;
+                DataTables[command.table_id].table.api().ajax.reload(null, false);
+                return;
+            }
             DataTables[command.table_id].table.api().ajax.reload(null, false);
             $('#' + command.table_id).off('xhr.dt')
             $('#' + command.table_id).on('xhr.dt', function (e, settings, json, xhr) {
@@ -491,6 +498,73 @@ if (typeof django_datatables === 'undefined') {
 
         PivotFilter.prototype = Object.create(FilterBase.prototype);
 
+        // Pivot filter for serverSide tables: filtering happens in the Django
+        // ORM and the [filtered / total] counts arrive in the json 'facets'
+        // key, so the row predicate always passes and the checkbox DOM is
+        // built from server-supplied counts instead of in-browser rows.
+        function ServerPivotFilter(column_no, html_id, options) {
+
+            PivotFilter.call(this, column_no, html_id, options)
+            this.is_server_filter = true
+            this.facets_loaded = false
+            this.dom_built = false
+
+            this.filter = function (data) {
+                return true
+            }
+
+            var pivot_html = this.html
+            this.html = function () {
+                // The checkbox list is built from facet counts; wait for them.
+                if (!this.facets_loaded) return
+                pivot_html.call(this)
+                this.dom_built = true
+            }
+
+            this.set_facets = function (data) {
+                if (data === null) {
+                    $('.filter-content', '#' + this.html_id).html('<i>Too many values to filter</i>')
+                    return
+                }
+                this.filter_calcs.calcs = data
+                this.filter_calcs.sorted_keys = null
+                this.facets_loaded = true
+                if (!this.dom_built) {
+                    this.html()
+                } else {
+                    this.refresh()
+                }
+            }
+
+            this.server_state = function (loaded_state) {
+                if (this.dom_built) {
+                    if (this.filter_data.length === Object.keys(this.filter_calcs.calcs).length) return null
+                    return {type: 'pivot', values: this.filter_data}
+                }
+                // Before the DOM exists derive the selection from the saved
+                // {encoded_value: checked} map.
+                try {
+                    var saved = loaded_state.columns[this.column_no][this.storage_key]
+                } catch (e) {
+                    return null
+                }
+                if (saved == null) return null
+                var values = []
+                var all_checked = true
+                for (var key in saved) {
+                    if (saved[key]) {
+                        values.push(decodeURI(key))
+                    } else {
+                        all_checked = false
+                    }
+                }
+                if (all_checked) return null
+                return {type: 'pivot', values: values}
+            }
+        }
+
+        ServerPivotFilter.prototype = Object.create(PivotFilter.prototype);
+
         var column_render = function (column, render_functions, tablesetup) {
             var rf = []
             for (var r = 0; r < render_functions.length; r++) {
@@ -772,6 +846,10 @@ if (typeof django_datatables === 'undefined') {
             this.plugins = []
             this.table_id = html_id
             this.selected = []
+            // serverSide facet state: facets arriving before initComplete are
+            // buffered; the signature decides when to request fresh counts.
+            this.pending_facets = null
+            this.last_filter_signature = null
 
             django_datatables.DataTables[html_id] = this
             for (var i = 0; i < tablesetup.colOptions.length; i++) {
@@ -801,7 +879,11 @@ if (typeof django_datatables === 'undefined') {
                     django_datatables.setup[html_id].plugins = []
                 }
                 this.exec_filter('init', this)
-                this.init_filters()
+                if (!tablesetup.tableOptions.serverSide) {
+                    // Server-side tables only hold one page of rows; counts
+                    // come from the server via json.facets instead.
+                    this.init_filters()
+                }
                 this.exec_filter('html')
                 var state_data = this.table.api().state.loaded()
                 this.exec_plugins('init', this, state_data)
@@ -810,7 +892,9 @@ if (typeof django_datatables === 'undefined') {
                 }.bind(this));
 
                 var on_draw = function () {
-                    this.proc_filters(this)
+                    if (!tablesetup.tableOptions.serverSide) {
+                        this.proc_filters(this)
+                    }
                     this.exec_filter('refresh')
                     this.exec_plugins('refresh', this)
                     $('form input', this.table).keydown(function (e) {
@@ -827,6 +911,12 @@ if (typeof django_datatables === 'undefined') {
                 this.table.api().on('draw', on_draw);
                 this.exec_filter('reset')
                 if (tablesetup.tableOptions.serverSide) {
+                    // Facets from the first ajax response arrive before
+                    // initComplete; apply them now that pTable/state exist.
+                    if (this.pending_facets) {
+                        this.apply_facets(this.pending_facets)
+                        this.pending_facets = null
+                    }
                     // In server-side mode draw() would trigger a second ajax request;
                     // run the draw actions directly to prime plugins and bindings.
                     on_draw()
@@ -885,6 +975,18 @@ if (typeof django_datatables === 'undefined') {
                             d.csrfmiddlewaretoken = csrf;
                             d.table_id = html_id;
                             d.datatable_data = true;
+                            var p_table = django_datatables.DataTables[html_id];
+                            d.js_filter_state = JSON.stringify(p_table.get_server_filter_state());
+                            // Facet counts only change when the filter/search
+                            // state does; skip them on paging/sorting draws.
+                            var signature = d.js_filter_state + '|' + d.search.value;
+                            for (var c = 0; c < d.columns.length; c++) {
+                                signature += '|' + d.columns[c].search.value;
+                            }
+                            if (signature !== p_table.last_filter_signature) {
+                                p_table.last_filter_signature = signature;
+                                d.need_facets = 1;
+                            }
                             return d;
                         }
                     }
@@ -943,6 +1045,15 @@ if (typeof django_datatables === 'undefined') {
             $('#' + this.table_id).on('xhr.dt', function (e, settings, json, xhr) {
                 if (json.ajax_commands != undefined){
                     ajax_helpers.process_commands(json.ajax_commands)
+                }
+                if (json.facets != undefined) {
+                    var p_table = django_datatables.DataTables[html_id];
+                    if (p_table.table) {
+                        p_table.apply_facets(json.facets)
+                    } else {
+                        // First response arrives before initComplete; postInit drains this.
+                        p_table.pending_facets = json.facets
+                    }
                 }
             })
             if (this.initsetup.tableOptions.row_href) {
@@ -1003,6 +1114,42 @@ if (typeof django_datatables === 'undefined') {
             }.bind(this))
         }
 
+        PythonTable.prototype.server_filters = function () {
+            // Before initComplete the filters still live in the setup list.
+            var filters = this.filters
+            if (filters.length === 0 && django_datatables.setup[this.table_id] !== undefined &&
+                django_datatables.setup[this.table_id].filters !== undefined) {
+                filters = django_datatables.setup[this.table_id].filters
+            }
+            return filters.filter(function (f) {
+                return f.is_server_filter === true
+            })
+        }
+
+        PythonTable.prototype.get_server_filter_state = function () {
+            var state = {}
+            var loaded_state = this.table ? this.table.api().state.loaded() : this.get_key()
+            var server_filters = this.server_filters()
+            for (var i = 0; i < server_filters.length; i++) {
+                var filter_state = server_filters[i].server_state(loaded_state)
+                if (filter_state != null) {
+                    var column_name = this.initsetup.tableOptions.columnDefs[server_filters[i].column_no].name
+                    state[column_name] = filter_state
+                }
+            }
+            return state
+        }
+
+        PythonTable.prototype.apply_facets = function (facets) {
+            var server_filters = this.server_filters()
+            for (var i = 0; i < server_filters.length; i++) {
+                var column_name = this.initsetup.tableOptions.columnDefs[server_filters[i].column_no].name
+                if (column_name in facets && server_filters[i].set_facets != undefined) {
+                    server_filters[i].set_facets(facets[column_name])
+                }
+            }
+        }
+
         PythonTable.prototype.find_column = function (id) {
             for (var j = 0; j < this.initsetup.tableOptions.columnDefs.length; j++) {
                 if (this.initsetup.tableOptions.columnDefs[j]['name'] === id) {
@@ -1061,6 +1208,7 @@ if (typeof django_datatables === 'undefined') {
             FilterCalcs,
             FilterBase,
             PivotFilter,
+            ServerPivotFilter,
             column_render,
             utilities,
             add_to_setup,
