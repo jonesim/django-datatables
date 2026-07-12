@@ -809,7 +809,7 @@ if (typeof django_datatables === 'undefined') {
                     this.exec_filter('reset')
                 }.bind(this));
 
-                this.table.api().on('draw', function () {
+                var on_draw = function () {
                     this.proc_filters(this)
                     this.exec_filter('refresh')
                     this.exec_plugins('refresh', this)
@@ -823,9 +823,16 @@ if (typeof django_datatables === 'undefined') {
                             e.preventDefault();
                         }
                     });
-                }.bind(this));
+                }.bind(this)
+                this.table.api().on('draw', on_draw);
                 this.exec_filter('reset')
-                this.table.api().draw()
+                if (tablesetup.tableOptions.serverSide) {
+                    // In server-side mode draw() would trigger a second ajax request;
+                    // run the draw actions directly to prime plugins and bindings.
+                    on_draw()
+                } else {
+                    this.table.api().draw()
+                }
             }.bind(this)
 
             this.set_key = function (settings, data) {
@@ -865,10 +872,25 @@ if (typeof django_datatables === 'undefined') {
                 } else {
                     url = window.location.search
                 }
-                dataTable_setup.ajax = {
-                    'url': url,
-                    "type": "POST",
-                    "data": {"csrfmiddlewaretoken": csrf, table_id: html_id, datatable_data: true}
+                if (tablesetup.tableOptions.serverSide) {
+                    // Server-side mode: DataTables generates draw/start/length/search/order
+                    // params and calls the data function to merge them with our custom fields.
+                    dataTable_setup.ajax = {
+                        'url': url,
+                        "type": "POST",
+                        "data": function (d) {
+                            d.csrfmiddlewaretoken = csrf;
+                            d.table_id = html_id;
+                            d.datatable_data = true;
+                            return d;
+                        }
+                    }
+                } else {
+                    dataTable_setup.ajax = {
+                        'url': url,
+                        "type": "POST",
+                        "data": {"csrfmiddlewaretoken": csrf, table_id: html_id, datatable_data: true}
+                    }
                 }
             }
 
