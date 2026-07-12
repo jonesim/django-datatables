@@ -836,6 +836,9 @@ if (typeof django_datatables === 'undefined') {
             }.bind(this)
 
             this.set_key = function (settings, data) {
+                data.columns.forEach((item, i) => {
+                    item.name = tablesetup.tableOptions.columnDefs[i].name;
+                });
                 localStorage.setItem(tablesetup.local_storage_key, JSON.stringify(data));
             }
 
