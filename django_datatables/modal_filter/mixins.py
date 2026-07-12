@@ -103,8 +103,11 @@ class DatatableFilterMixin:
         return {}
 
     def add_modal_filter(self, table, max_records=4000, filtered_max_records=20000):
-        if table.max_records is None:
+        all_records = self.filter_dict.pop('all_records', None)
+        if table.max_records is None and not all_records:
             table.max_records = filtered_max_records if self.filter_dict else max_records
+        elif all_records:
+            table.max_records = None
         for k, v in self.filter_dict.items():
             if k == modal_identifier:
                 continue
