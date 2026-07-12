@@ -43,9 +43,10 @@ class DatatableView(TemplateView):
             return table.model.query_filter(query, self.request, table=table)
         return query
 
-    def add_table(self, table_id, **kwargs):
-        self.tables[table_id] = DatatableTable(table_id, table_options=self.table_options,
-                                               table_classes=self.table_classes, view=self, **kwargs)
+    def add_table(self, table_id, table_class=None, **kwargs):
+        cls = table_class or DatatableTable
+        self.tables[table_id] = cls(table_id, table_options=self.table_options,
+                                    table_classes=self.table_classes, view=self, **kwargs)
 
     def add_tables(self):
         self.add_table(type(self).__name__.lower(), model=self.model)
