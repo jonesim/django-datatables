@@ -2,15 +2,12 @@ import copy
 import json
 import re
 from types import MethodType
-from typing import TypeVar, Dict
+from typing import Dict, Any
 
 from django.db.models.expressions import CombinedExpression
 from django.forms.widgets import Select
 
 from django_datatables.helpers import render_replace
-
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 
 
 EDIT_SEND = 'django_datatables.row_send(this)'
@@ -53,31 +50,21 @@ class ColumnBase:
         return self.initialised
 
     def get_class_instance(self, column_name, **kwargs):
-        kwargs.update(self.kwargs)
-        return self.__class__(column_name=column_name, class_holder=False, **kwargs)
+        return self.__class__(column_name=column_name, **{**self.kwargs, **kwargs})
 
     def extract_args(self):
         args = self.column_name.split('|')
-        return_args = []
-        if len(args) > 1:
-            self.column_name = args[0]
-            for a in args[1:]:
-                split_arg = a.split('=')
-                if len(split_arg) == 2:
-                    self.kwargs[split_arg[0]] = split_arg[1]
-                else:
-                    return_args.append(a)
-        return return_args
+        self.column_name = args[0]
+        return args[1:]
 
     def __init__(self, field=None, **kwargs):
         if not self.initialise(locals()):
             return
         # Remove  ._$ characters from beginning of name and set appropriate options
         self._column_name = None
-        self.options: Dict[KT, VT] = {}
         self.column_defs = {}
         self.column_name, options = self.extract_options(kwargs.get('column_name', ''))
-        self.options: Dict[KT, VT] = options
+        self.options: Dict[str, Any] = options
         self.model_path = kwargs.pop('model_path', None)
         if self.model_path is None:
             self.model_path = self.get_model_path(self.column_name)
@@ -99,11 +86,11 @@ class ColumnBase:
         self._annotations_value = None
         self._aggregations = None
         self.additional_columns = []
+        self.spreadsheet = kwargs.pop('spreadsheet', {})
         self.kwargs = kwargs
         self.replace_list = []
         self.blank = None
         self.popover = None
-        self.spreadsheet = kwargs.pop('spreadsheet', {})
         self.setup_kwargs(kwargs)
         self.result_processes = {}
 
@@ -188,7 +175,7 @@ class ColumnBase:
         for f in annotations:
             if self.field is None:
                 self._field = f
-            elif type(self.field) == str:
+            elif isinstance(self.field, str):
                 if f != self.field:
                     self._field = [self.field, f]
             else:
@@ -241,7 +228,7 @@ class ColumnBase:
         if not isinstance(self._field, (list, tuple)):
             self._field = [self._field, self.model_path + field]
         else:
-            self._field = list(self._field).append(self.model_path + field)
+            self._field = list(self._field) + [self.model_path + field]
 
     @staticmethod
     def get_model_path(field):
@@ -265,7 +252,7 @@ class ColumnBase:
         return field, options
 
     def setup_results(self, request, all_results):
-        return
+        pass
 
     def html_result(self, data_dict, page_results):
         from django.utils.html import conditional_escape
@@ -284,13 +271,13 @@ class ColumnBase:
             return self.options['choices'].get(data_dict.get(self.field))
         if self.blank:
             ret_val = data_dict.get(self.field)
-            if not ret_val:
+            if ret_val is None or ret_val == '':
                 return self.blank
             return ret_val
         return data_dict.get(self.field)
 
     def style(self):
-        col_def_str = self.column_defs
+        col_def_str = dict(self.column_defs)
         if self.options.get('hidden'):
             col_def_str['visible'] = False
             col_def_str['searchable'] = False
@@ -304,9 +291,9 @@ class ColumnBase:
 
     @staticmethod
     def title_from_name(name):
-        if type(name) == str and len(name) > 0:
+        if isinstance(name, str) and len(name) > 0:
             field_no_path = name.split('/')[-1].split('__')[-1]
-            if field_no_path.find('_') > 0:
+            if '_' in field_no_path:
                 return field_no_path.replace('_', ' ').title()
             else:
                 title = field_no_path[0].upper()
