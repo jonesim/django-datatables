@@ -1,0 +1,44 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+{% load datatable_tags %}
+{% block header_icons %}
+    <a class="filter-header-icon all-check" href="javascript:void(0);" title="Select All">
+        <i class="select-all fas fa-check-square"></i></a>
+    <a class="filter-header-icon none-check" href="javascript:void(0);">
+        <i class="select-none far fa-square"></i></a>
+{% endblock %}
+{% block content %}
+    <table class="small w-100">
+        <tr>
+            <td></td>
+            <td class="text-right text-secondary">Filtered</td>
+            <td class="text-right">Total</td>
+        </tr>
+        <tbody class="filter-content">
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        django_datatables.ServerTotalPivotFilter = function (column_no, html_id, options) {
+            django_datatables.ServerPivotFilter.call(this, column_no, html_id, options)
+            this.storage_key = 'pivot_totals'
+            // Sums arrive from the server in the facets payload; write them
+            // into the Filtered / Total columns instead of count badges.
+            this.refresh = function () {
+                var totals = this.filter_calcs.calcs
+                $("#" + html_id + " .total").each(function () {
+                    var result = totals[decodeURI($(this).attr("data-value"))]
+                    $(this).html(result === undefined ? '-' : django_datatables.utilities.numberWithCommas(result[0]))
+                })
+                $("#" + html_id + " .overall").each(function () {
+                    var result = totals[decodeURI($(this).attr("data-value"))]
+                    $(this).html(result === undefined ? '-' : django_datatables.utilities.numberWithCommas(result[1]))
+                })
+            }
+        }
+        django_datatables.ServerTotalPivotFilter.prototype = Object.create(django_datatables.ServerPivotFilter.prototype);
+        options = {'htmlcheckbox': "{% include_escape 'datatables/filter_rows/checkbox_total.html' %}"}
+        var new_filter = new django_datatables.ServerTotalPivotFilter({{ column_no }}, '{{ html_id }}', options)
+    </script>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+{% load datatable_tags %}
+
+{% block content %}
+    <div class="filter-content">
+    </div>
+{% endblock %}
+
+{% block header_icons %}
+    <a class="none-check" href="javascript:void(0)" title="Clear">
+        <i class="all-clear filter-header-icon fas fa-ban"></i></a>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        function ServerTagFilter(column_no, html_id, options) {
+
+            this.storage_key = 'tag_filter'
+            django_datatables.FilterBase.call(this, column_no, html_id, options)
+            this.is_server_filter = true
+            this.facets_loaded = false
+            this.dom_built = false
+            this.filter_data = {'required': [], 'include': [], 'exclude': []}
+
+            // Filtering happens server-side; every in-browser row passes.
+            this.filter = function (data) {
+                return true
+            }
+
+            this.load_state = function (state_data) {
+                $('.tag-filter', '#' + this.html_id).each(function () {
+                    var saved_class = state_data[$(this).attr('data-value')]
+                    if (saved_class && saved_class !== 'option-1') {
+                        $(this).removeClass('option-1')
+                        $(this).addClass(saved_class)
+                    }
+                })
+            }
+
+            this.save_data = function () {
+                var tag_filter = {}
+                $('.tag-filter', '#' + this.html_id).each(function () {
+                    tag_filter[$(this).attr('data-value')] = this.className.match(/option-\d+/)[0];
+                })
+                return tag_filter
+            }
+
+            this.buildfilter = function () {
+                var refresh = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+                this.filter_data = {'required': [], 'include': [], 'exclude': []}
+                var this_filter = this
+                $(".tag-filter", '#' + this.html_id).each(function () {
+                    var key = decodeURI($(this).attr("data-value"))
+                    if ($(this).hasClass('option-3')) {
+                        this_filter.filter_data.required.push(key)
+                    } else if ($(this).hasClass('option-2')) {
+                        this_filter.filter_data.include.push(key)
+                    } else if ($(this).hasClass('option-4')) {
+                        this_filter.filter_data.exclude.push(key)
+                    }
+                })
+                if (this.filter_data.required.length === 0 && this.filter_data.include.length === 0 &&
+                    this.filter_data.exclude.length === 0) {
+                    this.set_status_class('all')
+                } else {
+                    this.set_status_class('')
+                }
+                if (refresh) this.pTable.table.api().draw();
+            }
+
+            this.refresh = function () {
+                var this_filter = this
+                $(".badge", '#' + this.html_id).each(function () {
+                    this_filter.set_badge(this, decodeURI($(this).attr("data-value")))
+                })
+            }
+
+            this.set_facets = function (data) {
+                if (data === null) {
+                    $('.filter-content', '#' + this.html_id).html('<i>Too many values to filter</i>')
+                    return
+                }
+                this.filter_calcs.calcs = data
+                this.filter_calcs.sorted_keys = null
+                this.facets_loaded = true
+                if (!this.dom_built) {
+                    this.html()
+                } else {
+                    this.refresh()
+                }
+            }
+
+            this.server_state = function (loaded_state) {
+                if (this.dom_built) {
+                    if (this.filter_data.required.length === 0 && this.filter_data.include.length === 0 &&
+                        this.filter_data.exclude.length === 0) return null
+                    return {type: 'tag', include: this.filter_data.include,
+                            required: this.filter_data.required, exclude: this.filter_data.exclude}
+                }
+                // Before the DOM exists derive the selection from the saved
+                // {encoded_value: option-class} map.
+                try {
+                    var saved = loaded_state.columns[this.column_no][this.storage_key]
+                } catch (e) {
+                    return null
+                }
+                if (saved == null) return null
+                var state = {type: 'tag', include: [], required: [], exclude: []}
+                var option_lists = {'option-2': state.include, 'option-3': state.required, 'option-4': state.exclude}
+                for (var key in saved) {
+                    if (saved[key] in option_lists) {
+                        option_lists[saved[key]].push(decodeURI(key))
+                    }
+                }
+                if (state.include.length === 0 && state.required.length === 0 && state.exclude.length === 0) {
+                    return null
+                }
+                return state
+            }
+
+            this.html = function () {
+                // The tag list is built from server facet counts; wait for them.
+                if (!this.facets_loaded) return
+                var html = ""
+                for (var k of this.filter_calcs.sort_keys()) {
+                    html += rep_options(this.options.tagcheckbox, {1: k, 3: this.column_no, 4: encodeURI(k)})
+                }
+                var context = $('#' + this.html_id)
+                $('.filter-content', context).html(html)
+                $(".all-clear", context).click(this.this_fn('clear'))
+                $(".tag-filter", context).click(this.this_fn('change_multi_input'))
+                this.restore_state()
+                this.buildfilter(false)
+                this.dom_built = true
+                this.refresh()
+            }
+
+            this.clear = function () {
+                $(".tag-filter", '#' + this.html_id).each(function () {
+                    $(this).removeClass("option-2 option-3 option-4");
+                    $(this).addClass("option-1");
+                }).promise().done(this.this_fn('buildfilter', true));
+            }
+
+            this.change_multi_input = function (dummy, checkbox) {
+                var options = ['option-1', 'option-2', 'option-3', 'option-4']
+                var option_class = checkbox.className.match(/option-\d+/)[0];
+                $(checkbox).removeClass(option_class);
+                $(checkbox).addClass(options[(options.indexOf(option_class) + 1) % 4]);
+                this.buildfilter(true)
+            }
+        }
+        ServerTagFilter.prototype = Object.create(django_datatables.FilterBase.prototype);
+        options = {
+            tagcheckbox: "{% include_escape 'datatables/filter_rows/checkbox_tag.html' %}"
+        };
+        var new_filter = new ServerTagFilter({{ column_no }}, '{{ html_id }}', options);
+    </script>
+{% endblock %}
