@@ -7,7 +7,7 @@ from django_datatables.datatables.datatable_error import DatatableError
 from django_datatables.datatables.datatable_table import DatatableTable
 from django_datatables.filters import DatatableFilter
 from django_datatables.server_side_filters import (ServerDatatableFilter, ServerDateFilter, ServerPivotFilter,
-                                                   ServerSelect2Filter)
+                                                   ServerSelect2Filter, ServerTagFilter, ServerTotalsFilter)
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,15 @@ class ServerSideTable(DatatableTable):
 
     Usage
     -----
-    Replace ``DatatableTable`` with ``ServerSideTable`` when calling
-    ``add_table()`` or set the class on ``table_classes`` in the view:
+    Set ``server_side = True`` on the view and the default ``add_tables()``
+    creates a ``ServerSideTable`` automatically:
+
+        class MyView(DatatableView):
+            server_side = True
+            model = MyModel
+
+    For per-table control (e.g. mixing server-side and client-side tables in
+    one view) pass the class explicitly when calling ``add_table()``:
 
         def add_tables(self):
             self.add_table('mytable', model=MyModel, table_class=ServerSideTable)
@@ -70,11 +77,14 @@ class ServerSideTable(DatatableTable):
 
     JS filters
     ----------
-    ``add_js_filters`` supports the ``pivot``, ``select2``, and ``date``
-    filters.  They are transparently swapped for server-side equivalents
-    (see ``django_datatables.server_side_filters``): selections are applied
-    as ORM WHERE clauses and the ``[filtered / total]`` count badges are
-    computed with GROUP BY aggregate queries.
+    ``add_js_filters`` supports the ``pivot``, ``select2``, ``date``,
+    ``tag``, and ``totals`` filters.  They are transparently swapped for
+    server-side equivalents (see ``django_datatables.server_side_filters``):
+    selections are applied as ORM WHERE clauses and the
+    ``[filtered / total]`` count badges are computed with GROUP BY aggregate
+    queries.  ``tag`` filters (ManyToManyColumn) make the queryset
+    ``distinct()`` to avoid duplicate rows from the M2M join; ``totals``
+    filters show ``Sum(sum_column)`` in the badges instead of row counts.
 
     Facet counts are only recomputed when the filter/search state changes —
     the client sends ``need_facets=1`` on those requests and the response
@@ -87,8 +97,8 @@ class ServerSideTable(DatatableTable):
 
     Limitations
     -----------
-    * The ``tag``, ``totals``, ``expand``, and ``selected`` JS filters are not
-      supported server-side; requesting one raises ``DatatableError``.
+    * The ``expand`` and ``selected`` JS filters are not supported
+      server-side; requesting one raises ``DatatableError``.
     * Facet totals are recomputed on every filter/search change; caching them
       (e.g. in Redis via ``django_datatables.cache``) is possible future work
       for very large tables.
@@ -100,6 +110,8 @@ class ServerSideTable(DatatableTable):
         'pivot': ServerPivotFilter,
         'select2': ServerSelect2Filter,
         'date': ServerDateFilter,
+        'tag': ServerTagFilter,
+        'totals': ServerTotalsFilter,
     }
 
     # Override in a subclass or instance to restrict global search to specific

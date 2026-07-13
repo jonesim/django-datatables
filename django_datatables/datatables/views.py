@@ -12,6 +12,9 @@ from django_datatables.models import SavedState
 
 class DatatableView(TemplateView):
     model = None
+    # Set True to make add_table default to ServerSideTable so the database
+    # handles paging/sorting/searching instead of the browser.
+    server_side = False
     table_classes = None
     table_options = None
     ajax_commands = ['row']
@@ -44,9 +47,14 @@ class DatatableView(TemplateView):
         return query
 
     def add_table(self, table_id, table_class=None, **kwargs):
-        cls = table_class or DatatableTable
-        self.tables[table_id] = cls(table_id, table_options=self.table_options,
-                                    table_classes=self.table_classes, view=self, **kwargs)
+        if table_class is None:
+            if self.server_side:
+                from django_datatables.datatables.server_side import ServerSideTable
+                table_class = ServerSideTable
+            else:
+                table_class = DatatableTable
+        self.tables[table_id] = table_class(table_id, table_options=self.table_options,
+                                            table_classes=self.table_classes, view=self, **kwargs)
 
     def add_tables(self):
         self.add_table(type(self).__name__.lower(), model=self.model)
