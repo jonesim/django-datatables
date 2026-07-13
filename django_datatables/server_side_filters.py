@@ -110,6 +110,8 @@ class ServerDatatableFilter(DatatableFilter):
         for part in field_path.split('__'):
             if model is None:
                 return None
+            if part == 'pk':
+                part = model._meta.pk.name
             try:
                 field = model._meta.get_field(part)
             except FieldDoesNotExist:
@@ -177,13 +179,32 @@ class ServerTagFilter(ServerValuesFilter):
     matches rows with no tags at all.  Because the M2M join can duplicate
     parent rows the filtered queryset is made ``distinct()`` and facet counts
     use ``Count('pk', distinct=True)``.
+
+    Custom tag columns (plain ``DatatableColumn`` subclasses that build their
+    tag ids in ``setup_results`` and set ``options['lookup']``) carry no ORM
+    field information, so the path from the table model to the tag values
+    must be supplied with the ``field`` kwarg::
+
+        table.add_js_filters('tag', 'Tags', field='tags__pk')
     """
 
-    @staticmethod
-    def _validate_column(column, datatable):
+    def __init__(self, name_or_template, datatable, column=None, field=None, **kwargs):
+        self.field_path = field
+        super().__init__(name_or_template, datatable, column=column, **kwargs)
+
+    def _validate_column(self, column, datatable):
+        if self.field_path:
+            if self._resolve_field(datatable.model, self.field_path) is None:
+                message = (f'Server-side tag filter field {self.field_path!r} '
+                           f'does not resolve to a field of {datatable.model.__name__}')
+                logger.warning(message)
+                raise DatatableError(message)
+            return
         if not isinstance(column, ManyToManyColumn):
             message = (f'Server-side tag filter needs a ManyToManyColumn, '
-                       f'cannot filter {getattr(column, "column_name", None)!r}')
+                       f'cannot filter {getattr(column, "column_name", None)!r}; for a custom tag '
+                       f"column pass the ORM path to the tag values, e.g. "
+                       f"add_js_filters('tag', '{getattr(column, 'column_name', 'Tags')}', field='tags__pk')")
             logger.warning(message)
             raise DatatableError(message)
         if column.model is not datatable.model:
@@ -194,6 +215,8 @@ class ServerTagFilter(ServerValuesFilter):
 
     @property
     def field(self):
+        if self.field_path:
+            return self.field_path
         # ManyToManyColumn sets column.field = None; rebuild the pk path of
         # the relation from the table model.  For a forward M2M field_id is
         # already relative to the table model; for a reverse M2M it is
@@ -209,16 +232,21 @@ class ServerTagFilter(ServerValuesFilter):
         labels = super()._label_map()
         # ManyToManyColumn's blank= kwarg appends a synthetic (-1, label)
         # lookup entry; rows with no tags are keyed 'null' server-side.
-        for blank_key in self.column.blank or []:
+        for blank_key in getattr(self.column, 'blank', None) or []:
             labels.pop(blank_key, None)
         return labels
 
     def _keys_to_db_values(self, keys):
-        # Keys are labels from the column lookup; the path filters on pk, so
-        # a stale or unknown label must match nothing rather than raise from
-        # a non-numeric pk lookup.  Tags created after the lookup was built
-        # arrive as str(pk) keys and pass through.
-        return [v for v in super()._keys_to_db_values(keys) if not isinstance(v, str) or v.isdigit()]
+        # Keys are labels from the column lookup; when the path targets a
+        # numeric field (the usual pk case) a stale or unknown label must
+        # match nothing rather than raise from a non-numeric lookup.  Tags
+        # created after the lookup was built arrive as str(pk) keys and pass
+        # through.
+        db_values = super()._keys_to_db_values(keys)
+        model_field = self._resolve_model_field()
+        if model_field is None or model_field.get_internal_type() not in ('CharField', 'TextField', 'SlugField'):
+            db_values = [v for v in db_values if not isinstance(v, str) or v.isdigit()]
+        return db_values
 
     def apply_filter(self, queryset, state):
         include = [k for k in state.get('include') or [] if isinstance(k, str)]

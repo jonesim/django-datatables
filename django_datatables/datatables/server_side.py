@@ -86,6 +86,14 @@ class ServerSideTable(DatatableTable):
     ``distinct()`` to avoid duplicate rows from the M2M join; ``totals``
     filters show ``Sum(sum_column)`` in the badges instead of row counts.
 
+    ``tag`` filters on custom tag columns (plain ``DatatableColumn``
+    subclasses with a ``lookup`` that build their tag ids in
+    ``setup_results``) need the ORM path from the table model to the tag
+    values passed explicitly, as the column itself carries no field
+    information::
+
+        table.add_js_filters('tag', 'Tags', field='tags__pk')
+
     Facet counts are only recomputed when the filter/search state changes —
     the client sends ``need_facets=1`` on those requests and the response
     carries a ``facets`` key.  Paging and sorting never trigger the aggregate
