@@ -6,3 +6,4 @@ dist/
 /django/db.sqlite3
 /django_filtered_datatables.egg-info/
 /django/datatable_examples.egg-info/
+/CLAUDE.md
