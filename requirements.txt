@@ -11,3 +11,5 @@ modal-examples @ git+https://github.com/jonesim/django-modals@2b784ba1879bb44a97
 menu-examples @ git+https://github.com/jonesim/django-menus#subdirectory=django_examples
 ajax-examples @ git+https://github.com/jonesim/ajax-helpers#subdirectory=django_examples
 openpyxl==3.0.9
+psycopg2==2.9.3
+make-html==0.0.3

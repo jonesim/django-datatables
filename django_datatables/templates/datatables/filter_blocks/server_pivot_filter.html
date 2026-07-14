@@ -1,0 +1,19 @@
+{% extends 'datatables/filter_blocks/base_filter_block.html' %}
+{% load datatable_tags %}
+{% block header_icons %}
+    <a class="filter-header-icon all-check" href="javascript:void(0);" title="Select All">
+        <i class="select-all fas fa-check-square"></i></a>
+    <a class="filter-header-icon none-check" href="javascript:void(0);">
+        <i class="select-none far fa-square"></i></a>
+{% endblock %}
+
+{% block content %}
+    <div class="filter-content"></div>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        options = {'htmlcheckbox': "{% include_escape 'datatables/filter_rows/checkbox_filter.html' %}"}
+        var new_filter = new django_datatables.ServerPivotFilter({{ column_no }}, '{{ html_id }}', options)
+    </script>
+{% endblock %}

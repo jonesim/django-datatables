@@ -10,6 +10,9 @@
     {% lib_include 'datatable' 'JSpreadsheet' module='django_datatables.includes' %}
 </head>
 <body>
+
+ {{ ajax_helpers_script }}
+
 {% block body %}
     <nav class="navbar navbar-expand-lg bg-dark navbar-dark active-bar">
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
@@ -30,5 +33,15 @@
 
 {% endblock %}
 
+
+ <script>
+         $('body').tooltip({
+            selector: '[data-tooltip="tooltip"]'
+        });
+            $('body').tooltip({
+        selector: '[data-toggle="tooltip"]'
+    });
+
+ </script>
 </body>
 </html>

@@ -1,0 +1,46 @@
+{% if type == 'msg' %}
+<table class="table table-sm mb-0 border-bottom">
+    <tbody>
+        {% if sender %}<tr><td class="text-muted pl-2" style="width:4.5rem;white-space:nowrap">From</td><td>{{ sender }}</td></tr>{% endif %}
+        {% if to %}<tr><td class="text-muted pl-2">To</td><td>{{ to }}</td></tr>{% endif %}
+        {% if cc %}<tr><td class="text-muted pl-2">CC</td><td>{{ cc }}</td></tr>{% endif %}
+        {% if date %}<tr><td class="text-muted pl-2">Date</td><td>{{ date }}</td></tr>{% endif %}
+        <tr><td class="text-muted pl-2">Subject</td><td><strong>{{ subject }}</strong></td></tr>
+    </tbody>
+</table>
+{% if attachments %}
+<div class="px-3 py-2 border-bottom bg-light">
+    <small class="text-muted mr-1"><i class="fas fa-paperclip"></i> Attachments:</small>
+    {% for att in attachments %}
+        <a href="{% url 'msg_attachment_download' file_pk att.1 %}"
+           class="badge badge-secondary mr-1" style="color:white" download>
+            <i class="fas fa-download mr-1"></i>{{ att.0 }}
+        </a>
+    {% endfor %}
+</div>
+{% endif %}
+<div class="border-top">
+    {% if html_body %}
+        <iframe srcdoc="{{ html_body|escape }}"
+                sandbox="allow-same-origin"
+                style="width:100%;border:none;height:65vh"></iframe>
+    {% else %}
+        <pre class="p-3 m-0" style="white-space:pre-wrap;font-family:inherit;font-size:.9rem">{{ body }}</pre>
+    {% endif %}
+</div>
+
+{% elif type == 'pdf' %}
+<iframe src="{{ url }}" style="width:100%;height:70vh;border:none"></iframe>
+
+{% elif type == 'image' %}
+<div class="text-center p-3">
+    <img src="{{ url }}" class="img-fluid" alt="{{ name }}">
+</div>
+
+{% else %}
+<div class="p-4 text-center text-muted">
+    <i class="fas fa-file fa-3x mb-3"></i>
+    <p>{{ name }}</p>
+    <p class="small">This file type cannot be previewed. Use the <i class="fas fa-file-download"></i> Download button to save it.</p>
+</div>
+{% endif %}

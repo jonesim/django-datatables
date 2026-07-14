@@ -2,13 +2,14 @@ import base64
 import binascii
 import json
 
+from django.forms import CharField, HiddenInput
 from django.urls import reverse
 from django_menus.menu import MenuItem
 from django_modals.forms import CrispyForm
 from django_modals.helper import ajax_modal_replace
 
 from django_datatables.helpers import add_filters
-from .modals import DatatableFilterModal
+from .modals import DatatableFilterModal, modal_identifier
 
 
 class DatatableFilterField:
@@ -21,7 +22,9 @@ class DatatableFilterField:
 
     @staticmethod
     def form_fields(field_list):
-        return {f.field_id: f.field for f in field_list}
+        fields = {f.field_id: f.field for f in field_list}
+        fields[modal_identifier] = CharField(widget=HiddenInput, initial='dt-filter-modal')
+        return fields
 
     def get_filter(self, value, table=None):
         if value is None:
@@ -82,7 +85,7 @@ class DatatableFilterMixin:
         return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, **kwargs):
-        if 'modal_id' in request.POST and 'ajax_method' not in request.POST:
+        if request.POST.get(modal_identifier) == 'dt-filter-modal':
             return DatatableFilterModal.as_view()(request, filter_clean=self.filter_clean,
                                                   form_class=self.filter_form(),
                                                   url_name=request.resolver_match.url_name,
@@ -100,8 +103,13 @@ class DatatableFilterMixin:
         return {}
 
     def add_modal_filter(self, table, max_records=4000, filtered_max_records=20000):
-        if table.max_records is None:
+        all_records = self.filter_dict.pop('all_records', None)
+        if table.max_records is None and not all_records:
             table.max_records = filtered_max_records if self.filter_dict else max_records
+        elif all_records:
+            table.max_records = None
         for k, v in self.filter_dict.items():
+            if k == modal_identifier:
+                continue
             table.filter = add_filters(table.filter,
                                        DatatableFilterField.get_field(self.filter_fields, k).get_filter(v, table))

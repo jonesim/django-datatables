@@ -1,6 +1,7 @@
 from django.urls import path
 from django.views.generic.base import RedirectView
 import datatable_examples.views.main as main_views
+from datatable_examples.views.hide_columns import HideColumns
 from datatable_examples.views.search_boxes import SearchBoxes
 import datatable_examples.views.aggregations as aggregations_views
 import datatable_examples.views.horizontal as horizontal_views
@@ -15,6 +16,7 @@ urlpatterns = [
     path('datatable-redirect/', RedirectView.as_view(pattern_name='example1', ), name='django-filtered-datatables'),
     path('<int:pk>', main_views.CompanyView.as_view(), name='company'),
     path('example-1', main_views.Example1.as_view(), name='example1'),
+    path('example-1/<str:base64>/', main_views.Example1.as_view(), name='example1'),
     path('example-2/<int:pk>/', main_views.Example2.as_view(), name='example2'),
     path('example-2/', main_views.Example2.as_view(), name='example2'),
     path('example-3', main_views.Example3.as_view(), name='example3'),
@@ -48,4 +50,10 @@ urlpatterns = [
     path('modal-filter/<str:base64>/', ModalFilterExample.as_view(), name='modal_filter'),
     path('spreadsheet', SpreadsheetExample.as_view(), name='spreadsheet'),
     path('spreadsheet_modal', SpreadsheetModal.as_view(), name='spreadsheet_modal'),
+
+    path('server-side', main_views.ServerSidePaginationExample.as_view(), name='server_side'),
+    path('server-side-tags', main_views.ServerSideTagFilterExample.as_view(), name='server_side_tags'),
+    path('server-side-totals', main_views.ServerSideTotalsFilterExample.as_view(), name='server_side_totals'),
+    path('server-side-json', main_views.ServerSideJsonColumnExample.as_view(), name='server_side_json'),
+    path('hide-columns', HideColumns.as_view(), name='hide_columns'),
 ]

@@ -12,7 +12,7 @@ class FilterDateField(DateField):
     def prepare_value(self, value):
         if value:
             try:
-                date = datetime.datetime.strptime(value, '%Y%m-%d')
+                date = datetime.datetime.strptime(value, '%Y-%m-%d')
                 return date.strftime('%d/%m/%Y')
             except ValueError:
                 return value

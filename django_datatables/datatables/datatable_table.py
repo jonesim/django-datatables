@@ -1,125 +1,27 @@
 import json
+from functools import cached_property
 from inspect import isclass
 from typing import TypeVar, Dict
-from ajax_helpers.utils import random_string, is_ajax, ajax_command
+
+from ajax_helpers.utils import random_string
 from django.db import models
-from django.http.response import HttpResponseBase
-from django.views.generic import TemplateView
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
-from .detect_device import detect_device
-from .columns import ColumnBase, DateColumn, ChoiceColumn, BooleanColumn, CallableColumn
-from .model_def import DatatableModel
-from .filters import DatatableFilter
-from .models import SavedState
+from django_menus.menu import MenuItem, HtmlMenu
+
+from django_datatables.constants import HIDE_OPTIONAL, HIDE_VISIBILTY
+from django_datatables.datatables.column_initialiser import ColumnInitialisor
+from django_datatables.datatables.datatable_error import DatatableError
+from django_datatables.filters import DatatableFilter
+from django_datatables.models import SavedState
+
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 
-class DatatableError(Exception):
-    pass
-
-
 class DatatableExcludedRow(Exception):
     pass
-
-
-class ColumnInitialisor:
-
-    def __init__(self, start_model, path, field_prefix='', name_prefix='', **kwargs):
-        self.start_model = start_model
-        self.django_field = None
-        self.setup = None
-        self.model = None
-        if type(path) == tuple:
-            kwargs.update(path[1])
-            path = path[0]
-        self.kwargs = kwargs
-        self.columns = []
-        self.callable = False
-        self.next_prefix = ''
-        explicit_name = False
-        if isclass(path):
-            self.setup = path
-            self.next_prefix = field_prefix
-            self.kwargs['column_name'] = path.__name__
-        elif isinstance(path, ColumnBase):
-            self.setup = path
-            if not hasattr(path, 'column_name'):
-                self.kwargs['column_name'] = type(path).__name__
-        elif isinstance(path, str):
-            self.path, options = ColumnBase.extract_options(path)
-            self.path = field_prefix + self.path
-            self.kwargs.update(options)
-            if start_model is not None:
-                self.model, self.django_field, self.setup = DatatableModel.get_setup_data(start_model, self.path)
-            if 'column_name' in self.kwargs:
-                explicit_name = True
-            else:
-                self.kwargs['column_name'] = path
-
-            if '__' in self.path:
-                split_path = self.path.split('__')
-                self.field = split_path[-1]
-                self.next_prefix = '__'.join(split_path[:-1]) + '__'
-            else:
-                self.field = self.path
-            self.callable = callable(getattr(self.model, self.field, None))
-        else:
-            raise DatatableError('Unknown type in columns ' + str(path))
-
-        if 'column_name' in kwargs and name_prefix and not explicit_name:
-            self.kwargs['column_name'] = f'{name_prefix}/{field_prefix}{self.kwargs["column_name"]}'
-
-    def get_columns(self):
-        self.kwargs['model'] = self.model
-        self.kwargs['model_path'] = self.next_prefix
-        if isclass(self.setup):
-            self.columns.append(self.setup(**self.kwargs))
-        elif isinstance(self.setup, ColumnBase):
-            if self.setup.initialised:
-                if 'table' in self.kwargs:
-                    self.setup.table = self.kwargs['table']
-                self.columns.append(self.setup)
-            else:
-                self.columns.append(self.setup.get_class_instance(**self.kwargs))
-        elif isinstance(self.setup, list):
-            del self.kwargs['column_name']
-            for c in self.setup:
-                new_column_initialisor_cls = type(self)  # calls it's self (ColumnInitialisor)
-                self.columns += new_column_initialisor_cls(start_model=self.start_model,
-                                                           path=c,
-                                                           field_prefix=self.next_prefix,
-                                                           name_prefix=self.field,
-                                                           **self.kwargs).get_columns()
-        elif self.callable:
-            if self.setup is None:
-                self.setup = {}
-            self.columns.append(CallableColumn(field=self.field, **self.kwargs, **self.setup))
-        else:
-            self.kwargs['field'] = self.field
-            if isinstance(self.setup, dict):
-                self.kwargs.update(self.setup)
-            if self.django_field:
-                self.add_django_field_column()
-            else:
-                self.columns.append(ColumnBase(**self.kwargs))
-        return self.columns
-
-    def add_django_field_column(self):
-        if 'title' not in self.kwargs:
-            self.kwargs['title'] = self.django_field.verbose_name.title()
-        if isinstance(self.django_field, (models.DateField, models.DateTimeField)):
-            self.columns.append(DateColumn(**self.kwargs))
-        elif (isinstance(self.django_field,
-                         (models.IntegerField, models.PositiveSmallIntegerField, models.PositiveIntegerField))
-              and self.django_field.choices is not None and len(self.django_field.choices) > 0):
-            self.columns.append(ChoiceColumn(choices=self.django_field.choices, **self.kwargs))
-        elif isinstance(self.django_field, models.BooleanField):
-            self.columns.append(BooleanColumn(**self.kwargs))
-        else:
-            self.columns.append(ColumnBase(**self.kwargs))
 
 
 class DatatableTable:
@@ -143,7 +45,6 @@ class DatatableTable:
         self.model = model
         self.page_results = {}
         self.results_limited = False
-        self.date_formats = set()
 
         # django query attributes
         self.initial_filter = {}
@@ -165,19 +66,14 @@ class DatatableTable:
         self.cache_data = False
         self.cached_linked_tables = []
         self.cache_expiry = None
-        self.cache_prefix = ''
         self.ajax_commands = []
+        self.show_column_modal = True
+        self.hide_options = HIDE_VISIBILTY
 
         if table_classes:
             self.table_classes = table_classes
         else:
             self.table_classes = ['display', 'compact', 'smalltext', 'table-sm', 'table', 'w-100']
-
-    @property
-    def cache_key(self):
-        if self.cache_prefix:
-            return f'{self.cache_prefix}:{self.table_id}'
-        return self.table_id
 
     def table_class(self):
         return ' '.join(self.table_classes)
@@ -192,8 +88,11 @@ class DatatableTable:
             if isinstance(column_ids[0], (list, tuple)):
                 column_ids = column_ids[0]
             for c in column_ids:
-                self.js_filter_list.append(filter_class(name_or_template, self, column=self.find_column(c)[0],
-                                                        **kwargs))
+                try:
+                    self.js_filter_list.append(filter_class(name_or_template, self, column=self.find_column(c)[0],
+                                                            **kwargs))
+                except DatatableError as e:
+                    pass
         else:
             self.js_filter_list.append(filter_class(name_or_template, self, **kwargs))
 
@@ -279,10 +178,71 @@ class DatatableTable:
                 return c, n
         raise DatatableError('Unable to find column ' + column_name)
 
+    def session_key(self):
+        return f'{self.view.__class__.__name__}.{self.table_id}'
+
+    def session_id(self):
+        request = getattr(self.view, 'request', None)
+        if request and hasattr(request, 'session'):
+            return getattr(request.session, 'session_key', '-')
+
+    @cached_property
+    def session_or_default(self):
+        state = self.get_saved_state('_session')
+        if state and state.state:
+            browser_state = json.loads(state.state)
+            if self.session_id() and browser_state['session_id'] == self.session_id():
+                return state
+        return self.get_saved_state('_default')
+
+    def session_or_default_state(self):
+        try:
+            return json.loads(self.session_or_default.state) if self.session_or_default else None
+        except json.JSONDecodeError:
+            pass
+
+    def session_column_visibility(self):
+        return self.session_or_default.column_visibility if self.session_or_default else {}
+
+    def session_column_order(self):
+        return self.session_or_default.column_order if self.session_or_default else None
+
+    def get_saved_state(self, name):
+        if self.view:
+            return SavedState.objects.filter(name=name, user_id=self.view.request.user.id,
+                                             table_id=self.table_id, view_class=self.view.__class__.__name__).first()
+
+    def show_column(self, column):
+        if not column.enabled:
+            return False
+        if column.options.get('hidden'):
+            return True
+        if self.view and getattr(self.view,'all_columns', False):
+            return True
+        hide_options = column.hide_options or self.hide_options
+        if not self.session_column_visibility():
+            return not hide_options == HIDE_OPTIONAL
+        if not self.session_column_visibility().get(column.column_name, True):
+            if hide_options == HIDE_VISIBILTY:
+                column.options['hidden'] = True
+            else:
+                return False
+        return True
+
     def add_columns(self, *columns):
+        order = self.session_column_order()
+        hidden_order = -1000
         for c in columns:
             new_columns = self.column_initialisor_cls(self.model, c, table=self).get_columns()
-            self.columns += [nc for nc in new_columns if nc.enabled]
+            if order:
+                for nc in new_columns:
+                    nc.order = order.get(nc.column_name, hidden_order)
+                    hidden_order += 1
+            self.columns += [nc for nc in new_columns if (nc.enabled and self.show_column(nc))]
+        if order:
+            def sort_order(column):
+                return getattr(column, 'order', 9999)
+            self.columns.sort(key=sort_order)
         return self
 
     def fields(self):
@@ -309,11 +269,10 @@ class DatatableTable:
         return [mark_safe(str(c.title) + ('' if not c.popover else c.popover_html.format(c.popover)))
                 for c in self.columns]
 
-    def moment_formats_js(self):
-        if not self.date_formats:
-            return ''
-        lines = [f'$.fn.dataTable.moment("{fmt}");' for fmt in sorted(self.date_formats)]
-        return mark_safe('\n            '.join(lines))
+    def hidden_side_bar(self):
+        if self.session_or_default:
+            return self.session_or_default_state().get('hidden_side_bar')
+        return self.table_options.get('hidden_side_bar', False)
 
     def render(self):
         rendered_strings = []
@@ -332,14 +291,18 @@ class DatatableTable:
         else:
             return self.columns[self.table_options['column_id']]
 
+    @property
+    def local_storage_key(self):
+        view = self.view.__class__.__name__ if self.view else 'NoView'
+        return f'Datatable_{view}_{self.table_id}'
+
     def col_def_str(self):
         self.setup_column_id()
         options = dict(self.table_options)
+        request = getattr(self.view, 'request', None)
         if self.table_data is not None:
-            request = getattr(self.view, 'request', None)
             options['data'] = self.get_table_array(request, self.table_data)
         elif not self.ajax_data:
-            request = getattr(self.view, 'request', None)
             options['data'] = self.get_table_array(request, self.get_query())
 
         options['columnDefs'] = [dict({'targets': i, 'name': c.column_name}, **c.style())
@@ -348,11 +311,13 @@ class DatatableTable:
             'field_ids': self.all_names(),
             'colOptions': [c.options for c in self.columns],
             'tableOptions': options,
+            'local_storage_key': self.local_storage_key,
         }
+        if self.session_or_default:
+            table_vars['state'] = self.session_or_default_state()
+        if request and hasattr(request, 'session'):
+            table_vars['session_id'] = getattr(request.session, 'session_key', '-')
         col_def_str = json.dumps(table_vars, separators=(',', ':'))
-        # legacy modifications to col_def_str
-        # col_def_str = col_def_str.replace('"&', "")
-        # col_def_str = col_def_str.replace('&"', "")
         return col_def_str
 
     def table_json_data(self):
@@ -436,6 +401,61 @@ class DatatableTable:
         for n in column_names:
             del self.columns[self.find_column(n)[1]]
 
+    def clear_table_menu_item(self):
+        return MenuItem(f"django_datatables.DataTables['{self.table_id}'].reset_table()", '',
+                        css_classes=f'{self.table_id}-reset-button mr-1',
+                        tooltip='Reset Table',
+                        link_type=MenuItem.JAVASCRIPT,
+                        font_awesome='fas fa-minus-circle')
+
+    def column_menu_item(self):
+        return MenuItem(f"ajax_helpers.post_json({{data:"
+                        f"{{ajax_method: 'datatable_columns', datatable: '{self.table_id}'}}}})", ' ',
+                        css_classes=' ',
+                        tooltip='Hide/Order Columns',
+                        visible=self.show_column_modal,
+                        link_type=MenuItem.JAVASCRIPT,
+                        font_awesome='fas fa-columns')
+
+    def collapse_filter_menu_item(self):
+        return MenuItem(f"show_hide_filter_block('{self.table_id}', false, true)", '',
+                        font_awesome='fas fa-angle-double-left',
+                        css_classes=' ',
+                        tooltip='Collapse Filter',
+                        link_type=MenuItem.JAVASCRIPT,
+                        attributes={'id': f'collapse-{self.table_id}'})
+
+    def expand_filter_menu_item(self):
+        return MenuItem(f"show_hide_filter_block('{self.table_id}', true, true)", '',
+                        font_awesome='fas fa-angle-double-right',
+                        link_type=MenuItem.JAVASCRIPT,
+                        css_classes=' ',
+                        attributes={'id': f'collapse-{self.table_id}'})
+
+    def collapse_all(self):
+        return MenuItem(f"collapse_all('{ self.table_id }')", '',
+                        link_type=MenuItem.JAVASCRIPT,
+                        css_classes=' ',
+                        font_awesome='fas fa-caret-square-up')
+
+    def expand_all(self):
+        return MenuItem(f"show_all('{ self.table_id }')", '',
+                        link_type=MenuItem.JAVASCRIPT,
+                        css_classes=' ',
+                        font_awesome='fas fa-caret-square-down')
+
+    def filter_menu(self):
+        return HtmlMenu(None, template='datatables/icon_menu.html').add_items(self.clear_table_menu_item(),
+                                                                              self.column_menu_item(),
+                                                                              self.collapse_all(),
+                                                                              self.expand_all(),
+                                                                              self.collapse_filter_menu_item()).render()
+
+    def collapsed_filter_menu(self):
+        return HtmlMenu(None, template='datatables/icon_menu.html').add_items(self.expand_filter_menu_item(),
+                                                                              self.column_menu_item(),
+                                                                              self.clear_table_menu_item(),).render()
+
 
 class HorizontalTable(DatatableTable):
 
@@ -454,152 +474,3 @@ class HorizontalTable(DatatableTable):
                                      'row_titles': self.all_titles(),
                                      'table_id': self.table_id,
                                      }))
-
-
-class DatatableView(TemplateView):
-    model = None
-    table_classes = None
-    table_options = None
-    ajax_commands = ['row']
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.tables = {}
-        self.dispatch_context = None
-
-    def row_edit(self, **kwargs):
-        row_data = json.loads(kwargs.pop('row_data'))
-        table = self.tables[kwargs['table_id']]
-        row_object = table.model.objects.get(pk=kwargs['row_no'][1:])
-        self.setup_table(table)
-        table.columns[kwargs['changed'][0]].alter_object(row_object, row_data[kwargs['changed'][0]])
-        return table.refresh_row(self.request, kwargs['row_no'])
-
-    def row_refresh(self, **kwargs):
-        table_id = kwargs.get('table_id', list(self.tables.keys())[0])
-        self.setup_table(self.tables[table_id])
-        return self.tables[table_id].refresh_row(self.request, kwargs['row_no'])
-
-    def view_filter(self, query, table):
-        if hasattr(table.model, 'query_filter'):
-            return table.model.query_filter(query, self.request, table=table)
-        return query
-
-    def add_table(self, table_id, **kwargs):
-        self.tables[table_id] = DatatableTable(table_id, table_options=self.table_options,
-                                               table_classes=self.table_classes, view=self, **kwargs)
-
-    def add_tables(self):
-        self.add_table(type(self).__name__.lower(), model=self.model)
-
-    def setup_tables(self, table_id=None):
-        for t_id, table in self.tables.items() if not table_id else [(table_id, self.tables[table_id])]:
-            getattr(self, 'setup_' + t_id, self.setup_table)(table)
-            table.view_filter = self.view_filter
-
-    def max_records_warning(self, table):
-        table.ajax_commands.append(
-            ajax_command('html', selector=f'#{table.table_id}-above',
-                         html=f'<div class="alert alert-warning"><b>Not all results shown.</b> '
-                              f'Limited to {table.max_records}</div>')
-        )
-
-    def dispatch(self, request, *args, **kwargs):
-        self.add_tables()
-        self.dispatch_context = detect_device(request)
-        return super(DatatableView, self).dispatch(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-    # def render_to_response(self, context, **response_kwargs):
-    #    if self.template_name is None:
-    #        return HttpResponse(self.table.javascript_setup())
-    #    return super(DatatableView, self).render_to_response(context, **response_kwargs)
-
-    # @staticmethod
-    # def graph_data(**kwargs):
-    #    return None
-    @staticmethod
-    def setup_table(table):
-        pass
-
-    @staticmethod
-    def get_table_query(table, **kwargs):
-        return table.get_query(**kwargs)
-
-    def post(self, request, *args, **kwargs):
-        if request.POST.get('datatable_data'):
-            table = self.tables[request.POST['table_id']]
-            self.setup_tables(table_id=table.table_id)
-            if table.cache_data is True:
-                from .cache import DataTableCache
-                datatable_cache = DataTableCache()
-                cache = datatable_cache.get_cache(table)
-                if cache:
-                    return HttpResponse(cache, content_type='application/json')
-            results = self.get_table_query(table, **kwargs)
-            table_data = table.get_json(request, results)
-            if table.cache_data is True:
-                datatable_cache.store_cache(table, table_data)
-            return HttpResponse(table_data, content_type='application/json')
-        if hasattr(super(), 'post'):
-            # noinspection PyUnresolvedReferences
-            return super().post(request, *args, **kwargs)
-        elif is_ajax(request) and request.content_type == 'application/json':
-            response = json.loads(request.body)
-            raise Exception(f'May need to use AjaxHelpers Mixin or'
-                            f' add one of these \n{", ".join(response.keys())}\nto ajax_commands ')
-
-    def sent_column(self, column_values, extra_data):
-        pass
-    """
-    def get(self, request, *args, **kwargs):
-        if request.GET.get('json', None) is not None:
-            '''
-            # ***************************************************
-            # Uncomment for benchmarking SQL calls for datatables
-            # ***************************************************
-            a = getJson(self.table, self.post_table_json(**kwargs))
-            context = self.get_context_data(**kwargs)
-            self.template_name = 'blank.html'
-            return self.render_to_response(context)
-            '''
-            return self.table_json(**kwargs)
-        else:
-            context = self.get_context_data(**kwargs)
-            return self.render_to_response(context)
-    """
-    def get_context_data(self, **kwargs):
-        self.setup_tables()
-        context = super().get_context_data(**kwargs)
-        if len(self.tables) == 1:
-            context['datatable'] = self.tables[list(self.tables.keys())[0]]
-        else:
-            context['datatables'] = self.tables
-        context.update(self.add_to_context(**kwargs))
-        return context
-
-    def add_to_context(self, **kwargs):
-        return {}
-
-    def button_datatable_save_state(self, state, table_id, **kwargs):
-        saved_state = SavedState.objects.get_or_create(name=kwargs['name'], table_id=table_id)[0]
-        saved_state.state = json.dumps(state)
-        saved_state.save()
-        return self.command_response('delay', time=1)
-
-    def button_datatable_load_state(self, table_id, name, state_id, **kwargs):
-        saved_state = SavedState.objects.get(id=int(state_id))
-        self.add_command('restore_datatable', state=saved_state.state, table_id=table_id, state_id=saved_state.id)
-        return self.command_response('reload')
-
-    def row_column(self, **kwargs):
-        self.setup_tables(kwargs['table_id'])
-        column = self.tables[kwargs['table_id']].columns[kwargs['column']]
-        if hasattr(column, 'row_column'):
-            response = getattr(column, 'row_column')(**kwargs)
-            if hasattr(response, '__class__') and issubclass(response.__class__, HttpResponseBase):
-                return response
-            else:
-                return self.command_response(response)

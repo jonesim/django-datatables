@@ -20,7 +20,7 @@ class TestColumn(DatatableColumn):
 
     def row_result(self, data_dict, page_results):
         result = MethodType(self._ColumnBase__row_result, self)(data_dict, page_results)
-        return json.dumps({'data': result, 'class': self.cell_options['class']})
+        return json.dumps({'data': result, 'class': self.cell_options['class'], 'readOnly': True})
 
     def col_setup(self):
         self.field = 'name'
@@ -83,7 +83,8 @@ class SpreadsheetModal(FormModal):
         table.datatable_template = 'datatables/spreadsheet.html'
         table.max_records = 10
         form.buttons = [self.submit(), form.cancel_button()]
-        return [HTML(table.render())]
+        self.render_ = [HTML(table.render())]
+        return self.render_
 
     def form_valid(self, form):
         self.add_command('close')

@@ -17,9 +17,7 @@
         </div>
         {% block tables %}
             <div class="d-flex">
-                <div style="min-width:320px">
-                    {% filter_control datatable %}
-                </div>
+                {% filter_control datatable %}
                 <div class="px-4 d-block float-left">
                     {{ menus.menu.render }}
                     {{ datatable.render|safe }}

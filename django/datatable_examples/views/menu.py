@@ -31,12 +31,18 @@ class MainMenu(DemoViewMixin, AjaxHelpers, MenuMixin):
             MenuItem(menu_display='Aggregations', no_hover=True,
                      dropdown=[('aggregations', 'Standard'),
                                ('aggregations_horizontal', 'Horizontal')]),
+            MenuItem(menu_display='Server side', placement='bottom-end',
+                     dropdown=[MenuItem('server_side', menu_display='Pagination'),
+                               MenuItem('server_side_tags', menu_display='Tag filter'),
+                               MenuItem('server_side_totals', menu_display='Totals filter'),
+                               MenuItem('server_side_json', menu_display='JSON column filter')]),
             'horizontal',
             'reorder',
             'widget',
             'selection_example',
             'modal_filter',
             'spreadsheet',
+            'hide_columns',
         )
 
     def get_context_data(self, **kwargs):
