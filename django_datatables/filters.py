@@ -1,7 +1,9 @@
 import inspect
+import json
 import string
 import random
 from django.template.loader import render_to_string
+from django.utils.safestring import mark_safe
 
 
 class DatatableFilter:
@@ -60,10 +62,24 @@ class DatatableFilter:
 
 
 class PythonPivotFilter(DatatableFilter):
+    """Pivot filter with a fixed option list defined in Python.
+
+    The checkboxes are rendered server-side from ``filter_list`` instead of
+    being derived from the table's distinct column values::
+
+        table.add_js_filters(PythonPivotFilter, 'status',
+                             filter_list=[('Active', 'active'), ('Other', 'other')])
+
+    ``filter_list`` is a list of ``(label, value)`` pairs.  Row values not in
+    the list are grouped under the ``'other'`` value when one is defined and
+    are otherwise left unfiltered.  Filtering and the count badges still run
+    client-side, so this is for standard (non server-side) tables only.
+    """
 
     template = 'datatables/filter_blocks/python_pivot_filter.html'
 
     def get_context(self):
         context = super().get_context()
-        context['options'] = [o[1] for o in self.kwargs['filter_list']]
+        option_values = json.dumps([str(o[1]) for o in self.kwargs['filter_list']])
+        context['options'] = mark_safe(option_values.replace('<', '\\u003C'))
         return context

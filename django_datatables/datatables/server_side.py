@@ -1,5 +1,6 @@
 import json
 import logging
+from inspect import isclass
 
 from django.db.models import Q
 
@@ -155,8 +156,9 @@ class ServerSideTable(DatatableTable):
         """Substitute server-side filter classes for the supported types.
 
         ``table.add_js_filters('pivot', 'column')`` works unchanged on a
-        server-side table.  Unsupported built-in types raise a clear error;
-        explicit ``filter_class=`` or custom template paths pass through.
+        server-side table.  Unsupported built-in types and filter classes
+        that only filter in the browser raise a clear error; explicit
+        ``filter_class=`` or custom template paths pass through.
         """
         if filter_class is DatatableFilter and isinstance(name_or_template, str):
             if name_or_template in self.server_js_filters:
@@ -164,6 +166,11 @@ class ServerSideTable(DatatableTable):
             elif name_or_template in DatatableFilter.template_library:
                 raise DatatableError(f"JS filter '{name_or_template}' is not supported with ServerSideTable. "
                                      f"Supported types: {', '.join(self.server_js_filters)}")
+        elif isclass(name_or_template) and not issubclass(name_or_template, ServerDatatableFilter):
+            # A client-side filter() predicate never runs in serverSide mode,
+            # so the filter would render but silently do nothing.
+            raise DatatableError(f"JS filter class '{name_or_template.__name__}' filters rows in the browser "
+                                 f"and cannot be used with ServerSideTable.")
         super().add_js_filters(name_or_template, *column_ids, filter_class=filter_class, **kwargs)
 
     def _server_filters(self):

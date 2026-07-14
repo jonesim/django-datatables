@@ -17,6 +17,7 @@ from datatable_examples.views.main import (JsonBooleanColumn, ServerSideJsonColu
 from django_datatables.columns import ManyToManyColumn
 from django_datatables.datatables import DatatableTable, DatatableView
 from django_datatables.datatables.datatable_error import DatatableError
+from django_datatables.filters import PythonPivotFilter
 from django_datatables.datatables.server_side import ServerSideTable
 from django_datatables.server_side_filters import (ServerDateFilter, ServerPivotFilter, ServerSelect2Filter,
                                                    ServerTagFilter, ServerTotalsFilter, ServerValuesFilter)
@@ -591,6 +592,39 @@ class TestFilteredQuery(TestCase):
         results = self.query(**{'columns[0][name]': 'company__name', 'columns[0][search][value]': 'acme',
                                 'order[0][column]': '2', 'order[0][dir]': 'desc'})
         self.assertEqual([r['surname'] for r in results], ['Smith', 'Jones'])
+
+
+class TestPythonPivotFilter(TestCase):
+    """PythonPivotFilter renders its fixed checkbox list from package templates."""
+
+    @staticmethod
+    def make_filter(filter_list):
+        table = DatatableTable('people', model=Person)
+        table.add_columns('id', 'first_name')
+        table.add_js_filters(PythonPivotFilter, 'first_name', filter_list=filter_list)
+        return table.js_filter_list[-1]
+
+    def test_renders_checkboxes_and_options(self):
+        html = self.make_filter([('Active', 'active'), ('Other', 'other')]).render()
+        self.assertIn('data-value="active"', html)
+        self.assertIn('checked>Active', html)
+        self.assertIn('["active", "other"]', html)
+        self.assertIn('PythonPivotFilter', html)
+
+    def test_values_are_url_encoded(self):
+        html = self.make_filter([('New York', 'New York')]).render()
+        self.assertIn('data-value="New%20York"', html)
+
+    def test_option_json_cannot_close_script_tag(self):
+        html = self.make_filter([('Bad', '</script>')]).render()
+        self.assertNotIn('["</script>"]', html)
+        self.assertIn('\\u003C/script>', html)
+
+    def test_server_side_table_rejects_client_side_filter_class(self):
+        table = ServerSideTable('people', model=Person)
+        table.add_columns('id', 'first_name')
+        with self.assertRaises(DatatableError):
+            table.add_js_filters(PythonPivotFilter, 'first_name', filter_list=[('A', 'a')])
 
 
 class TestServerSideExcelDownload(TestCase):
