@@ -88,6 +88,7 @@ class Person(models.Model):
     first_name = models.CharField(max_length=80)
     surname = models.CharField(max_length=80)
     date_entered = models.DateField()
+    options = models.JSONField(default=dict, blank=True)
 
 
 class Tags(models.Model):
