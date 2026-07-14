@@ -7,7 +7,6 @@ services:
   volumes:
    - ./django/:/app
    - ./django_datatables/:/dt/django_datatables
-   - /var/run/docker.sock:/var/run/docker.sock
   command: bash -c "python manage.py migrate && python manage.py import_data && python manage.py runserver 0.0.0.0:8006"
   environment:
    - PYTHONPATH=/dt
