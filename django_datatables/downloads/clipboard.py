@@ -13,6 +13,11 @@ class ClipboardCopy:
     ajax_commands = ['column']
     download_id = 'id'
 
+    @staticmethod
+    def sort_excel(table, table_array):
+        # Hook: subclasses can reorder / sort the copied rows before they are written.
+        return table_array
+
     def clipboard_menu_item(self, table_name=None):
         if table_name is None:
             table_name = list(self.tables.keys())[0]
@@ -25,7 +30,7 @@ class ClipboardCopy:
         rows = ['\t'.join([str(c.title) for c in table.columns if not c.options.get('hidden')])]
         if query is None:
             query = table.table_data if table.table_data else self.get_table_query(table)
-        results = table.get_table_array(self.request, query)
+        results = self.sort_excel(table, table.get_table_array(self.request, query))
         for r in results:
             for f in excel_function:
                 r[f] = table.columns[f].excel(r[f])

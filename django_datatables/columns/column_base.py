@@ -261,6 +261,13 @@ class ColumnBase:
             return ''
         return conditional_escape(str(value))
 
+    def default_row_result(self, data_dict, page_results):
+        """The value the column would produce without a row_result override,
+        for subclasses that want to post-process the default result."""
+        if self.options.get('field_array'):
+            return self.__list_row_result(self, data_dict, page_results)
+        return self.__row_result(self, data_dict, page_results)
+
     @staticmethod
     def __list_row_result(self, data_dict, _page_results):
         return [data_dict.get(f) for f in self.field]
