@@ -19,24 +19,24 @@ class Company(models.Model):
     dissolved = models.BooleanField(default=False)
     order = models.IntegerField(null=True)
 
-    def test(self):
-        return f' test - {self.id}'
+    def id_label(self):
+        return f'company - {self.id}'
 
     class Datatable(DatatableModel):
         people = {'annotations': {'people': Count('person__id')}}
-        collink_1 = ColumnLink(title='Defined in Model', field=['id', 'name'], url_name='example2')
+        company_link = ColumnLink(title='Defined in Model', field=['id', 'name'], url_name='column_visibility')
         company_list = ['id', 'name']
 
         class ModelIdColumn(DatatableColumn):
             def col_setup(self):
                 self.field = 'id'
                 if 'title' not in self.kwargs:
-                    self.title = 'Modal Class'
+                    self.title = 'Model Class'
         model_instance = ModelIdColumn(title='Instance')
         direct_tag = ManyToManyColumn(field='direct_tag__tag_direct')
         reverse_tag = ManyToManyColumn(field='tags__tag')
 
-        class Tags(DatatableColumn):
+        class TagList(DatatableColumn):
             def setup_results(self, request, all_results):
                 tags = Tags.objects.values_list('company__id', 'id')
                 tag_dict = {}
@@ -57,9 +57,22 @@ class Company(models.Model):
 
 
 class Person(models.Model):
+    title_choices = ((0, 'Mr'), (1, 'Mrs'), (2, 'Miss'))
+    title = models.IntegerField(choices=title_choices, null=True)
+    company = models.ForeignKey(Company,  on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=80)
+    surname = models.CharField(max_length=80)
+    date_entered = models.DateField()
+    options = models.JSONField(default=dict, blank=True)
+
+    def id_and_title(self):
+        return f'{self.id} - {self.title}'
+
+    def id_and_first_name(self):
+        return f'{self.id} - {self.first_name}'
 
     class Datatable(DatatableModel):
-        c_test = {'parameters': ['id', 'title']}
+        id_and_title = {'parameters': ['id', 'title']}
 
         class FullName(DatatableColumn):
 
@@ -75,20 +88,6 @@ class Person(models.Model):
             ('id', {'render': [render_replace(column='ids/id', html='render %1%')]}),
             FullName,
         ]
-
-    def c_test(self):
-        return f'{self.id} - {self.title}'
-
-    def c_test1(self):
-        return f'{self.id} - {self.first_name}'
-
-    title_choices = ((0, 'Mr'), (1, 'Mrs'), (2, 'Miss'))
-    title = models.IntegerField(choices=title_choices, null=True)
-    company = models.ForeignKey(Company,  on_delete=models.CASCADE)
-    first_name = models.CharField(max_length=80)
-    surname = models.CharField(max_length=80)
-    date_entered = models.DateField()
-    options = models.JSONField(default=dict, blank=True)
 
 
 class Tags(models.Model):

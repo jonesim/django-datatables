@@ -11,10 +11,14 @@ from django.test import RequestFactory, TestCase
 from openpyxl import load_workbook
 
 from datatable_examples.models import Company, Payment, Person, Tags
-from datatable_examples.views.main import (JsonBooleanColumn, ServerSideJsonColumnExample,
-                                           ServerSidePaginationExample, ServerSideTagFilterExample,
-                                           ServerSideTotalsFilterExample)
+from datatable_examples.views.server_side import (JsonBooleanColumn, ServerSideJsonColumn,
+                                                  ServerSidePagination, ServerSideTagFilter,
+                                                  ServerSideTotalsFilter)
 from django_datatables.columns import ManyToManyColumn
+from django_datatables.columns import (ColumnLink, DateColumn, DateTimeColumn, TickColumn, LocaleCurrencyColumn,
+                                       ExcelDatatableColumn)
+from django_datatables.columns import JsonBooleanColumn as LibraryJsonBooleanColumn
+from django_datatables.filters import DatatableFilter
 from django_datatables.datatables import DatatableTable, DatatableView
 from django_datatables.datatables.datatable_error import DatatableError
 from django_datatables.filters import PythonPivotFilter
@@ -62,10 +66,10 @@ def make_company_table():
 
 
 def make_custom_tag_table():
-    # The 'Tags' column defined in Company.Datatable is a plain DatatableColumn
+    # The 'TagList' column defined in Company.Datatable is a plain DatatableColumn
     # that builds its tag ids in setup_results — it has no ORM field.
     table = ServerSideTable('companies', model=Company)
-    table.add_columns('id', 'name', 'Tags')
+    table.add_columns('id', 'name', 'TagList')
     return table
 
 
@@ -117,12 +121,12 @@ class TestFilterSubstitution(ServerFilterTestCase):
 
     def test_tag_with_explicit_field_on_custom_column(self):
         table = make_custom_tag_table()
-        table.add_js_filters('tag', 'Tags', field='tags__pk')
+        table.add_js_filters('tag', 'TagList', field='tags__pk')
         self.assertIsInstance(table.js_filter_list[-1], ServerTagFilter)
 
     def test_tag_with_bad_field_path_skipped(self):
         table = make_custom_tag_table()
-        table.add_js_filters('tag', 'Tags', field='nonexistent__pk')
+        table.add_js_filters('tag', 'TagList', field='nonexistent__pk')
         self.assertEqual(table.js_filter_list, [])
 
     def test_pivot_with_json_key_field(self):
@@ -286,7 +290,7 @@ class TestTagFilter(TestCase):
 class TestTagFilterCustomColumn(TestCase):
     """ServerTagFilter with field= on a custom DatatableColumn tag column.
 
-    The 'Tags' column in Company.Datatable builds its tag ids in
+    The 'TagList' column in Company.Datatable builds its tag ids in
     setup_results and carries no ORM field, so the path from Company to the
     tag pks is passed explicitly with field='tags__pk'.
     """
@@ -294,7 +298,7 @@ class TestTagFilterCustomColumn(TestCase):
     def setUp(self):
         make_data()
         self.table = make_custom_tag_table()
-        self.table.add_js_filters('tag', 'Tags', field='tags__pk')
+        self.table.add_js_filters('tag', 'TagList', field='tags__pk')
         self.js_filter = self.table.js_filter_list[-1]
 
     def names(self, queryset):
@@ -413,9 +417,9 @@ class TestServerSideViewAttribute(TestCase):
     """server_side = True on the view makes the default add_tables create a ServerSideTable."""
 
     def test_default_add_tables_uses_server_side_table(self):
-        view = ServerSidePaginationExample()
+        view = ServerSidePagination()
         view.add_tables()
-        self.assertIsInstance(view.tables['serversidepaginationexample'], ServerSideTable)
+        self.assertIsInstance(view.tables['serversidepagination'], ServerSideTable)
 
     def test_client_side_default_unchanged(self):
         class ClientView(DatatableView):
@@ -445,12 +449,12 @@ class TestServerSideResponse(TestCase):
         self.factory = RequestFactory()
 
     def post(self, **extra):
-        data = {'datatable_data': '1', 'table_id': 'serversidepaginationexample', 'start': '0', 'length': '10',
+        data = {'datatable_data': '1', 'table_id': 'serversidepagination', 'start': '0', 'length': '10',
                 'draw': '1'}
         data.update(extra)
-        request = self.factory.post('/server-side', data, HTTP_USER_AGENT='test')
+        request = self.factory.post('/server-side/pagination', data, HTTP_USER_AGENT='test')
         request.user = AnonymousUser()
-        response = ServerSidePaginationExample.as_view()(request)
+        response = ServerSidePagination.as_view()(request)
         return json.loads(response.content)
 
     def test_first_draw_returns_facets(self):
@@ -485,6 +489,12 @@ class TestServerSideResponse(TestCase):
         result = self.post(js_filter_state=state)
         self.assertEqual(result['recordsFiltered'], 2)
 
+    def test_length_all_returns_every_row(self):
+        # DataTables sends length=-1 for an "All" lengthMenu entry; a negative
+        # slice bound would raise, so it must be treated as the page cap.
+        result = self.post(length='-1')
+        self.assertEqual(len(result['data']), 4)
+
 
 class ServerSideViewTestCase(TestCase):
     view_class = None
@@ -505,9 +515,9 @@ class ServerSideViewTestCase(TestCase):
 
 
 class TestServerSideTagResponse(ServerSideViewTestCase):
-    view_class = ServerSideTagFilterExample
-    table_id = 'serversidetagfilterexample'
-    url = '/server-side-tags'
+    view_class = ServerSideTagFilter
+    table_id = 'serversidetagfilter'
+    url = '/server-side/tag-filter'
 
     def test_first_draw_returns_tag_facets(self):
         result = self.post(draw='1')
@@ -530,9 +540,9 @@ class TestServerSideTagResponse(ServerSideViewTestCase):
 
 
 class TestServerSideTotalsResponse(ServerSideViewTestCase):
-    view_class = ServerSideTotalsFilterExample
-    table_id = 'serversidetotalsfilterexample'
-    url = '/server-side-totals'
+    view_class = ServerSideTotalsFilter
+    table_id = 'serversidetotalsfilter'
+    url = '/server-side/totals-filter'
 
     def test_first_draw_returns_sum_facets(self):
         result = self.post(draw='1')
@@ -547,9 +557,9 @@ class TestServerSideTotalsResponse(ServerSideViewTestCase):
 
 
 class TestServerSideJsonResponse(ServerSideViewTestCase):
-    view_class = ServerSideJsonColumnExample
-    table_id = 'serversidejsoncolumnexample'
-    url = '/server-side-json'
+    view_class = ServerSideJsonColumn
+    table_id = 'serversidejsoncolumn'
+    url = '/server-side/json-column'
 
     def test_first_draw_returns_json_key_facets(self):
         result = self.post(draw='1')
@@ -635,12 +645,12 @@ class TestServerSideExcelDownload(TestCase):
         self.factory = RequestFactory()
 
     def download(self, **state):
-        data = {'column': 'get_excel', 'table_id': 'serversidepaginationexample',
+        data = {'column': 'get_excel', 'table_id': 'serversidepagination',
                 'column_data': '[]', 'datatable_state': urlencode(state)}
-        request = self.factory.post('/server-side', json.dumps(data), content_type='application/json',
+        request = self.factory.post('/server-side/pagination', json.dumps(data), content_type='application/json',
                                     HTTP_X_REQUESTED_WITH='XMLHttpRequest', HTTP_USER_AGENT='test')
         request.user = AnonymousUser()
-        response = ServerSidePaginationExample.as_view()(request)
+        response = ServerSidePagination.as_view()(request)
         commands = json.loads(response.content)
         save_file = next(c for c in commands if c['function'] == 'save_file')
         workbook = load_workbook(BytesIO(base64.b64decode(save_file['data'])))
@@ -663,3 +673,77 @@ class TestServerSideExcelDownload(TestCase):
     def test_download_applies_ordering(self):
         rows = self.download(**{'order[0][column]': '2', 'order[0][dir]': 'desc'})
         self.assertEqual([r[2] for r in rows[1:]], ['Smith', 'Jones', 'Green', 'Brown'])
+
+
+class TestPortedColumns(TestCase):
+    """Unit tests for the columns / helpers consolidated into the library."""
+
+    def setUp(self):
+        make_data()
+
+    def test_date_column_render_and_excel(self):
+        col = DateColumn('date_entered', column_name='Date', model=Person)
+        self.assertEqual(col.row_result({'date_entered': datetime.date(2020, 1, 10)}, {}), '10/01/2020')
+        self.assertEqual(col.excel('10/01/2020'), datetime.date(2020, 1, 10))
+        self.assertEqual(col.excel(''), '')
+
+    def test_date_column_format_hook_overridable(self):
+        class UsDate(DateColumn):
+            date_str = '%m/%d/%Y'
+        col = UsDate('date_entered', column_name='Date', model=Person)
+        self.assertEqual(col.row_result({'date_entered': datetime.date(2020, 1, 10)}, {}), '01/10/2020')
+
+    def test_datetime_column_render_and_excel(self):
+        col = DateTimeColumn('date_entered', column_name='DT', model=Person)
+        dt = datetime.datetime(2020, 1, 10, 14, 30)
+        self.assertEqual(col.row_result({'date_entered': dt}, {}), '10/01/2020 14:30')
+        self.assertEqual(col.excel('10/01/2020 14:30'), dt)
+
+    def test_tick_column(self):
+        col = TickColumn(column_name='active', field='id', model=Person)
+        self.assertEqual(col.row_result({'id': 1}, {}), 'true')
+        self.assertEqual(col.row_result({'id': 0}, {}), 'false')
+        self.assertIn('fa-check-circle', dict(col.options['lookup'])['true'])
+
+    def test_json_boolean_column(self):
+        col = LibraryJsonBooleanColumn(column_name='newsletter', json_key='newsletter', field='options', model=Person)
+        self.assertEqual(col.row_result({'options': {'newsletter': True}}, {}), 'Yes')
+        self.assertEqual(col.row_result({'options': {'newsletter': False}}, {}), 'No')
+        self.assertEqual(col.row_result({'options': {}}, {}), 'No')
+
+    def test_locale_currency_column(self):
+        col = LocaleCurrencyColumn(column_name='amount', field='amount', model=Payment)
+        self.assertEqual(col.row_result({'amount': 12345}, {}), '123.4500')
+        render = col.options['render'][0]
+        self.assertEqual(render['currency_code'], 'GBP')
+        self.assertEqual(render['locale'], 'en_GB')
+        self.assertEqual(col.excel('123.45'), 123.45)
+
+    def test_excel_datatable_column_strips_html(self):
+        col = ExcelDatatableColumn(column_name='x', field='name', model=Company)
+        self.assertEqual(col.excel('<b>Hello</b><br><i>World</i>'), 'Hello, World')
+        self.assertEqual(col.excel(None), '')
+
+    def test_column_link_new_tab(self):
+        col = ColumnLink(column_name='name', field='name', url_name='column_visibility', new_tab=True, model=Company)
+        self.assertIn('target="_blank"', col.options['render'][0]['html'])
+        plain = ColumnLink(column_name='name', field='name', url_name='column_visibility', model=Company)
+        self.assertNotIn('target="_blank"', plain.options['render'][0]['html'])
+
+    def test_many_to_many_refresh_picks_up_new_related_rows(self):
+        col = ManyToManyColumn(column_name='CompanyTags', field='tags__tag', model=Company)
+        self.assertNotIn('Green', col.options['lookup_dict'].values())
+        green = Tags.objects.create(tag='Green')
+        green.company.add(Company.objects.first())
+        col.refresh_lookup()
+        self.assertIn('Green', col.options['lookup_dict'].values())
+
+    def test_many_to_many_excel(self):
+        col = ManyToManyColumn(column_name='CompanyTags', field='tags__tag', model=Company)
+        red = Tags.objects.get(tag='Red')
+        self.assertEqual(col.excel([red.pk]), 'Red')
+
+    def test_filter_column_titles(self):
+        table = make_table()
+        f = DatatableFilter('pivot', table, columns=['surname', 'first_name'])
+        self.assertEqual([t[1] for t in f.column_titles()], ['surname', 'first_name'])

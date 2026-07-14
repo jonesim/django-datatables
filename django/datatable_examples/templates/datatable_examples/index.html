@@ -1,0 +1,25 @@
+{% extends 'datatable_examples/base.html' %}
+{% load src_code %}
+
+{% block contents %}
+    <div class="m-1 text-right">
+     <img src="{{ version_img }}">
+      <a class="btn btn-outline-secondary btn-sm" href="{{ home_page }}"><i class="fab fa-github text-dark"></i>GitHub</a>
+    </div>
+    <div class="p-4">
+        <h3>django-datatables Manual</h3>
+        {{ description|safe }}
+        <div class="row mt-4">
+            {% for chapter in chapters %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header font-weight-bold">{{ chapter.title }}</div>
+                        <div class="card-body">
+                            {{ chapter.menu.render }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
