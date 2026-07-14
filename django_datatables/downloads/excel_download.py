@@ -3,6 +3,7 @@ import json
 from io import BytesIO
 
 from ajax_helpers.utils import ajax_command
+from django.http import QueryDict
 from django.utils.html import strip_tags
 from django_menus.menu import MenuItem
 from openpyxl import Workbook
@@ -32,7 +33,7 @@ class ExcelDownload:
         self.check_pk_column(table)
         return self.download_excel(table)
 
-    def download_excel(self, table):
+    def download_excel(self, table, query=None):
         workbook = Workbook()
         sheet = workbook.active
 
@@ -50,8 +51,9 @@ class ExcelDownload:
                     excel_styles.append((n, c.xl_style))
 
         sheet.append(titles)
-        results = table.get_table_array(self.request, table.table_data if table.table_data
-                                        else self.get_table_query(table))
+        if query is None:
+            query = table.table_data if table.table_data else self.get_table_query(table)
+        results = table.get_table_array(self.request, query)
         for r in results:
             row = [Cell(value=(d(v) if d != True else v), worksheet=sheet) for v, d in zip(r, col_format) if d]
             for f in excel_styles:
@@ -73,9 +75,17 @@ class ExcelDownload:
 
     # noinspection PyUnresolvedReferences
     def column_get_excel(self, **kwargs):
-        column_data = json.loads(kwargs['column_data'])
         table = self.tables[kwargs['table_id']]
         self.setup_tables(table_id=table.table_id)
         self.excel_table(table)
+        from django_datatables.datatables.server_side import ServerSideTable
+        if isinstance(table, ServerSideTable) and kwargs.get('datatable_state') is not None:
+            # The browser only holds the current page, so instead of a list of
+            # ids the client sends its last DataTables request state; rebuild
+            # the full filtered queryset from it.
+            state = QueryDict(kwargs['datatable_state'])
+            query = table.filtered_query(state, self.get_table_query(table))
+            return self.download_excel(table, query=query)
+        column_data = json.loads(kwargs['column_data'])
         table.filter = add_filters(table.filter, {f'{self.excel_id}__in': column_data})
         return self.download_excel(table)

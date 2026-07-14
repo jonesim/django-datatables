@@ -1184,14 +1184,23 @@ if (typeof django_datatables === 'undefined') {
         }
 
         PythonTable.prototype.send_column = function (command, column, data) {
-            var acc = this.table.api().column(this.find_column(column), {"filter": "applied"}).data().reduce(function (acc, current) {
-                acc.push(current);
-                return acc;
-            }, []);
             if (data === undefined) {
                 data = {};
             }
-            data.column_data = JSON.stringify(acc);
+            if (this.initsetup.tableOptions.serverSide) {
+                // The browser only holds the current page, so a list of column
+                // values would truncate the export. Send the last DataTables
+                // request state instead; the server rebuilds the filtered
+                // queryset from it.
+                data.datatable_state = $.param(this.table.api().ajax.params());
+                data.column_data = JSON.stringify([]);
+            } else {
+                var acc = this.table.api().column(this.find_column(column), {"filter": "applied"}).data().reduce(function (acc, current) {
+                    acc.push(current);
+                    return acc;
+                }, []);
+                data.column_data = JSON.stringify(acc);
+            }
             data.column = command;
             data.table_id = this.table_id;
             ajax_helpers.post_json({data: data});

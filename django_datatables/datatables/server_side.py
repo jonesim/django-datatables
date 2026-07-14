@@ -86,13 +86,16 @@ class ServerSideTable(DatatableTable):
     ``distinct()`` to avoid duplicate rows from the M2M join; ``totals``
     filters show ``Sum(sum_column)`` in the badges instead of row counts.
 
-    ``tag`` filters on custom tag columns (plain ``DatatableColumn``
-    subclasses with a ``lookup`` that build their tag ids in
-    ``setup_results``) need the ORM path from the table model to the tag
-    values passed explicitly, as the column itself carries no field
-    information::
+    Columns whose displayed value is derived in Python (``row_result``)
+    carry no usable field information, so the ORM path to the underlying
+    value is passed explicitly with ``field=``.  The path may descend into a
+    ``JSONField``, and ``choices=`` maps database values to the labels shown
+    on the checkboxes (several values may share a label; ``None`` covers
+    NULL or a missing JSON key)::
 
         table.add_js_filters('tag', 'Tags', field='tags__pk')
+        table.add_js_filters('pivot', 'paid', field='options__paid',
+                             choices={True: 'Yes', False: 'No', None: 'No'})
 
     Facet counts are only recomputed when the filter/search state changes —
     the client sends ``need_facets=1`` on those requests and the response
@@ -102,6 +105,15 @@ class ServerSideTable(DatatableTable):
     queryset).  Columns with more distinct values than ``max_facet_values``
     (default 200, pass as a kwarg to ``add_js_filters``) skip counts and show
     a message instead.
+
+    Excel download
+    --------------
+    The ``ExcelDownload`` mixin's download button works with server-side
+    tables: because the browser only holds the current page, the client sends
+    its last DataTables request state instead of a list of ids, and the server
+    rebuilds the full filtered queryset with ``filtered_query`` — the current
+    search, column searches, js filters, and sort order all apply to the
+    export.
 
     Limitations
     -----------
@@ -245,6 +257,29 @@ class ServerSideTable(DatatableTable):
             return super().get_query(**kwargs)
         finally:
             self.max_records = saved
+
+    def filtered_query(self, post_data, queryset=None):
+        """Return the fully filtered, ordered, unsliced queryset for a DataTables request state.
+
+        ``post_data`` is any mapping in the flat DataTables request format
+        (``search[value]``, ``columns[0][search][value]``, ``js_filter_state``)
+        — ``request.POST`` of a page draw, or a ``QueryDict`` rebuilt from a
+        state string captured client-side.  Used by exports (e.g. the
+        ``ExcelDownload`` button) to apply the user's current search, column
+        searches, js filters, and sort order to the whole dataset rather than
+        just the visible page.
+        """
+        if queryset is None:
+            queryset = self.get_query()
+        search_value = post_data.get('search[value]', '').strip()
+        if search_value:
+            queryset = self._apply_global_search(queryset, search_value)
+        queryset = self._apply_column_searches(queryset, post_data)
+        queryset, _ = self._apply_js_filters(queryset, self._parse_js_filter_state(post_data))
+        ordering = self._build_ordering(post_data)
+        if ordering:
+            queryset = queryset.order_by(*ordering)
+        return queryset
 
     # ------------------------------------------------------------------
     # Server-side JSON response
