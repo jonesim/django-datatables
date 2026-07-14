@@ -27,7 +27,7 @@ class MonthField(CharField):
         super().__init__(widget=MonthPicker, required=False, **kwargs)
 
     def prepare_value(self, value):
-        if value and type(value) == list:
+        if value and isinstance(value, list):
             try:
                 return '{:02d}/{}'.format(value[0], value[1])
             except ValueError:

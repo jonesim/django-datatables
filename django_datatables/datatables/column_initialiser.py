@@ -14,7 +14,7 @@ class ColumnInitialisor:
         self.django_field = None
         self.setup = None
         self.model = None
-        if type(path) == tuple:
+        if isinstance(path, tuple):
             kwargs.update(path[1])
             path = path[0]
         self.kwargs = kwargs
