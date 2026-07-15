@@ -6,10 +6,14 @@ from ajax_helpers.utils import ajax_command
 from django.http import QueryDict
 from django.utils.html import strip_tags
 from django_menus.menu import MenuItem
-from openpyxl import Workbook
-from openpyxl.cell import Cell
 
 from django_datatables.helpers import add_filters
+
+try:
+    from openpyxl import Workbook
+    from openpyxl.cell import Cell
+except ImportError:  # openpyxl is an optional dependency (install via the "excel" extra)
+    Workbook = Cell = None
 
 
 class ExcelDownload:
@@ -44,6 +48,11 @@ class ExcelDownload:
         return self.download_excel(table)
 
     def download_excel(self, table, query=None):
+        if Workbook is None:
+            raise ImportError(
+                "Excel download requires openpyxl. Install it with "
+                "'pip install django-filtered-datatables[excel]' or 'pip install openpyxl'."
+            )
         workbook = Workbook()
         sheet = workbook.active
 

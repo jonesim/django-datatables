@@ -1,2 +1,3 @@
 recursive-include django_datatables *
 recursive-exclude django_datatables *.pyc
+prune tests

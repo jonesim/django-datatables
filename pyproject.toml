@@ -14,12 +14,14 @@ dependencies = [
     "django-ajax-helpers>=0.0.16",
     "django-tab-menus",
     "django-nested-modals",
-    "openpyxl",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
+
+[project.optional-dependencies]
+excel = ["openpyxl"]
 
 [project.urls]
 Homepage = "https://github.com/jonesim/django-datatables"
