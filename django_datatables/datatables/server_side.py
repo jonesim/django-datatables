@@ -185,15 +185,23 @@ class ServerSideTable(DatatableTable):
         return state if isinstance(state, dict) else {}
 
     def _apply_js_filters(self, queryset, filter_state):
-        """Apply posted filter selections; returns (queryset, any_applied)."""
+        """Apply posted filter selections; returns (queryset, any_applied).
+
+        ``any_applied`` is only True when a filter actually narrowed the
+        queryset. A no-op selection (e.g. a date filter with empty bounds)
+        returns the same queryset object, so it does not force the extra
+        ``recordsFiltered`` COUNT.
+        """
         applied = False
         for js_filter in self._server_filters():
             state = filter_state.get(js_filter.column.column_name)
             if not isinstance(state, dict):
                 continue
             try:
-                queryset = js_filter.apply_filter(queryset, state)
-                applied = True
+                new_queryset = js_filter.apply_filter(queryset, state)
+                if new_queryset is not queryset:
+                    applied = True
+                    queryset = new_queryset
             except Exception:
                 logger.exception('Error applying server-side js filter on %s', js_filter.column.column_name)
         return queryset, applied
@@ -310,9 +318,11 @@ class ServerSideTable(DatatableTable):
         start = int(post_data.get('start', 0))
         length = int(post_data.get('length', 25))
 
-        # Cap length to avoid runaway queries.
+        # Cap length to avoid runaway queries. DataTables sends length=-1 for
+        # an "All" lengthMenu entry; a negative slice bound would raise, so
+        # treat it (and any non-positive value) as "up to the page cap".
         max_page = self.max_records or 500
-        length = min(length, max_page)
+        length = max_page if length < 0 else min(length, max_page)
 
         # Base queryset (view filters only) feeds facet totals.
         base_queryset = queryset
@@ -444,6 +454,9 @@ class ServerSideTable(DatatableTable):
         try:
             return queryset.filter(q)
         except Exception:
+            # A bad search_fields path would otherwise fail open and return
+            # every row, which reads as "the search matched everything".
+            logger.exception('Global search failed for fields %s; returning unfiltered queryset', fields)
             return queryset
 
     def _apply_column_searches(self, queryset, post_data):

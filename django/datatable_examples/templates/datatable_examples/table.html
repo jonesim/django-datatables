@@ -8,8 +8,15 @@
      {% show_src_code 'show_src_code:source_code_modal' view_class %}
     </div>
     <div class="p-4">
+        <h3>{{ title }}</h3>
         {{ description|safe }}
-        <br>
+        {% if code_snippets %}
+            <details class="my-3">
+                <summary class="text-muted">Key code</summary>
+                {% for snippet in code_snippets %}{{ snippet|safe }}{% endfor %}
+            </details>
+            <script>hljs.highlightAll();</script>
+        {% endif %}
         {% block header %}
         {% endblock %}
         <div>

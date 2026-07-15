@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-filtered-datatables"
+version = "0.0.21"
+description = "Django views with javascript filters using Datatables"
+readme = "readme.md"
+license = "MIT"
+authors = [{ name = "Ian Jones" }]
+requires-python = ">=3.6"
+dependencies = [
+    "django-ajax-helpers>=0.0.16",
+    "django-tab-menus",
+    "django-nested-modals",
+    "openpyxl",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/jonesim/django-datatables"
+
+[tool.setuptools.packages.find]
+include = ["django_datatables", "django_datatables.*"]

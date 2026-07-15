@@ -1,4 +1,10 @@
-from django_datatables.columns.column_base import ColumnBase
+import base64
+from html.parser import HTMLParser
+
+from django_menus.menu import HtmlMenu, MenuItem
+
+from django_datatables.columns.column_base import ColumnBase, DatatableColumnError
+from django_datatables.columns.currency import CurrencyPenceColumn
 from django_datatables.helpers import get_url, render_replace, DUMMY_ID, DUMMY_ID2
 
 
@@ -46,13 +52,19 @@ class ColumnLink(ColumnBase):
 
     @property
     def url(self):
+        # When qs_url is set, append the current page path (base64 encoded) as a query
+        # string so the linked view can offer a "back" link. Requires the table's view.
+        if self.qs_url and self.table and getattr(self.table, 'view', None):
+            return (f'{self._url}?{self.qs_url}'
+                    f'={base64.urlsafe_b64encode(self.table.view.request.path.encode("utf8")).decode("ascii")}')
         return self._url
 
     @url.setter
     def url(self, url_name):
         self._url = get_url(url_name)
 
-    def __init__(self, *, url_name, link_ref_column=None, link_html=None, link_css='', var='%1%', **kwargs):
+    def __init__(self, *, url_name=None, link_ref_column=None, link_html=None, link_css='', var='%1%', new_tab=False,
+                 qs_url='', **kwargs):
         if not self.initialise(locals()):
             return
         super().__init__(**self.kwargs)
@@ -60,7 +72,8 @@ class ColumnLink(ColumnBase):
             link_ref_column = self.model_path + link_ref_column
         else:
             link_ref_column = self.column_name
-        self.url = url_name
+        self.qs_url = qs_url
+        self.url = url_name if url_name else self.model.url_name
 
         if not link_html:
             link_html = self.base_link_html
@@ -68,9 +81,10 @@ class ColumnLink(ColumnBase):
         if not link_css:
             link_css = self.base_link_css
 
+        self.new_tab = new_tab
         self.var = var
         self.link_ref_column = link_ref_column
-        self.setup_link(link_css, link_html)
+        self.setup_link(link_css, link_html, new_tab=new_tab)
 
     def html_result(self, data_dict, page_results):
         from django.utils.html import conditional_escape, escape
@@ -85,9 +99,10 @@ class ColumnLink(ColumnBase):
         css = f' class="{self.base_link_css}"' if self.base_link_css else ''
         return mark_safe(f'<a{css} href="{escape(url)}">{escape(str(text))}</a>')
 
-    def setup_link(self, link_css, link_html):
+    def setup_link(self, link_css, link_html, new_tab=False):
         link_css = f' class="{link_css}"' if link_css else ''
-        link = f'<a{link_css} href="{self.url}">{{}}</a>'
+        target = 'target="_blank" ' if new_tab else ''
+        link = f'<a{link_css} {target}href="{self.url}">{{}}</a>'
         if isinstance(self.field, (list, tuple)):
             self.options['render'] = [
                 render_replace(column=self.column_name + ':0', html=link.format(link_html), var='999999'),
@@ -233,3 +248,171 @@ class SelectColumn(DatatableColumn):
         kwargs['no_col_search'] = True
         kwargs['column_defs'] = {'orderable': False, 'className': 'dt-center'}
         super().__init__(field=field, **kwargs)
+
+
+class SelectColumnNoTitle(SelectColumn):
+
+    def col_setup(self):
+        self.title = ''
+
+
+class ZeroPenceColumn(CurrencyPenceColumn):
+    """Like CurrencyPenceColumn but renders 0 instead of a blank cell for a null / missing value."""
+
+    def row_result(self, data_dict, page_results):
+        result = super().row_result(data_dict, page_results)
+        return result if result is not None else 0
+
+
+class MonthColumn(DatatableColumn):
+    """Render a date field as 'YYYY MM'."""
+
+    def row_result(self, data, _page_data):
+        try:
+            return data[self.field].strftime('%Y %m')
+        except AttributeError:
+            return ""
+
+
+class YearMonthColumn(DatatableColumn):
+    """Hidden helper column exposing a date field as 'YYYY MM' (e.g. for grouping / sorting)."""
+
+    def row_result(self, data_dict, _page_results):
+        return str(data_dict[self.field].year) + ' ' + '{:02d}'.format(data_dict[self.field].month)
+
+    def col_setup(self):
+        self.options['hidden'] = True
+
+
+class TickColumn(BooleanColumn):
+    """BooleanColumn preset: a green tick for true, blank for false."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs['replace'] = '<i class="text-success fas fa-check-circle">&nbsp;</i>', ' '
+        super().__init__(*args, **kwargs)
+
+
+class TableRowColour(DatatableColumn):
+    """Hidden column whose value can drive per-row colouring."""
+
+    def col_setup(self):
+        self.options['hidden'] = True
+
+
+class AlignColumnLink(ColumnLink):
+    """ColumnLink with a configurable cell alignment via the `align` kwarg (default center)."""
+
+    def col_setup(self):
+        self.column_defs['className'] = 'dt-' + self.kwargs.get('align', 'center')
+
+
+class XlColumnLink(ColumnLink):
+    """ColumnLink whose Excel export uses the display text (second element) of a [ref, text] value."""
+
+    @staticmethod
+    def excel(value):
+        if isinstance(value, list):
+            return value[1]
+
+
+class ViewLink(ColumnLink):
+    """ColumnLink preset rendering a small 'View' button (right aligned)."""
+
+    def __init__(self, **kwargs):
+        default_kwargs = {'field': 'id', 'link_html': '<button class="btn btn-sm btn-outline-dark">View</button>',
+                          'css_class': 'btn btn-sm btn-outline-primary'}
+        default_kwargs.update(kwargs)
+        super().__init__(**default_kwargs)
+
+    def col_setup(self):
+        self.column_defs['className'] = 'dt-' + self.kwargs.get('align', 'right')
+
+
+class JsonBooleanColumn(DatatableColumn):
+    """Display a boolean key from a JSON field, rendered as a tick / blank (or custom choices)."""
+
+    def __init__(self, *, choices=None, replace=None, json_key=None, field=None, **kwargs):
+        if not self.initialise(locals()):
+            return
+        super().__init__(**kwargs)
+        self.choices = choices if choices else ['Yes', 'No']
+        replace = replace if replace else ('<i class="text-success fas fa-check-circle">&nbsp;</i>', ' ')
+        self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'}]
+        self.options['lookup'] = [(self.choices[c], r) for c, r in enumerate(replace)]
+        self.options['no_col_search'] = True
+        self.json_key = json_key
+        self.field = field if field else 'options'
+
+    def col_setup(self):
+        self.column_defs['width'] = '60px'
+
+    def row_result(self, data_dict, _page_results):
+        return self.choices[0] if data_dict[self.field].get(self.json_key) else self.choices[1]
+
+
+class JsonKeyColumn(DatatableColumn):
+    """Display an arbitrary key from a JSON field (pass json_key=...)."""
+
+    def row_result(self, data_dict, _page_results):
+        return data_dict[self.field].get(self.kwargs['json_key'])
+
+
+class MultiMenuColumnBase(DatatableColumn):
+    """Base for a column that renders one of several per-row django-menus, chosen by row id.
+
+    Subclasses build their menus (via ``add_menu``) inside ``col_setup``; that needs the table /
+    view to be attached, so ``add_menu`` raises a clear error if used before the view is available.
+    """
+    css = {'css_classes': 'btn btn-sm btn-outline-dark'}
+    default_kwargs = dict(url_kwargs={'slug': DUMMY_ID}, css_classes='btn btn-sm btn-outline-dark', menu_display='')
+
+    def __init__(self, **kwargs):
+        self.menus = []
+        super().__init__(**kwargs)
+
+    @property
+    def request(self):
+        view = getattr(self.table, 'view', None) if self.table else None
+        if view is None:
+            raise DatatableColumnError('MultiMenuColumnBase needs its table/view attached before building menus')
+        return view.request
+
+    def add_menu(self, menu_id, *items):
+        self.menus.append([menu_id, HtmlMenu(self.request, 'button_group').add_items(*items).render()])
+
+    @staticmethod
+    def some_menu(url, tooltip=None):
+        return MenuItem(url=url, font_awesome='fa fa-check-double', **({'tooltip': tooltip} if tooltip else {}),
+                        url_kwargs={'slug': DUMMY_ID}, css_classes='btn btn-sm btn-outline-dark', menu_display='')
+
+    def col_setup(self):
+        self.title = ''
+        self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'},
+                                  {'function': 'Replace', 'var': DUMMY_ID, 'column': 'id'}]
+        self.options['lookup'] = self.menus
+        self.column_defs['width'] = '120px'
+
+
+class _HtmlTextFilter(HTMLParser):
+    """Collect the text nodes of an HTML fragment, joined by a delimiter."""
+
+    def __init__(self, delimiter=''):
+        self.delimiter = delimiter
+        self.text = ''
+        super().__init__()
+
+    def handle_data(self, data):
+        if data:
+            self.text += self.delimiter + data if self.text else data
+
+
+class ExcelDatatableColumn(DatatableColumn):
+    """DatatableColumn whose Excel export is the plain text of its (HTML) cell value."""
+
+    @staticmethod
+    def excel(value):
+        if value is None:
+            return ''
+        f = _HtmlTextFilter(', ')
+        f.feed(str(value))
+        return f.text

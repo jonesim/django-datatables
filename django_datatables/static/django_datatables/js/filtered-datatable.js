@@ -427,7 +427,7 @@ if (typeof django_datatables === 'undefined') {
                 var col_data = data[this.column_no]
                 if (typeof (col_data) === 'number') col_data = col_data.toString();
                 if (this.filter_data.indexOf(col_data) < 0) {
-                    if (col_data == "" | col_data == null) {
+                    if (col_data == "" || col_data == null) {
                         if (this.filter_data.indexOf("null") < 0) return false
                     } else return false
                 }
@@ -902,7 +902,7 @@ if (typeof django_datatables === 'undefined') {
                             $(e.target).closest('tr').prev().find('input').focus();
                             e.preventDefault();
                         }
-                        if (e.keyCode === 13 | e.keyCode === 40) {
+                        if (e.keyCode === 13 || e.keyCode === 40) {
                             $(e.target).closest('tr').next().find('input').focus();
                             e.preventDefault();
                         }
@@ -1025,7 +1025,7 @@ if (typeof django_datatables === 'undefined') {
                                     sums[column_no] = sum
                                 })
                             var sums_row = ''
-                            for (c = 0; c < sums.length; c++) {
+                            for (var c = 0; c < sums.length; c++) {
                                 if (tablesetup.colOptions[c].hidden != true) {
                                     if (typeof (sums[c]) == 'number') {
                                         sums_row += '<td class="dt-right">' + sums[c].toFixed(2) + '</td>'

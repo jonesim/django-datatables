@@ -19,6 +19,16 @@ class ExcelDownload:
     excel_filename = 'download.xlsx'
     excel_id = 'id'
 
+    @staticmethod
+    def sort_excel(table, table_array):
+        # Hook: subclasses can reorder / sort the exported rows before they are written.
+        return table_array
+
+    def check_pk_column(self, table):
+        # The exported id column defaults to 'id'; use the model's real pk column when it differs.
+        if table.model is not None and table.model._meta.pk.column != 'id':
+            self.excel_id = table.model._meta.pk.column
+
     def download_menu_item(self, table_name=None):
         if table_name is None:
             table_name = list(self.tables.keys())[0]
@@ -53,7 +63,7 @@ class ExcelDownload:
         sheet.append(titles)
         if query is None:
             query = table.table_data if table.table_data else self.get_table_query(table)
-        results = table.get_table_array(self.request, query)
+        results = self.sort_excel(table, table.get_table_array(self.request, query))
         for r in results:
             row = [Cell(value=(d(v) if d != True else v), worksheet=sheet) for v, d in zip(r, col_format) if d]
             for f in excel_styles:
@@ -78,6 +88,7 @@ class ExcelDownload:
         table = self.tables[kwargs['table_id']]
         self.setup_tables(table_id=table.table_id)
         self.excel_table(table)
+        self.check_pk_column(table)
         from django_datatables.datatables.server_side import ServerSideTable
         if isinstance(table, ServerSideTable) and kwargs.get('datatable_state') is not None:
             # The browser only holds the current page, so instead of a list of

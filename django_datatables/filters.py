@@ -57,6 +57,14 @@ class DatatableFilter:
             context['column_no'] = self.datatable.find_column(self.column.column_name)[1]
         return context
 
+    def column_titles(self):
+        """Resolve the ``columns`` kwarg to a list of (title, column_name, column_no) tuples."""
+        result = []
+        for c in self.kwargs['columns']:
+            column, column_no = self.datatable.find_column(c)
+            result.append((column.title, column.column_name, column_no))
+        return result
+
     def render(self):
         return render_to_string(self.template, self.get_context())
 

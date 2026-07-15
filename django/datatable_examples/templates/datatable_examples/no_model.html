@@ -2,6 +2,22 @@
 {% load static %}
 
 {% block header %}
-
     <script src="{% static 'datatable_examples/hour_minutes_render.js' %}"></script>
+{% endblock %}
+
+{% block tables %}
+    <div class="d-flex">
+        <div class="mx-2" style="display: inline-block">
+            <h5>AJAX data</h5>
+            <div class="border rounded">
+                {{ datatables.ajax_version.render|safe }}
+            </div>
+        </div>
+        <div class="mx-2" style="display: inline-block">
+            <h5>Static data</h5>
+            <div class="border rounded">
+                {{ datatables.static_version.render|safe }}
+            </div>
+        </div>
+    </div>
 {% endblock %}

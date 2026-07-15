@@ -31,7 +31,7 @@ class DatatableModel:
         except AttributeError:
             column_setup = model.Datatable.column_info(field_id, **kwargs)
 
-        if type(column_setup) == dict:
+        if isinstance(column_setup, dict):
             column_setup['column_name'] = field_id
         return column_setup
 

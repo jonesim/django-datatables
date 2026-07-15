@@ -1,4 +1,5 @@
 import json
+import logging
 from functools import cached_property
 from inspect import isclass
 from typing import TypeVar, Dict
@@ -10,11 +11,13 @@ from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from django_menus.menu import MenuItem, HtmlMenu
 
-from django_datatables.constants import HIDE_OPTIONAL, HIDE_VISIBILTY
+from django_datatables.constants import HIDE_OPTIONAL, HIDE_VISIBILITY
 from django_datatables.datatables.column_initialiser import ColumnInitialisor
 from django_datatables.datatables.datatable_error import DatatableError
 from django_datatables.filters import DatatableFilter
 from django_datatables.models import SavedState
+
+logger = logging.getLogger(__name__)
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
@@ -68,7 +71,7 @@ class DatatableTable:
         self.cache_expiry = None
         self.ajax_commands = []
         self.show_column_modal = True
-        self.hide_options = HIDE_VISIBILTY
+        self.hide_options = HIDE_VISIBILITY
 
         if table_classes:
             self.table_classes = table_classes
@@ -92,7 +95,7 @@ class DatatableTable:
                     self.js_filter_list.append(filter_class(name_or_template, self, column=self.find_column(c)[0],
                                                             **kwargs))
                 except DatatableError as e:
-                    pass
+                    logger.warning('Skipping js filter %r on column %r: %s', name_or_template, c, e)
         else:
             self.js_filter_list.append(filter_class(name_or_template, self, **kwargs))
 
@@ -159,7 +162,7 @@ class DatatableTable:
             self.table_options.setdefault('order', []).append([self.find_column(c)[1], sort_order])
 
     def add_column_options(self, column_names, options):
-        if type(column_names) == str:
+        if isinstance(column_names, str):
             column_names = [column_names]
         for c in self.columns:
             if c.column_name in column_names:
@@ -217,13 +220,13 @@ class DatatableTable:
             return False
         if column.options.get('hidden'):
             return True
-        if self.view and getattr(self.view,'all_columns', False):
+        if self.view and getattr(self.view, 'all_columns', False):
             return True
         hide_options = column.hide_options or self.hide_options
         if not self.session_column_visibility():
             return not hide_options == HIDE_OPTIONAL
         if not self.session_column_visibility().get(column.column_name, True):
-            if hide_options == HIDE_VISIBILTY:
+            if hide_options == HIDE_VISIBILITY:
                 column.options['hidden'] = True
             else:
                 return False
