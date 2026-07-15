@@ -48,6 +48,7 @@ class DatatableTable:
         self.model = model
         self.page_results = {}
         self.results_limited = False
+        self.date_formats = set()
 
         # django query attributes
         self.initial_filter = {}
@@ -69,6 +70,7 @@ class DatatableTable:
         self.cache_data = False
         self.cached_linked_tables = []
         self.cache_expiry = None
+        self.cache_prefix = ''
         self.ajax_commands = []
         self.show_column_modal = True
         self.hide_options = HIDE_VISIBILITY
@@ -77,6 +79,18 @@ class DatatableTable:
             self.table_classes = table_classes
         else:
             self.table_classes = ['display', 'compact', 'smalltext', 'table-sm', 'table', 'w-100']
+
+    @property
+    def cache_key(self):
+        if self.cache_prefix:
+            return f'{self.cache_prefix}:{self.table_id}'
+        return self.table_id
+
+    def moment_formats_js(self):
+        if not self.date_formats:
+            return ''
+        lines = [f'$.fn.dataTable.moment("{fmt}");' for fmt in sorted(self.date_formats)]
+        return mark_safe('\n            '.join(lines))
 
     def table_class(self):
         return ' '.join(self.table_classes)
