@@ -6,6 +6,7 @@ from io import BytesIO
 from urllib.parse import urlencode
 
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Q
 from django.http import QueryDict
 from django.test import RequestFactory, TestCase
 from openpyxl import load_workbook
@@ -15,8 +16,8 @@ from datatable_examples.views.server_side import (JsonBooleanColumn, ServerSideJ
                                                   ServerSidePagination, ServerSideTagFilter,
                                                   ServerSideTotalsFilter)
 from django_datatables.columns import ManyToManyColumn
-from django_datatables.columns import (ColumnLink, DateColumn, DateTimeColumn, TickColumn, LocaleCurrencyColumn,
-                                       ExcelDatatableColumn)
+from django_datatables.columns import (ColumnLink, DatatableColumn, DateColumn, DateTimeColumn, TickColumn,
+                                       LocaleCurrencyColumn, ExcelDatatableColumn)
 from django_datatables.columns import JsonBooleanColumn as LibraryJsonBooleanColumn
 from django_datatables.filters import DatatableFilter
 from django_datatables.datatables import DatatableTable, DatatableView
@@ -602,6 +603,141 @@ class TestFilteredQuery(TestCase):
         results = self.query(**{'columns[0][name]': 'company__name', 'columns[0][search][value]': 'acme',
                                 'order[0][column]': '2', 'order[0][dir]': 'desc'})
         self.assertEqual([r['surname'] for r in results], ['Smith', 'Jones'])
+
+
+def make_link_table(**link_kwargs):
+    """Server-side table with a list-field ColumnLink (id -> URL, surname -> display).
+    person_link is column index 2."""
+    table = ServerSideTable('serverside', model=Person)
+    table.add_columns(
+        'id',
+        'first_name',
+        ColumnLink(column_name='person_link', field=['id', 'surname'],
+                   url_name='column_visibility', **link_kwargs),
+        'company__name',
+    )
+    return table
+
+
+class TestSearchField(TestCase):
+    """search_field / search / get_search_filter make complex columns (list-field links,
+    calculated fields, custom Q) searchable and sortable server-side."""
+
+    def setUp(self):
+        make_data()
+
+    def query(self, table, **state):
+        return list(table.filtered_query(QueryDict(urlencode(state))))
+
+    # ---- _search_paths / get_search_filter resolution ----
+
+    def test_plain_field_is_searchable(self):
+        table = make_link_table()
+        col, _ = table.find_column('first_name')
+        self.assertEqual(col._search_paths(), ['first_name'])
+        self.assertIsNotNone(col.get_search_filter('a'))
+
+    def test_calculated_column_not_searchable(self):
+        col = DatatableColumn(column_name='_total', field='amount', model=Person)
+        self.assertTrue(col.options.get('calculated'))
+        self.assertEqual(col._search_paths(), [])
+        self.assertIsNone(col.get_search_filter('x'))
+
+    def test_list_field_columnlink_defaults_to_display_field(self):
+        col, _ = make_link_table().find_column('person_link')
+        self.assertEqual(col._search_paths(), ['surname'])
+
+    def test_explicit_search_field_overrides_default(self):
+        col, _ = make_link_table(search_field='first_name').find_column('person_link')
+        self.assertEqual(col._search_paths(), ['first_name'])
+
+    def test_search_field_false_disables(self):
+        col, _ = make_link_table(search_field=False).find_column('person_link')
+        self.assertEqual(col._search_paths(), [])
+        self.assertIsNone(col.get_search_filter('smith'))
+
+    def test_search_field_list_ors_icontains(self):
+        col = DatatableColumn(column_name='name', field='surname',
+                              search_field=['first_name', 'surname'], model=Person)
+        self.assertEqual(col._search_paths(), ['first_name', 'surname'])
+        # 'brown' matches surname Brown; 'bob' matches first_name Bob — proves the OR.
+        self.assertEqual([p.first_name for p in Person.objects.filter(col.get_search_filter('brown'))],
+                         ['Carol'])
+        self.assertEqual([p.first_name for p in Person.objects.filter(col.get_search_filter('bob'))],
+                         ['Bob'])
+
+    def test_search_callable_returns_q(self):
+        col = DatatableColumn(column_name='name', field='surname', model=Person,
+                              search=lambda v: Q(first_name__icontains=v) | Q(surname__icontains=v))
+        self.assertEqual([p.first_name for p in Person.objects.filter(col.get_search_filter('brown'))],
+                         ['Carol'])
+
+    def test_search_callable_dict_wrapped_in_q(self):
+        col = DatatableColumn(column_name='name', field='surname', model=Person,
+                              search=lambda v: {'first_name__iexact': v})
+        q = col.get_search_filter('Bob')
+        self.assertIsInstance(q, Q)
+        self.assertEqual([p.first_name for p in Person.objects.filter(q)], ['Bob'])
+
+    def test_relation_column_field_not_double_prefixed(self):
+        col, _ = make_link_table().find_column('company__name')
+        self.assertEqual(col._search_paths(), ['company__name'])
+
+    # ---- search-box visibility (no_col_search auto-marking) ----
+
+    def test_columnlink_search_box_shown(self):
+        col, _ = make_link_table().find_column('person_link')
+        self.assertNotEqual(col.options.get('no_col_search'), True)
+
+    def test_search_field_false_hides_box(self):
+        col, _ = make_link_table(search_field=False).find_column('person_link')
+        self.assertTrue(col.options.get('no_col_search'))
+
+    def test_callable_only_column_box_shown_but_not_sortable(self):
+        # search_field=False removes the sortable path; the search= callable still
+        # makes the column searchable (box shown).
+        table = ServerSideTable('t', model=Person)
+        table.add_columns(
+            'id',
+            DatatableColumn(column_name='name_search', field='surname', search_field=False,
+                            search=lambda v: Q(surname__icontains=v)),
+        )
+        col, _ = table.find_column('name_search')
+        self.assertNotEqual(col.options.get('no_col_search'), True)
+        self.assertEqual(col._search_paths(), [])
+
+    # ---- filtered_query end to end ----
+
+    def test_columnlink_header_search_filters_display_field(self):
+        results = self.query(make_link_table(),
+                             **{'columns[0][name]': 'person_link', 'columns[0][search][value]': 'smith'})
+        self.assertEqual([r['surname'] for r in results], ['Smith'])
+
+    def test_explicit_search_field_used_in_header_search(self):
+        results = self.query(make_link_table(search_field='first_name'),
+                             **{'columns[0][name]': 'person_link', 'columns[0][search][value]': 'carol'})
+        self.assertEqual([r['first_name'] for r in results], ['Carol'])
+
+    def test_columnlink_ordering_sorts_by_display_field(self):
+        results = self.query(make_link_table(), **{'order[0][column]': '2', 'order[0][dir]': 'desc'})
+        self.assertEqual([r['surname'] for r in results], ['Smith', 'Jones', 'Green', 'Brown'])
+
+    def test_search_callable_applied_in_header_search(self):
+        table = ServerSideTable('t', model=Person)
+        table.add_columns(
+            'id',
+            DatatableColumn(column_name='name_search', field='surname',
+                            search=lambda v: Q(first_name__icontains=v) | Q(surname__icontains=v)),
+        )
+        # 'jones' hits the surname OR-branch (Bob Jones); no first_name matches.
+        results = self.query(table,
+                             **{'columns[0][name]': 'name_search', 'columns[0][search][value]': 'jones'})
+        self.assertEqual([r['surname'] for r in results], ['Jones'])
+
+    def test_global_search_includes_columnlink_display_field(self):
+        # No search_fields set -> each column's get_search_filter builds the predicate.
+        results = self.query(make_link_table(), **{'search[value]': 'brown'})
+        self.assertEqual([r['surname'] for r in results], ['Brown'])
 
 
 class TestPythonPivotFilter(TestCase):

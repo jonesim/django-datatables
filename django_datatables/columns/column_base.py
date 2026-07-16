@@ -4,6 +4,7 @@ import re
 from types import MethodType
 from typing import Dict, Any
 
+from django.db.models import Q
 from django.db.models.expressions import CombinedExpression
 from django.forms.widgets import Select
 
@@ -33,6 +34,10 @@ class ColumnBase:
 
     popover_html = ('<button type="button" class="ml-1 btn btn-link p-0" data-html=true data-placement="top" '
                     'data-toggle="popover" data-content="{}"><i class="far fa-question-circle"></i></button>')
+
+    # Default so getattr/hasattr are always safe before __init__ assigns them.
+    _search_field = None
+    search = None
 
     @staticmethod
     def merge_kwargs_locals(local_vars):
@@ -79,6 +84,9 @@ class ColumnBase:
             self.field = self.column_name
         else:
             self.field = field
+        # Optional per-column server-side search overrides (see get_search_filter).
+        self.search_field = kwargs.pop('search_field', None)
+        self.search = kwargs.pop('search', None)
         self.args = self.extract_args()
         self.title = self.title_from_name(self.column_name)
         self.column_type = 0
@@ -229,6 +237,58 @@ class ColumnBase:
             self._field = [self._field, self.model_path + field]
         else:
             self._field = list(self._field) + [self.model_path + field]
+
+    @property
+    def search_field(self):
+        return self._search_field
+
+    @search_field.setter
+    def search_field(self, value):
+        # None  -> fall back to `field` (see _search_paths)
+        # False -> explicitly not searchable / not sortable
+        # str / list -> ORM path(s), model_path-prefixed once (like `field`)
+        if value is None or value is False:
+            self._search_field = value
+        elif isinstance(value, (list, tuple)):
+            self._search_field = [self.model_path + f for f in value]
+        else:
+            self._search_field = self.model_path + value
+
+    def _search_paths(self):
+        """Already-prefixed ORM path(s) driving the simple icontains search and ordering.
+
+        ``search_field=False`` -> ``[]``; an explicit ``search_field`` -> that; a single
+        string ``field`` on a non-calculated column -> ``[field]``; otherwise ``[]``
+        (list field / calculated / no field).
+        """
+        if self._search_field is False:
+            return []
+        if self._search_field:
+            if isinstance(self._search_field, (list, tuple)):
+                return list(self._search_field)
+            return [self._search_field]
+        if self.field and isinstance(self.field, str) and 'calculated' not in self.options:
+            return [self.field]
+        return []
+
+    def get_search_filter(self, value):
+        """Return a ``Q`` for a header/global server-side search of ``value`` on this column,
+        or ``None`` if the column is not searchable.
+
+        Override in a subclass (or pass a ``search=`` callable) for complex logic — exact
+        match, ranges, negation, OR across related fields, etc. The default ORs ``icontains``
+        across ``_search_paths``.
+        """
+        if self.search is not None:
+            result = self.search(value)
+            return Q(**result) if isinstance(result, dict) else result
+        fields = self._search_paths()
+        if not fields:
+            return None
+        q = Q()
+        for f in fields:
+            q |= Q(**{f'{f}__icontains': value})
+        return q
 
     @staticmethod
     def get_model_path(field):

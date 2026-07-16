@@ -41,15 +41,40 @@ class ServerSideTable(DatatableTable):
     Filtering
     ---------
     ``search_fields`` is an optional list of ORM field paths that the global
-    search box queries.  When empty the table falls back to searching all
-    non-calculated single-field columns with ``icontains``.  Column-header
-    search boxes always search the column's own ORM field.
+    search box queries.  When empty each column builds its own predicate via
+    ``get_search_filter`` (see below), so complex columns participate too.
+    Column-header search boxes call the same ``get_search_filter``.
+
+    Each column decides how it is searched via ``get_search_filter(value)``,
+    which returns a Django ``Q`` (or ``None`` when not searchable).  The default
+    ORs ``icontains`` across the column's ORM path(s).  Customise per column
+    without subclassing::
+
+        # A single field is searched by default (icontains).
+        DatatableColumn('stock_code')
+
+        # A complex/list-field column: point search + sort at a chosen field.
+        ColumnLink(url_name='stock_comments', field=['id', 'stock_code'])
+        #   -> auto-searches/sorts on the displayed field (stock_code)
+
+        DatatableColumn('_total', search_field='amount')  # calculated display, real field
+        DatatableColumn('name', search_field=['first_name', 'surname'])  # OR icontains
+        DatatableColumn('name', search_field=False)       # never searchable/sortable
+
+        # Arbitrary Q (ranges, exact, OR across relations, negation...).
+        DatatableColumn('ref', search=lambda v: Q(ref__iexact=v) | Q(alt_ref__icontains=v))
+
+    For richer logic, subclass a column and override ``get_search_filter``.
+    Ordering always uses a real ORM path (``search_field``/``field``); a column
+    whose search is only a custom ``Q`` is searchable but not sortable.
 
     Column search-box visibility
     ----------------------------
     Search input boxes are suppressed automatically for columns that cannot be
-    filtered server-side: calculated fields (prefixed with ``_``), JS-rendered
-    columns, multi-field columns, and columns with no ORM field.
+    filtered server-side (no ``Q`` and no ORM path): JS-rendered / multi-field
+    columns without a ``search_field``, calculated fields, and columns with no
+    ORM field.  A list-field ``ColumnLink`` and any column with ``search_field``
+    or ``search=`` show a box automatically.
 
     Override per column by passing a keyword argument when the column is
     declared::
@@ -240,12 +265,13 @@ class ServerSideTable(DatatableTable):
         self._auto_mark_unsearchable_columns()
 
     def _is_col_searchable(self, col):
-        """Return True if the column can be filtered with a server-side icontains lookup."""
-        return (
-            col.field
-            and isinstance(col.field, str)
-            and 'calculated' not in col.options
-        )
+        """Return True if the column exposes a server-side search filter or a sortable path.
+
+        A column is searchable when it builds a ``Q`` (default icontains, an explicit
+        ``search_field``, a ``search=`` callable, or an overridden ``get_search_filter``),
+        or when it has a plain ORM path it can be ordered on.
+        """
+        return col.get_search_filter('') is not None or bool(col._search_paths())
 
     def _auto_mark_unsearchable_columns(self):
         """Set no_col_search on columns whose search box would silently do nothing."""
@@ -434,33 +460,35 @@ class ServerSideTable(DatatableTable):
             return int(row[0])
         return queryset.count()
 
-    def _searchable_columns(self):
-        """Return columns whose single ORM field can be searched with icontains."""
-        cols = []
-        for col in self.columns:
-            field = col.field
-            if field and isinstance(field, str) and 'calculated' not in col.options:
-                cols.append(col)
-        return cols
-
     def _apply_global_search(self, queryset, search_value):
-        """Filter queryset so that *any* searchable field matches search_value."""
-        fields = self.search_fields or [c.field for c in self._searchable_columns()]
-        if not fields:
+        """Filter queryset so that *any* searchable column matches search_value.
+
+        When ``search_fields`` is set it is used verbatim (icontains per path); otherwise
+        each column's own ``get_search_filter`` builds the predicate, so complex columns
+        (list-field links, ``search=`` callables, overridden filters) participate too.
+        """
+        if self.search_fields:
+            q = Q()
+            for field in self.search_fields:
+                q |= Q(**{f'{field}__icontains': search_value})
+        else:
+            q = Q()
+            for col in self.columns:
+                col_q = col.get_search_filter(search_value)
+                if col_q is not None:
+                    q |= col_q
+        if not q:
             return queryset
-        q = Q()
-        for field in fields:
-            q |= Q(**{f'{field}__icontains': search_value})
         try:
             return queryset.filter(q)
         except Exception:
-            # A bad search_fields path would otherwise fail open and return
-            # every row, which reads as "the search matched everything".
-            logger.exception('Global search failed for fields %s; returning unfiltered queryset', fields)
+            # A bad search path would otherwise fail open and return every row,
+            # which reads as "the search matched everything".
+            logger.exception('Global search failed; returning unfiltered queryset')
             return queryset
 
     def _apply_column_searches(self, queryset, post_data):
-        """Apply per-column search values sent by DataTables."""
+        """Apply per-column search values sent by DataTables (delegates to each column)."""
         i = 0
         while f'columns[{i}][name]' in post_data:
             col_name = post_data.get(f'columns[{i}][name]', '')
@@ -468,8 +496,9 @@ class ServerSideTable(DatatableTable):
             if col_search and col_name:
                 try:
                     col, _ = self.find_column(col_name)
-                    if col.field and isinstance(col.field, str) and 'calculated' not in col.options:
-                        queryset = queryset.filter(**{f'{col.field}__icontains': col_search})
+                    q = col.get_search_filter(col_search)
+                    if q is not None:
+                        queryset = queryset.filter(q)
                 except Exception:
                     pass
             i += 1
@@ -484,8 +513,11 @@ class ServerSideTable(DatatableTable):
             direction = post_data.get(f'order[{i}][dir]', 'asc')
             if 0 <= col_idx < len(self.columns):
                 col = self.columns[col_idx]
-                if col.field and isinstance(col.field, str) and 'calculated' not in col.options:
+                # Ordering needs a real ORM path (a Q can't be an ORDER BY expression),
+                # so use the column's first sortable path when it has one.
+                paths = col._search_paths()
+                if paths:
                     prefix = '-' if direction == 'desc' else ''
-                    ordering.append(f'{prefix}{col.field}')
+                    ordering.append(f'{prefix}{paths[0]}')
             i += 1
         return ordering

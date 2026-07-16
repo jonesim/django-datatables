@@ -1,6 +1,6 @@
 from datatable_examples import models
 from datatable_examples.views.base import ManualPage
-from django_datatables.columns import DatatableColumn, ManyToManyColumn
+from django_datatables.columns import ColumnLink, DatatableColumn, ManyToManyColumn
 from django_datatables.datatables import DatatableView
 from django_datatables.downloads.excel_download import ExcelDownload
 
@@ -32,6 +32,11 @@ class ServerSidePagination(ExcelDownload, ManualPage, DatatableView):
             'id',
             ('first_name', {'title': 'First Name'}),
             ('surname', {'title': 'Surname'}),
+            # A list-field ColumnLink (id -> URL, surname -> displayed text). Its header
+            # search box and sorting work server-side automatically via search_field,
+            # which defaults to the displayed field (surname).
+            ColumnLink(column_name='person_link', title='Surname (link)',
+                       field=['id', 'surname'], url_name='column_visibility'),
             ('company__name', {'title': 'Company'}),
             ('title_model', {'title': 'Title', 'no_col_search': True}),
             ('date_entered', {'title': 'Date Entered', 'no_col_search': True}),

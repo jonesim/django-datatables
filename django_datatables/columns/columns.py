@@ -104,6 +104,11 @@ class ColumnLink(ColumnBase):
         target = 'target="_blank" ' if new_tab else ''
         link = f'<a{link_css} {target}href="{self.url}">{{}}</a>'
         if isinstance(self.field, (list, tuple)):
+            # field[0] is the URL reference, field[1] the displayed text. Default the
+            # server-side search/sort target to the displayed field (already prefixed)
+            # unless the developer set search_field explicitly (or opted out with False).
+            if self._search_field is None and len(self.field) > 1:
+                self._search_field = [self.field[1]]
             self.options['render'] = [
                 render_replace(column=self.column_name + ':0', html=link.format(link_html), var='999999'),
                 render_replace(column=self.column_name + ':1'),
