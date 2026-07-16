@@ -49,6 +49,13 @@ class ColumnLink(ColumnBase):
 
     base_link_html = '%1%'
     base_link_css = None
+    # Cell alignment: an ``align`` kwarg wins, else this class default. None leaves it unset.
+    default_align = None
+
+    def col_setup(self):
+        align = self.kwargs.get('align', self.default_align)
+        if align:
+            self.column_defs['className'] = 'dt-' + align
 
     @property
     def url(self):
@@ -149,20 +156,28 @@ class ChoiceColumn(ColumnBase):
 
 
 class BooleanColumn(DatatableColumn):
+    """Render a boolean field as ``choices`` = [true_value, false_value, none_value].
+
+    Passing ``replace`` (or setting ``default_replace``) renders each choice as the
+    corresponding html instead - see ``TickColumn`` for a preset.
+    """
+
+    default_choices = ['true', 'false', None]
+    default_replace = None
 
     def __init__(self, *,  choices=None, replace=None, **kwargs):
         if not self.initialise(locals()):
             return
         super().__init__(**kwargs)
-        if choices:
-            self.choices = choices
-        else:
-            self.choices = ['true', 'false', None]
-
+        self.choices = choices if choices else list(self.default_choices)
+        replace = replace if replace else self.default_replace
         if replace:
-            self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'}]
-            self.options['lookup'] = [(self.choices[c], r) for c, r in enumerate(replace)]
-            self.options['no_col_search'] = True
+            self.setup_replace(replace)
+
+    def setup_replace(self, replace):
+        self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'}]
+        self.options['lookup'] = [(self.choices[c], r) for c, r in enumerate(replace)]
+        self.options['no_col_search'] = True
 
     def row_result(self, data, _page_data):
         try:
@@ -242,8 +257,11 @@ class SelectColumn(DatatableColumn):
                 f'''{(f' data-command="' + data_command + '"') if data_command else ''}>'''
                 f'''<i class="{font_awesome}"></i></button>'''
             )
-        kwargs['title'] = '<div class="d-flex" style="width:40px;line-height:14px"><div class="m-auto">{}{}</div></div>'.format(
-            button('Select all', 'fas fa-check-square'), button('Unselect all', 'far fa-square', 'clear')
+        kwargs.setdefault(
+            'title',
+            '<div class="d-flex" style="width:40px;line-height:14px"><div class="m-auto">{}{}</div></div>'.format(
+                button('Select all', 'fas fa-check-square'), button('Unselect all', 'far fa-square', 'clear')
+            )
         )
         kwargs['render'] = [{'function': 'Replace',
                              'html': ('<input class="col-sel" type="checkbox"%2% name="%1%" title="Select" '
@@ -256,17 +274,21 @@ class SelectColumn(DatatableColumn):
 
 
 class SelectColumnNoTitle(SelectColumn):
+    """SelectColumn without the select all / unselect all header.
+
+    Equivalent to ``SelectColumn(title='')``, which is the preferred spelling.
+    """
 
     def col_setup(self):
         self.title = ''
 
 
 class ZeroPenceColumn(CurrencyPenceColumn):
-    """Like CurrencyPenceColumn but renders 0 instead of a blank cell for a null / missing value."""
+    """Like CurrencyPenceColumn but renders zero instead of a blank cell for a null / missing value."""
 
     def row_result(self, data_dict, page_results):
         result = super().row_result(data_dict, page_results)
-        return result if result is not None else 0
+        return result if result is not None else '{:.2f}'.format(0)
 
 
 class MonthColumn(DatatableColumn):
@@ -279,36 +301,42 @@ class MonthColumn(DatatableColumn):
             return ""
 
 
-class YearMonthColumn(DatatableColumn):
-    """Hidden helper column exposing a date field as 'YYYY MM' (e.g. for grouping / sorting)."""
+class YearMonthColumn(MonthColumn):
+    """Hidden MonthColumn (e.g. for grouping / sorting).
 
-    def row_result(self, data_dict, _page_results):
-        return str(data_dict[self.field].year) + ' ' + '{:02d}'.format(data_dict[self.field].month)
+    Equivalent to a MonthColumn with a '.'-prefixed column_name, which is the preferred spelling.
+    """
 
     def col_setup(self):
         self.options['hidden'] = True
 
 
+TICK_REPLACE = ('<i class="text-success fas fa-check-circle">&nbsp;</i>', ' ')
+
+
 class TickColumn(BooleanColumn):
     """BooleanColumn preset: a green tick for true, blank for false."""
 
-    def __init__(self, *args, **kwargs):
-        kwargs['replace'] = '<i class="text-success fas fa-check-circle">&nbsp;</i>', ' '
-        super().__init__(*args, **kwargs)
+    default_replace = TICK_REPLACE
 
 
 class TableRowColour(DatatableColumn):
-    """Hidden column whose value can drive per-row colouring."""
+    """Hidden column whose value can drive per-row colouring.
+
+    Equivalent to a DatatableColumn with a '.'-prefixed column_name, which is the preferred spelling.
+    """
 
     def col_setup(self):
         self.options['hidden'] = True
 
 
 class AlignColumnLink(ColumnLink):
-    """ColumnLink with a configurable cell alignment via the `align` kwarg (default center)."""
+    """ColumnLink defaulting to a centred cell.
 
-    def col_setup(self):
-        self.column_defs['className'] = 'dt-' + self.kwargs.get('align', 'center')
+    Equivalent to ``ColumnLink(align='center')``, which is the preferred spelling.
+    """
+
+    default_align = 'center'
 
 
 class XlColumnLink(ColumnLink):
@@ -323,36 +351,34 @@ class XlColumnLink(ColumnLink):
 class ViewLink(ColumnLink):
     """ColumnLink preset rendering a small 'View' button (right aligned)."""
 
+    default_align = 'right'
+
     def __init__(self, **kwargs):
-        default_kwargs = {'field': 'id', 'link_html': '<button class="btn btn-sm btn-outline-dark">View</button>',
-                          'css_class': 'btn btn-sm btn-outline-primary'}
+        default_kwargs = {'field': 'id', 'link_html': '<button class="btn btn-sm btn-outline-dark">View</button>'}
         default_kwargs.update(kwargs)
         super().__init__(**default_kwargs)
 
-    def col_setup(self):
-        self.column_defs['className'] = 'dt-' + self.kwargs.get('align', 'right')
 
-
-class JsonBooleanColumn(DatatableColumn):
+class JsonBooleanColumn(BooleanColumn):
     """Display a boolean key from a JSON field, rendered as a tick / blank (or custom choices)."""
 
-    def __init__(self, *, choices=None, replace=None, json_key=None, field=None, **kwargs):
+    default_choices = ['Yes', 'No']
+    default_replace = TICK_REPLACE
+
+    def __init__(self, *, json_key=None, field=None, **kwargs):
         if not self.initialise(locals()):
             return
+        # initialise() has already merged field / json_key into kwargs, so override in place.
+        kwargs['field'] = field if field else 'options'
         super().__init__(**kwargs)
-        self.choices = choices if choices else ['Yes', 'No']
-        replace = replace if replace else ('<i class="text-success fas fa-check-circle">&nbsp;</i>', ' ')
-        self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'}]
-        self.options['lookup'] = [(self.choices[c], r) for c, r in enumerate(replace)]
-        self.options['no_col_search'] = True
         self.json_key = json_key
-        self.field = field if field else 'options'
 
     def col_setup(self):
         self.column_defs['width'] = '60px'
 
     def row_result(self, data_dict, _page_results):
-        return self.choices[0] if data_dict[self.field].get(self.json_key) else self.choices[1]
+        # The JSON field itself may be null, not just the key.
+        return self.choices[0] if (data_dict[self.field] or {}).get(self.json_key) else self.choices[1]
 
 
 class JsonKeyColumn(DatatableColumn):
@@ -362,7 +388,7 @@ class JsonKeyColumn(DatatableColumn):
         return data_dict[self.field].get(self.kwargs['json_key'])
 
 
-class MultiMenuColumnBase(DatatableColumn):
+class MultiMenuColumnBase(NoHeadingColumn):
     """Base for a column that renders one of several per-row django-menus, chosen by row id.
 
     Subclasses build their menus (via ``add_menu``) inside ``col_setup``; that needs the table /
@@ -391,7 +417,6 @@ class MultiMenuColumnBase(DatatableColumn):
                         url_kwargs={'slug': DUMMY_ID}, css_classes='btn btn-sm btn-outline-dark', menu_display='')
 
     def col_setup(self):
-        self.title = ''
         self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'},
                                   {'function': 'Replace', 'var': DUMMY_ID, 'column': 'id'}]
         self.options['lookup'] = self.menus

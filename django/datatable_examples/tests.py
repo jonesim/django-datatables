@@ -17,7 +17,10 @@ from datatable_examples.views.server_side import (JsonBooleanColumn, ServerSideJ
                                                   ServerSideTotalsFilter)
 from django_datatables.columns import ManyToManyColumn
 from django_datatables.columns import (ColumnLink, DatatableColumn, DateColumn, DateTimeColumn, TickColumn,
-                                       LocaleCurrencyColumn, ExcelDatatableColumn)
+                                       LocaleCurrencyColumn, ExcelDatatableColumn, CurrencyColumn,
+                                       CurrencyPenceColumn, MultiCurrencyColumn, ZeroPenceColumn, MonthColumn,
+                                       YearMonthColumn, AlignColumnLink, ViewLink, SelectColumn,
+                                       MultiMenuColumnBase, DatatableColumnError)
 from django_datatables.columns import JsonBooleanColumn as LibraryJsonBooleanColumn
 from django_datatables.filters import DatatableFilter
 from django_datatables.datatables import DatatableTable, DatatableView
@@ -883,3 +886,113 @@ class TestPortedColumns(TestCase):
         table = make_table()
         f = DatatableFilter('pivot', table, columns=['surname', 'first_name'])
         self.assertEqual([t[1] for t in f.column_titles()], ['surname', 'first_name'])
+
+
+class TestMergedColumns(TestCase):
+    """Behaviour of the currency / boolean / link column families after de-duplication."""
+
+    def test_currency_columns_share_a_divisor(self):
+        pence = CurrencyPenceColumn(column_name='amount', field='amount', model=Payment)
+        units = CurrencyColumn(column_name='amount', field='amount', model=Payment)
+        self.assertEqual(pence.row_result({'amount': 12345}, {}), '123.45')
+        self.assertEqual(units.row_result({'amount': 123.45}, {}), '123.45')
+        for col in (pence, units):
+            self.assertEqual(col.column_defs['className'], 'dt-right')
+            self.assertIsNone(col.row_result({'amount': None}, {}))
+            self.assertIsNone(col.row_result({}, {}))
+
+    def test_currency_column_keeps_width_kwarg(self):
+        # setup_kwargs used to replace column_defs wholesale, discarding width.
+        col = CurrencyPenceColumn(column_name='amount', field='amount', width='80px', model=Payment)
+        self.assertEqual(col.column_defs['width'], '80px')
+        self.assertEqual(col.column_defs['className'], 'dt-right')
+
+    def test_zero_pence_column_formats_missing_value(self):
+        col = ZeroPenceColumn(column_name='amount', field='amount', model=Payment)
+        self.assertEqual(col.row_result({'amount': 12345}, {}), '123.45')
+        self.assertEqual(col.row_result({'amount': None}, {}), '0.00')
+
+    def test_multi_currency_column_honours_pennies(self):
+        # pennies=True means the value is already in whole units, so it must not be divided.
+        col = MultiCurrencyColumn(column_name='amount', field=['amount', 'currency'], model=Payment)
+        self.assertEqual(col.row_result({'amount': 12345, 'currency': 'USD'}, {}), (123.45, 'USD'))
+        whole = MultiCurrencyColumn(column_name='amount', field=['amount', 'currency'], pennies=True, model=Payment)
+        self.assertEqual(whole.row_result({'amount': 123, 'currency': 'USD'}, {}), (123, 'USD'))
+
+    def test_multi_currency_column_render_matches_locale_column(self):
+        col = MultiCurrencyColumn(column_name='amount', field=['amount', 'currency'], model=Payment)
+        render = col.options['render'][0]
+        self.assertTrue(render['multi_currency'])
+        self.assertEqual(render['function'], 'currency')
+        self.assertEqual(render['currency_code'], 'GBP')
+        self.assertEqual(render['locale'], 'en_GB')
+        self.assertNotIn('multi_currency', LocaleCurrencyColumn(column_name='amount', field='amount',
+                                                                model=Payment).options['render'][0])
+
+    def test_month_and_year_month_columns_agree(self):
+        month = MonthColumn(column_name='m', field='date_entered', model=Person)
+        year_month = YearMonthColumn(column_name='ym', field='date_entered', model=Person)
+        data = {'date_entered': datetime.date(2020, 1, 10)}
+        self.assertEqual(month.row_result(data, {}), '2020 01')
+        self.assertEqual(year_month.row_result(data, {}), month.row_result(data, {}))
+        self.assertTrue(year_month.options['hidden'])
+        self.assertNotIn('hidden', month.options)
+        self.assertEqual(year_month.row_result({'date_entered': None}, {}), '')
+
+    def test_column_link_align_kwarg(self):
+        plain = ColumnLink(column_name='name', field='name', url_name='column_visibility', model=Company)
+        self.assertNotIn('className', plain.column_defs)
+        aligned = ColumnLink(column_name='name', field='name', url_name='column_visibility', align='center',
+                             model=Company)
+        self.assertEqual(aligned.column_defs['className'], 'dt-center')
+
+    def test_align_column_link_and_view_link_defaults(self):
+        centre = AlignColumnLink(column_name='name', field='name', url_name='column_visibility', model=Company)
+        self.assertEqual(centre.column_defs['className'], 'dt-center')
+        view = ViewLink(column_name='name', url_name='column_visibility', model=Company)
+        self.assertEqual(view.column_defs['className'], 'dt-right')
+        self.assertIn('View', view.options['render'][0]['html'])
+        # An explicit align= still wins over the class default.
+        left = ViewLink(column_name='name', url_name='column_visibility', align='left', model=Company)
+        self.assertEqual(left.column_defs['className'], 'dt-left')
+
+    def test_view_link_has_no_dead_css_class_kwarg(self):
+        view = ViewLink(column_name='name', url_name='column_visibility', model=Company)
+        self.assertNotIn('css_class', view.options)
+
+    def test_tick_column_replace_overridable(self):
+        col = TickColumn(column_name='active', field='id', replace=('Y', 'N'), model=Person)
+        self.assertEqual(dict(col.options['lookup'])['true'], 'Y')
+
+    def test_json_boolean_column_custom_choices(self):
+        col = LibraryJsonBooleanColumn(column_name='newsletter', json_key='newsletter', field='options',
+                                       choices=['On', 'Off'], model=Person)
+        self.assertEqual(col.row_result({'options': {'newsletter': True}}, {}), 'On')
+        self.assertEqual(col.row_result({'options': {}}, {}), 'Off')
+        self.assertEqual(col.column_defs['width'], '60px')
+        self.assertTrue(col.options['no_col_search'])
+
+    def test_multi_menu_column_base_is_a_no_heading_column(self):
+        col = MultiMenuColumnBase(column_name='menu', field='id', model=Person)
+        self.assertEqual(col.title, '')
+        self.assertEqual(col.column_defs['width'], '120px')
+        self.assertFalse(col.column_defs['orderable'])
+        self.assertTrue(col.options['no_col_search'])
+        self.assertEqual(col.options['lookup'], [])
+
+    def test_multi_menu_column_base_requires_a_view_for_menus(self):
+        col = MultiMenuColumnBase(column_name='menu', field='id', model=Person)
+        with self.assertRaises(DatatableColumnError):
+            col.add_menu(1, ('column_visibility', 'View'))
+
+    def test_json_boolean_column_handles_null_json_field(self):
+        col = LibraryJsonBooleanColumn(column_name='newsletter', json_key='newsletter', field='options', model=Person)
+        self.assertEqual(col.row_result({'options': None}, {}), 'No')
+
+    def test_demo_json_boolean_column_is_the_library_one(self):
+        # The demo used to carry its own near-identical copy.
+        self.assertIs(JsonBooleanColumn, LibraryJsonBooleanColumn)
+
+    def test_select_column_title_overridable(self):
+        self.assertIn('Select all', SelectColumn(column_name='sel', model=Person).title)
+        self.assertEqual(SelectColumn(column_name='sel', title='', model=Person).title, '')

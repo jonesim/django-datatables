@@ -3,30 +3,30 @@ import json
 from django_datatables.columns.column_base import ColumnBase
 
 
-class CurrencyPenceColumn(ColumnBase):
-
-    def row_result(self, data, _page_data):
-        try:
-            return '{:.2f}'.format(data[self.field] / 100.0)
-        except (KeyError, TypeError):
-            return
-
-    def setup_kwargs(self, kwargs):
-        super().setup_kwargs(kwargs)
-        self.column_defs = {'className': 'dt-right'}
-
-
 class CurrencyColumn(ColumnBase):
+    """Right aligned currency rendered server-side to two decimal places.
+
+    ``divisor`` scales the stored value before rendering; the default of 1 renders a value
+    already held in whole units. See ``CurrencyPenceColumn`` for a value held in pennies.
+    """
+
+    divisor = 1
 
     def row_result(self, data, _page_data):
         try:
-            return '{:.2f}'.format(data[self.field])
+            return '{:.2f}'.format(data[self.field] / self.divisor)
         except (KeyError, TypeError):
             return
 
     def setup_kwargs(self, kwargs):
         super().setup_kwargs(kwargs)
-        self.column_defs = {'className': 'dt-right'}
+        self.column_defs['className'] = 'dt-right'
+
+
+class CurrencyPenceColumn(CurrencyColumn):
+    """CurrencyColumn for a value stored in pennies."""
+
+    divisor = 100.0
 
 
 class LocaleCurrencyColumn(ColumnBase):
@@ -41,6 +41,7 @@ class LocaleCurrencyColumn(ColumnBase):
 
     default_currency_code = 'GBP'
     default_locale = 'en_GB'
+    multi_currency = False
 
     def row_result(self, data, _page_data):
         if isinstance(self.field, list):
@@ -58,12 +59,15 @@ class LocaleCurrencyColumn(ColumnBase):
         super().setup_kwargs(kwargs)
         self.column_defs['className'] = 'dt-right'
         self.divisor = 1 if kwargs.get('pennies') else 100.0
-        self.options['render'] = [{'function': 'currency',
-                                   'column': self.column_name,
-                                   'var': '%1%',
-                                   'currency_code': kwargs.get('currency_code') or self.default_currency_code,
-                                   'decimal_places': kwargs.get('decimal_places', 2),
-                                   'locale': kwargs.get('locale') or self.default_locale}]
+        render = {'function': 'currency',
+                  'column': self.column_name,
+                  'var': '%1%',
+                  'currency_code': kwargs.get('currency_code') or self.default_currency_code,
+                  'decimal_places': kwargs.get('decimal_places', 2),
+                  'locale': kwargs.get('locale') or self.default_locale}
+        if self.multi_currency:
+            render['multi_currency'] = True
+        self.options['render'] = [render]
 
     def set_currency(self):
         if hasattr(self.table, 'currency_code'):
@@ -83,14 +87,13 @@ class LocaleCurrencyColumn(ColumnBase):
         cell.number_format = '#,##0.00_-'
 
 
-class MultiCurrencyColumn(ColumnBase):
+class MultiCurrencyColumn(LocaleCurrencyColumn):
     """Currency column where each value carries its own currency: value is ``[amount, currency]``.
 
     Override ``get_symbols()`` to map a currency name to a symbol/prefix for Excel formatting.
     """
 
-    default_currency_code = 'GBP'
-    default_locale = 'en_GB'
+    multi_currency = True
 
     @classmethod
     def get_symbols(cls):
@@ -98,22 +101,12 @@ class MultiCurrencyColumn(ColumnBase):
         return {}
 
     def row_result(self, data, _page_data):
+        # Unlike LocaleCurrencyColumn the amount is left unformatted, so that excel()/xl_style()
+        # can round-trip it as a number and apply the per-currency number format.
         try:
-            return data[self.field[0]] / 100, data[self.field[1]]
+            return data[self.field[0]] / self.divisor, data[self.field[1]]
         except (TypeError, KeyError):
             return
-
-    def setup_kwargs(self, kwargs):
-        super().setup_kwargs(kwargs)
-        self.column_defs['className'] = 'dt-right'
-        self.divisor = 1 if kwargs.get('pennies') else 100.0
-        self.options['render'] = [{'function': 'currency',
-                                   'column': self.column_name,
-                                   'var': '%1%',
-                                   'multi_currency': True,
-                                   'currency_code': kwargs.get('currency_code') or self.default_currency_code,
-                                   'decimal_places': kwargs.get('decimal_places', 2),
-                                   'locale': kwargs.get('locale') or self.default_locale}]
 
     @staticmethod
     def excel(value):

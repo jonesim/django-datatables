@@ -1,6 +1,6 @@
 from datatable_examples import models
 from datatable_examples.views.base import ManualPage
-from django_datatables.columns import ColumnLink, DatatableColumn, ManyToManyColumn
+from django_datatables.columns import ColumnLink, JsonBooleanColumn, ManyToManyColumn
 from django_datatables.datatables import DatatableView
 from django_datatables.downloads.excel_download import ExcelDownload
 
@@ -111,28 +111,6 @@ class ServerSideTotalsFilter(ManualPage, DatatableView):
             'Filtered / Total columns show <code>Sum(amount)</code> per company computed with '
             'GROUP BY queries instead of row counts.'
         )}
-
-
-class JsonBooleanColumn(DatatableColumn):
-    """A key in a JSON field which is True or False, rendered as a tick icon / blank."""
-
-    def __init__(self, *, choices=None, replace=None, json_key=None, field=None, **kwargs):
-        if not self.initialise(locals()):
-            return
-        super().__init__(**kwargs)
-        self.choices = choices if choices else ['Yes', 'No']
-        replace = replace if replace else ('<i class="text-success fas fa-check-circle">&nbsp;</i>', ' ')
-        self.options['render'] = [{'function': 'ReplaceLookup', 'html': '%1%', 'var': '%1%'}]
-        self.options['lookup'] = [(self.choices[c], r) for c, r in enumerate(replace)]
-        self.options['no_col_search'] = True
-        self.json_key = json_key
-        self.field = field if field else 'options'
-
-    def col_setup(self):
-        self.column_defs['width'] = '60px'
-
-    def row_result(self, data_dict, _page_results):
-        return self.choices[0] if (data_dict[self.field] or {}).get(self.json_key) else self.choices[1]
 
 
 class ServerSideJsonColumn(ManualPage, DatatableView):
