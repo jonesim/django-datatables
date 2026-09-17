@@ -204,7 +204,8 @@ if (typeof django_datatables === 'undefined') {
         // store never stops a table drawing.
         var storage_failed = false
 
-        // DataTables_* keys are only written by filtered_datatables_legacy.js; drop them here along with it
+        // DataTables_* keys are one per table per URL, written by versions before July 2025 (and the since removed
+        // legacy build); nothing writes them now, but browsers still hold them, so a full store clears them
         function is_state_key(key) {
             return (key.indexOf('Datatable_') === 0 && !/_filter_width$/.test(key)) || key.indexOf('DataTables_') === 0
         }
