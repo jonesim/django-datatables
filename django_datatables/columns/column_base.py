@@ -5,7 +5,7 @@ from types import MethodType
 from typing import Dict, Any
 
 from django.db.models import Q
-from django.db.models.expressions import CombinedExpression
+from django.db.models.expressions import Case, F, Subquery, When
 from django.forms.widgets import Select
 
 from django_datatables.helpers import render_replace
@@ -166,27 +166,48 @@ class ColumnBase:
     def annotations_value(self, value):
         self._annotations_value = self._set_annotations(value)
 
-    def _combined_expression_annotations(self, expression):
-        if isinstance(expression.lhs, CombinedExpression):
-            self._combined_expression_annotations(expression.lhs)
-        else:
-            expression.lhs.name = self.model_path + expression.lhs.name
-        if isinstance(expression.rhs, CombinedExpression):
-            self._combined_expression_annotations(expression.rhs)
-        else:
-            expression.rhs.name = self.model_path + expression.rhs.name
+    # Parts of an annotation that resolve their own field references, so model_path must not be
+    # applied inside them: a Subquery (an Exists is one) runs against its own model, and the
+    # conditions of a Case are written by the column, which is where the path belongs.
+    opaque_annotation_expressions = (Subquery, Case, When)
+
+    def _prefix_annotation_fields(self, expression, visited):
+        """Grow every field reference inside one annotation by model_path.
+
+        An annotation is written against the model that declares it - Sum('total_sell') on a
+        column of that model - so a column pulled in through a relation needs the references in
+        it rewritten to that relation path: Sum('batch__total_sell').
+
+        An F (an OuterRef is one) is the only thing that names a field, so it is the only thing
+        rewritten; everything else is walked to find the ones that do. Notably an aggregate is
+        not one despite having a ``name`` attribute - Sum('x').name is 'Sum' - and taking that
+        for a field name renamed the aggregate instead of reaching the reference inside it.
+
+        ``visited`` carries the ids already rewritten, because an expression assembled from a
+        reused sub-expression holds the same object at several places in the tree and would
+        otherwise have the path applied to it once per place.
+        """
+        for source_expression in expression.get_source_expressions():
+            if source_expression is None or id(source_expression) in visited:
+                continue
+            if isinstance(source_expression, self.opaque_annotation_expressions):
+                continue
+            visited.add(id(source_expression))
+            if isinstance(source_expression, F):
+                source_expression.name = self.model_path + source_expression.name
+            elif hasattr(source_expression, 'get_source_expressions'):
+                self._prefix_annotation_fields(source_expression, visited)
 
     def _set_annotations(self, value):
         annotations = copy.deepcopy(value)
         if self.model_path:
             new_annotations = {}
+            # One visited set for the whole dict: deepcopy keeps a sub-expression shared between
+            # two annotations shared, so it must not be rewritten once per annotation either.
+            visited = set()
             for k in annotations:
                 new_annotations[self.model_path + k] = annotations[k]
-                for e in new_annotations[self.model_path + k].source_expressions:
-                    if isinstance(e, CombinedExpression):
-                        self._combined_expression_annotations(e)
-                    else:
-                        e.name = self.model_path + e.name
+                self._prefix_annotation_fields(new_annotations[self.model_path + k], visited)
             annotations = new_annotations
         for f in annotations:
             if self.field is None:
