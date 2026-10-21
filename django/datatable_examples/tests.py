@@ -4,11 +4,12 @@ import inspect
 import json
 from decimal import Decimal
 from io import BytesIO
+from unittest import mock
 from urllib.parse import urlencode
 
 from ajax_helpers.mixins import AjaxHelpers
 from django.contrib.auth.models import AnonymousUser
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.db.models.functions import Upper
 from django.http import QueryDict
 from django.test import RequestFactory, TestCase
@@ -1303,3 +1304,40 @@ class TestMergedColumns(TestCase):
     def test_select_column_title_overridable(self):
         self.assertIn('Select all', SelectColumn(column_name='sel', model=Person).title)
         self.assertEqual(SelectColumn(column_name='sel', title='', model=Person).title, '')
+
+
+class TestModelOrdering(TestCase):
+    """A table with no sort of its own keeps the model's Meta.ordering rather than clearing it."""
+
+    def setUp(self):
+        make_data()
+
+    def test_meta_ordering_used_when_table_sets_no_sort(self):
+        table = DatatableTable('people', model=Person)
+        table.add_columns('id', 'first_name')
+        with mock.patch.object(Person._meta, 'ordering', ['-first_name']):
+            self.assertEqual([r['first_name'] for r in table.get_query()], ['Dave', 'Carol', 'Bob', 'Alice'])
+
+    def test_explicit_order_by_wins(self):
+        table = DatatableTable('people', model=Person)
+        table.add_columns('id', 'first_name')
+        table.order_by = ['first_name']
+        with mock.patch.object(Person._meta, 'ordering', ['-first_name']):
+            self.assertEqual([r['first_name'] for r in table.get_query()], ['Alice', 'Bob', 'Carol', 'Dave'])
+
+    def test_distinct_clears_ordering(self):
+        table = DatatableTable('people', model=Person)
+        table.add_columns('id', 'first_name')
+        table.distinct = []
+        with mock.patch.object(Person._meta, 'ordering', ['-surname']):
+            self.assertFalse(table.get_query().query.order_by)
+
+    def test_meta_ordering_does_not_split_grouped_rows(self):
+        # Django ignores Meta.ordering on GROUP BY queries, so it cannot regroup an aggregate.
+        Company.objects.create(name='Duplicate', order=1)
+        Company.objects.create(name='Duplicate', order=2)
+        table = DatatableTable('companies', model=Company)
+        table.add_columns('name', 'people')
+        table.initial_values = ['name']
+        with mock.patch.object(Company._meta, 'ordering', ['order']):
+            self.assertEqual([r['name'] for r in table.get_query()].count('Duplicate'), 1)

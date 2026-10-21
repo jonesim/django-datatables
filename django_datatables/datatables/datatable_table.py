@@ -157,7 +157,9 @@ class DatatableTable:
                      else query.filter(**self.initial_filter))
         if annotations_value:
             query = query.annotate(**annotations_value).values(*[f for f in annotations_value])
-        query = query.annotate(**annotations).exclude(**self.exclude).values(*self.fields()).order_by(*self.order_by)
+        query = query.annotate(**annotations).exclude(**self.exclude).values(*self.fields())
+        if self.order_by or self.distinct is not None:
+            query = query.order_by(*self.order_by)
         if isinstance(self.filter, models.Q):
             query = query.filter(self.filter)
         else:
