@@ -245,3 +245,92 @@
 .side-filter a:hover {
     text-decoration: none;
 }
+
+/* "only" on a pivot filter row: untick every other value. Shown on hover (always on touch screens) */
+.side-filter a.filter-only {
+    display: none;
+    margin-right: 6px;
+    font-size: 11px;
+    line-height: 18px;
+    color: #007bff;
+}
+
+.filter-row:hover a.filter-only {
+    display: inline;
+}
+
+@media (hover: none) {
+    .side-filter a.filter-only {
+        display: inline;
+    }
+}
+
+/* DATATABLE_FILTER_MODE / table_options['filter_mode'] = 'include': nothing ticked already shows every row,
+   so select-all has no job */
+.fb-mode-include .all-check {
+    display: none;
+}
+
+/* Opt-in (DATATABLE_RESIZABLE_FILTER / table_options['resizable_filter']): drag the bar right of the panel */
+.side-filter-resizable .side-filter {
+    width: var(--fb-width, 300px);
+    flex-shrink: 0;
+}
+
+.side-filter-resizable .side-filter.fb-collapsed {
+    width: 0;
+}
+
+.fb-resize-handle {
+    flex: 0 0 9px;
+    align-self: stretch;
+    position: relative;
+    cursor: col-resize;
+    touch-action: none;
+}
+
+.fb-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: 3px;
+    border-radius: 2px;
+    background: transparent;
+    transition: background-color 0.15s;
+}
+
+.fb-resize-handle:hover::after,
+.fb-resizing .fb-resize-handle::after {
+    background: rgba(0, 123, 255, 0.45);
+}
+
+.side-filter.fb-collapsed + .fb-resize-handle {
+    display: none;
+}
+
+.fb-resizing,
+.fb-resizing * {
+    cursor: col-resize !important;
+    user-select: none;
+}
+
+.fb-resizing .side-filter {
+    transition: none;
+}
+
+/* Opt-in (DATATABLE_STICKY_FILTER / table_options['sticky_filter']): the panel stays in view while the table scrolls.
+   Set --fb-sticky-top to clear a sticky navbar */
+.side-filter-sticky .side-filter,
+.side-filter-sticky .collapsed-bar {
+    position: sticky;
+    top: var(--fb-sticky-top, 0px);
+    align-self: flex-start;
+}
+
+.side-filter-sticky .side-filter {
+    max-height: calc(100vh - var(--fb-sticky-top, 0px) - 8px);
+    overflow-x: hidden;
+    overflow-y: auto;
+}

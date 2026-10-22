@@ -295,6 +295,8 @@ if (typeof django_datatables === 'undefined') {
         }
 
         function add_filter(table_id, filter) {
+            // lets a filter find its table before postInit has given it pTable (server_state runs that early)
+            filter.dt_table_id = table_id
             add_to_setup_list(table_id, 'filters', filter)
         }
 
@@ -461,16 +463,53 @@ if (typeof django_datatables === 'undefined') {
             $(badge).html(this.filter_calcs.badge_string(key))
         }
 
+        // 'exclude': every value starts ticked and unticking one hides it.
+        // 'include': nothing ticked shows every row, ticking values shows only those.
+        // A filter whose ticks mean something else sets fixed_mode and ignores the table's mode.
+        FilterBase.prototype.filter_mode = function () {
+            if (this.fixed_mode) return this.fixed_mode
+            var table = this.pTable || DataTables[this.dt_table_id]
+            return table ? table.filter_mode() : 'exclude'
+        }
+
+        // the mode a saved state's ticks were made in; states from before modes existed were all 'exclude'
+        FilterBase.prototype.saved_mode = function (loaded_state) {
+            if (loaded_state === undefined) {
+                try {
+                    loaded_state = this.pTable.table.api().state.loaded()
+                } catch (e) {
+                }
+            }
+            return loaded_state && loaded_state.filter_mode === 'include' ? 'include' : 'exclude'
+        }
+
 
         function PivotFilter(column_no, html_id, options) {
 
             this.storage_key = 'pivot_filter'
             django_datatables.FilterBase.call(this, column_no, html_id, options)
 
-            this.load_state = function (state_data) {
+            this.load_state = function (state_data, mode) {
+                // a value missing from the state (new since it was saved) is shown when unticking hides,
+                // and left out when ticking shows
+                var missing = (mode || this.filter_mode()) === 'exclude'
                 $('.filtercheck', '#' + this.html_id).each(function () {
-                    $(this).prop('checked', state_data[$(this).attr('data-value')])
+                    var key = $(this).attr('data-value')
+                    $(this).prop('checked', Object.prototype.hasOwnProperty.call(state_data, key) ? state_data[key] : missing)
                 })
+            }
+
+            // Same rows before and after: all ticked (exclude) and none ticked (include) both mean no filter
+            this.switch_mode = function (mode) {
+                if (this.fixed_mode) return
+                var boxes = $('.filtercheck', '#' + this.html_id)
+                var ticked = boxes.filter(':checked').length
+                if (mode === 'include' && ticked === boxes.length) {
+                    boxes.prop('checked', false)
+                } else if (mode === 'exclude' && ticked === 0) {
+                    boxes.prop('checked', true)
+                }
+                this.buildfilter(false)
             }
 
             this.save_data = function () {
@@ -482,6 +521,7 @@ if (typeof django_datatables === 'undefined') {
             }
 
             this.filter = function (data) {
+                if (this.filter_all) return true
                 var col_data = data[this.column_no]
                 if (typeof (col_data) === 'number') col_data = col_data.toString();
                 if (this.filter_data.indexOf(col_data) < 0) {
@@ -505,7 +545,16 @@ if (typeof django_datatables === 'undefined') {
                 for (var c = 0; c < checkboxes.length; c++) {
                     this.filter_data.push(decodeURI($(checkboxes[c]).attr("data-value")))
                 }
-                if (this.filter_data.length === Object.keys(this.filter_calcs.calcs).length) {
+                var include = this.filter_mode() === 'include'
+                this.filter_all = include && this.filter_data.length === 0
+                // when ticking shows, "only" would just repeat a tick, so it's offered only on the ticked rows
+                // while several are ticked
+                var several = this.filter_data.length > 1
+                $('.filter-only', '#' + this.html_id).each(function () {
+                    var ticked = $(this).closest('.filter-row').find('.filtercheck').prop('checked')
+                    $(this).toggleClass('d-none', include && !(several && ticked))
+                })
+                if (this.filter_all || this.filter_data.length === Object.keys(this.filter_calcs.calcs).length) {
                     status = 'all'
                 } else if (this.filter_data.length === 0) {
                     status = 'none'
@@ -528,7 +577,21 @@ if (typeof django_datatables === 'undefined') {
                 $(".filtercheck", context).change(this.this_fn('buildfilter', true))
                 $(".all-check", context).click(this.this_fn('checkall', true))
                 $(".none-check", context).click(this.this_fn('checkall', false))
+                var self = this
+                $(".filter-only", context).click(function () {
+                    var value = $(this).attr('data-value')
+                    $('.filtercheck', context).each(function () {
+                        $(this).prop('checked', $(this).attr('data-value') === value)
+                    })
+                    self.buildfilter(true)
+                })
                 this.restore_state()
+                // the rows are rendered ticked, which in 'include' would be a filter on every value; ticks saved in
+                // the other mode (the table's mode can depend on the user) move over showing the same rows
+                var mode = this.filter_mode()
+                if (mode === 'include' || this.saved_mode() !== mode) {
+                    this.switch_mode(mode)
+                }
                 this.buildfilter(false)
             }
 
@@ -544,12 +607,15 @@ if (typeof django_datatables === 'undefined') {
                     $(this).prop('checked', true)
                 }).promise().done(function () {
                     try {
-                        state_data = self.pTable.initsetup.colOptions[self.column_no].initial_filter
-                        self.load_state(state_data);
-                        self.buildfilter(true)
+                        // initial_filter lists values to untick, so it always reads as 'exclude'
+                        var state_data = self.pTable.initsetup.colOptions[self.column_no].initial_filter
+                        self.load_state(state_data, 'exclude');
                     } catch (e) {
-                        self.buildfilter(true)
                     }
+                    if (self.filter_mode() === 'include') {
+                        self.switch_mode('include')
+                    }
+                    self.buildfilter(true)
                 })
             }
         }
@@ -595,8 +661,9 @@ if (typeof django_datatables === 'undefined') {
             }
 
             this.server_state = function (loaded_state) {
+                var include = this.filter_mode() === 'include'
                 if (this.dom_built) {
-                    if (this.filter_data.length === Object.keys(this.filter_calcs.calcs).length) return null
+                    if (this.filter_all || this.filter_data.length === Object.keys(this.filter_calcs.calcs).length) return null
                     return {type: 'pivot', values: this.filter_data}
                 }
                 // Before the DOM exists derive the selection from the saved
@@ -616,7 +683,9 @@ if (typeof django_datatables === 'undefined') {
                         all_checked = false
                     }
                 }
-                if (all_checked) return null
+                if (all_checked || (values.length === 0 && (include || this.saved_mode(loaded_state) === 'include'))) {
+                    return null
+                }
                 return {type: 'pivot', values: values}
             }
         }
@@ -1138,6 +1207,11 @@ if (typeof django_datatables === 'undefined') {
                     this.filters[i][function_name](data)
                 }
             }
+        }
+
+        // set in Python (DatatableTable.filter_mode); the saved state records which mode its ticks were made in
+        PythonTable.prototype.filter_mode = function () {
+            return this.initsetup.tableOptions.filter_mode === 'include' ? 'include' : 'exclude'
         }
 
         PythonTable.prototype.exec_plugins = function (function_name, data, extra_data) {

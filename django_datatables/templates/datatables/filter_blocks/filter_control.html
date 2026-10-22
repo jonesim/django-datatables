@@ -1,6 +1,7 @@
 {% load datatable_tags %}
-<div class="d-flex">
-    <div id="fb-{{ datatable.table_id }}" class="side-filter card{% if datatable.hidden_side_bar %} fb-collapsed{% endif %}">
+{% with resizable=datatable.resizable_filter sticky=datatable.sticky_filter filter_mode=datatable.filter_mode %}
+<div class="d-flex{% if resizable %} side-filter-resizable{% endif %}{% if sticky %} side-filter-sticky{% endif %}">
+    <div id="fb-{{ datatable.table_id }}" class="side-filter card{% if filter_mode == 'include' %} fb-mode-include{% endif %}{% if datatable.hidden_side_bar %} fb-collapsed{% endif %}">
         <div class="py-1 px-2">{{ filter_title }}
             <div class="float-right">
                 {{ datatable.filter_menu }}
@@ -17,6 +18,9 @@
             </div>
         </div>
     </div>
+    {% if resizable %}
+        <div id="fb-h-{{ datatable.table_id }}" class="fb-resize-handle" title="Drag to resize, double-click to hide"></div>
+    {% endif %}
     <div id="fb-c-{{ datatable.table_id }}" class="collapsed-bar {% if not datatable.hidden_side_bar %} fb-collapsed{% endif %}">
         {{ datatable.collapsed_filter_menu }}
     </div>
@@ -70,6 +74,8 @@
             }
             this.save_state = function(data){
                 data.hidden_side_bar=$('#fb-' + this.pTable.table_id).hasClass('fb-collapsed')
+                // which way the pivot ticks were made, so a page opened in the other mode can move them over
+                data.filter_mode = this.pTable.filter_mode()
             }
             this.load_state = function (state_data){
                 show_hide_filter_block('{{ datatable.table_id }}', !state_data.hidden_side_bar)
@@ -88,8 +94,75 @@
             }
         }
     }
-    django_datatables.add_plugin('{{ datatable.table_id }}', clear_plugin)
+    django_datatables.add_plugin('{{ datatable.table_id }}', clear_plugin);
+    {% if resizable %}
+        (function () {
+            // The panel's width is a per-browser preference, kept apart from the table state (which resets each session)
+            var table_id = '{{ datatable.table_id }}';
+            var panel = $('#fb-' + table_id);
+            var handle = $('#fb-h-' + table_id);
+            var storage_key = '{{ datatable.local_storage_key }}_filter_width';
+            var min_width = 200, max_width = 520;
+
+            function set_width(width) {
+                width = Math.max(min_width, Math.min(max_width, Math.round(width)));
+                panel[0].style.setProperty('--fb-width', width + 'px');
+                return width;
+            }
+
+            function adjust_table() {
+                var table = django_datatables.DataTables[table_id];
+                if (table && table.table) {
+                    var api = table.table.api();
+                    api.columns.adjust();
+                    if (api.fixedHeader) {
+                        api.fixedHeader.adjust();
+                    }
+                }
+            }
+
+            try {
+                var saved = parseInt(localStorage.getItem(storage_key));
+                if (saved) {
+                    set_width(saved);
+                }
+            } catch (e) {
+            }
+
+            handle.on('pointerdown', function (e) {
+                if (e.button !== 0) {
+                    return;
+                }
+                e.preventDefault();
+                var start_x = e.pageX;
+                var start_width = panel.outerWidth();
+                var width = start_width;
+                $('body').addClass('fb-resizing');
+                $(document).on('pointermove.fb_resize', function (e) {
+                    width = start_width + e.pageX - start_x;
+                    set_width(width);
+                }).on('pointerup.fb_resize pointercancel.fb_resize', function () {
+                    $(document).off('.fb_resize');
+                    $('body').removeClass('fb-resizing');
+                    if (width < min_width - 60) {
+                        // dragged well past the minimum: hide the panel, and keep the width it had before
+                        set_width(start_width);
+                        show_hide_filter_block(table_id, false, true);
+                    } else {
+                        try {
+                            localStorage.setItem(storage_key, set_width(width));
+                        } catch (e) {
+                        }
+                    }
+                    adjust_table();
+                });
+            }).on('dblclick', function () {
+                show_hide_filter_block(table_id, false, true);
+            });
+        })();
+    {% endif %}
     </script>
 {% endblock %}
+{% endwith %}
 
 {% block remove_registration %}{% endblock %}

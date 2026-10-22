@@ -26,6 +26,8 @@
 
     django_datatables.SelectedFilter = function (column_no, html_id, options) {
         django_datatables.PivotFilter.call(this, column_no, html_id, options);
+        // Selected / Not selected keep their ticks whichever way the table's other filters work
+        this.fixed_mode = 'exclude';
         this.table_id = '{{ table.table_id }}';
         this.filter_calcs.calcs = {'Selected': 0, 'Not selected': 0};
         this.filter_calcs.table_id = this.table_id;

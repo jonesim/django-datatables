@@ -5,9 +5,11 @@ from inspect import isclass
 from typing import TypeVar, Dict
 
 from ajax_helpers.utils import random_string
+from django.conf import settings
 from django.db import models
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
+from django.utils.module_loading import import_string
 from django.utils.safestring import mark_safe
 from django_menus.menu import MenuItem, HtmlMenu
 
@@ -303,6 +305,31 @@ class DatatableTable:
             return self.session_or_default_state().get('hidden_side_bar')
         return self.table_options.get('hidden_side_bar', False)
 
+    def side_bar_option(self, option, setting):
+        """Opt-in side bar features. table_options[option] wins, else settings.<setting>, which may be a bool or the
+        dotted path of a function taking the table (e.g. to turn a feature on per user)."""
+        if option in self.table_options:
+            return bool(self.table_options[option])
+        value = getattr(settings, setting, False)
+        if isinstance(value, str):
+            value = import_string(value)(self)
+        return bool(value)
+
+    def resizable_filter(self):
+        return self.side_bar_option('resizable_filter', 'DATATABLE_RESIZABLE_FILTER')
+
+    def sticky_filter(self):
+        return self.side_bar_option('sticky_filter', 'DATATABLE_STICKY_FILTER')
+
+    def filter_mode(self):
+        """How pivot filters tick: 'exclude' (every value starts ticked, untick to hide) or 'include' (nothing ticked
+        shows every row, tick values to show only those). table_options['filter_mode'] wins, else
+        settings.DATATABLE_FILTER_MODE: either mode, or the dotted path of a function taking the table."""
+        mode = self.table_options.get('filter_mode', getattr(settings, 'DATATABLE_FILTER_MODE', 'exclude'))
+        if mode not in ('include', 'exclude'):
+            mode = import_string(mode)(self)
+        return 'include' if mode == 'include' else 'exclude'
+
     def render(self):
         rendered_strings = []
         for p in self.plugins:
@@ -328,6 +355,7 @@ class DatatableTable:
     def col_def_str(self):
         self.setup_column_id()
         options = dict(self.table_options)
+        options['filter_mode'] = self.filter_mode()
         request = getattr(self.view, 'request', None)
         if self.table_data is not None:
             options['data'] = self.get_table_array(request, self.table_data)

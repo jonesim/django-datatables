@@ -47,6 +47,7 @@ CHAPTERS = (
         PageRef('custom_js_filter', 'Custom JavaScript Filter'),
         PageRef('search_boxes', 'Search Boxes'),
         PageRef('modal_filter', 'Modal Filter'),
+        PageRef('filter_panel_options', 'Filter Panel Options'),
     )),
     Chapter('Server-side Tables', (
         PageRef('server_side', 'Pagination & Search'),

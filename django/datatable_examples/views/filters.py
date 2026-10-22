@@ -40,6 +40,37 @@ class PivotSelect2Filters(ManualPage, DatatableView):
         )}
 
 
+class FilterPanelOptions(ManualPage, DatatableView):
+    model = models.Person
+    page_title = 'Filter Panel Options'
+
+    @staticmethod
+    def setup_table(table):
+        table.table_options.update({'filter_mode': 'include', 'resizable_filter': True, 'sticky_filter': True})
+        table.add_columns(
+            'id',
+            'first_name',
+            ('company__name', {'title': 'Company Name'}),
+            'title_model',
+        )
+        table.add_js_filters('pivot', 'title_model')
+        table.add_js_filters('pivot', 'company__name')
+
+    def add_to_context(self, **kwargs):
+        return {'description': (
+            'Opt-in behaviour for the filter panel, each set per table in <code>table_options</code> or for '
+            'every table with a setting (a bool, or the dotted path of a function taking the table). '
+            '<b>filter_mode</b> (<code>DATATABLE_FILTER_MODE</code>) sets how pivot filters tick: '
+            '<code>exclude</code> (the default) starts every value ticked and unticking one hides it; '
+            '<code>include</code>, used here, starts with nothing ticked showing every row, and ticking values '
+            'shows only those. Ticks saved in one mode are moved over when the table opens in the other. '
+            'Hover a pivot row for <i>only</i>. '
+            '<b>resizable_filter</b> (<code>DATATABLE_RESIZABLE_FILTER</code>) lets you drag the bar right of '
+            'the panel to resize it, or double-click it to hide the panel. <b>sticky_filter</b> '
+            '(<code>DATATABLE_STICKY_FILTER</code>) keeps the panel in view while the table scrolls.'
+        )}
+
+
 class TagFilter(ManualPage, DatatableView):
     model = models.Company
     template_name = 'datatable_examples/wide_filter.html'
