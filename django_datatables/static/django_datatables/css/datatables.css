@@ -191,6 +191,27 @@
     text-decoration: none;
 }
 
+/* A filter's title icons (select all / none, fold) each get a 24px target, so a click doesn't miss them. The filter
+   itself is dragged by its title to reorder it */
+.filter-header {
+    cursor: grab;
+}
+
+.filter-header .filter-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    vertical-align: middle;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.filter-header .filter-header-icon:hover {
+    background-color: rgba(0, 0, 0, 0.07);
+}
+
 .filter-all .all-check, .filter-none .none-check {
     color: darkgray;
     pointer-events: none;
@@ -691,7 +712,7 @@ table.dataTable.dt-style-card tfoot th {
 }
 
 .filter-control.dt-style-card .filter-header {
-    padding: 7px 10px !important;
+    padding: 5px 6px 5px 10px !important;
     margin: 0;
     background: var(--dt-head-bg);
     border: 0;
@@ -724,8 +745,8 @@ table.dataTable.dt-style-card tfoot th {
 }
 
 .filter-control.dt-style-card .filter-header-icon {
-    font-size: 13px;
-    margin: 0 0 0 6px;
+    font-size: 14px;
+    margin: 0 0 0 2px;
 }
 
 /* select all / none only while the pointer is over the filter (always on touch screens) */

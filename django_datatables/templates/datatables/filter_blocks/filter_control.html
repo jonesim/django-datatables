@@ -35,7 +35,13 @@
             ajax_helpers.post_json({data:{ajax_method: 'datatable_columns', datatable: '{{ datatable.table_id }}'}})
         })
 
-        $("#{{ datatable.table_id }}-filter-block").sortable();
+        // filters are reordered by dragging their title, never from its icons, and only once the pointer has moved a
+        // few px, so a slightly missed click on an icon doesn't pick the filter up
+        $("#{{ datatable.table_id }}-filter-block").sortable({
+            handle: '.filter-header',
+            cancel: 'a, input, textarea, button, select, option',
+            distance: 5
+        });
         $("#{{ datatable.table_id }}-filter-block").disableSelection();
         function collapse_all(html_id) {
             $("#" + html_id + "-filter-block .card-body").collapse('hide')
