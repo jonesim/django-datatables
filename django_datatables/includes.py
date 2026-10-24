@@ -18,9 +18,9 @@ class DataTables(SourceBase):
 
 class FilteredDataTables(SourceBase):
     static_path = 'django_datatables/'
-    js_filename = 'filtered-datatable.js'
+    js_filename = ['filtered-datatable.js', 'filter-panel.js']
     css_filename = 'datatables.css'
-    legacy_js = ['runtime.js', 'filtered_datatables_legacy.js']
+    legacy_js = ['runtime.js', 'filtered_datatables_legacy.js', 'filter-panel.js']
 
 
 class Moment(SourceBase):

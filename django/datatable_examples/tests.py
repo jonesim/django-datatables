@@ -1421,3 +1421,47 @@ class TestTableStyleOptions(TestCase):
         table = self.table(table_style='card')
         table.table_class()
         self.assertNotIn('dt-style-card', table.table_classes)
+
+
+class TestSortableFilters(TestCase):
+
+    def table(self, **options):
+        table = DatatableTable('people', model=Person, table_options=options)
+        table.add_columns('id', 'first_name')
+        return table
+
+    def test_on_by_default(self):
+        self.assertTrue(self.table().sortable_filters())
+
+    def test_turned_off(self):
+        self.assertFalse(self.table(sortable_filters=False).sortable_filters())
+        with self.settings(DATATABLE_SORTABLE_FILTERS=False):
+            self.assertFalse(self.table().sortable_filters())
+            self.assertTrue(self.table(sortable_filters=True).sortable_filters())
+
+
+class TestFilterOrderKey(TestCase):
+    """A saved filter order names each filter by DatatableFilter.order_key, which must not change between page loads"""
+
+    def table(self):
+        table = DatatableTable('people', model=Person)
+        table.add_columns('id', 'first_name', 'title_model')
+        table.add_js_filters('pivot', 'title_model')
+        table.add_js_filters('select2', 'first_name')
+        table.add_js_filters('pivot', 'title_model')
+        return table
+
+    def test_same_on_every_page_load(self):
+        first, second = self.table(), self.table()
+        self.assertEqual([f.order_key() for f in first.js_filter_list], [f.order_key() for f in second.js_filter_list])
+        self.assertNotEqual([f.html_id for f in first.js_filter_list], [f.html_id for f in second.js_filter_list])
+
+    def test_names_template_and_column_and_numbers_repeats(self):
+        keys = [f.order_key() for f in self.table().js_filter_list]
+        self.assertEqual(keys, ['datatables/filter_blocks/pivot_filter.html:title_model',
+                                'datatables/filter_blocks/select2_filter.html:first_name',
+                                'datatables/filter_blocks/pivot_filter.html:title_model:1'])
+
+    def test_rendered_on_the_block(self):
+        f = self.table().js_filter_list[1]
+        self.assertIn(f'data-filter-key="{f.order_key()}"', f.render())

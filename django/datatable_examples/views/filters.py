@@ -53,6 +53,7 @@ class FilterPanelOptions(ManualPage, DatatableView):
         ('filter_mode', 'Pivot filters', [('include', 'Tick to show'), ('exclude', 'Untick to hide')]),
         ('resizable_filter', 'Resizable', [(True, 'On'), (False, 'Off')]),
         ('sticky_filter', 'Sticky panel', [(True, 'On'), (False, 'Off')]),
+        ('sortable_filters', 'Drag to reorder', [(True, 'On'), (False, 'Off')]),
         ('sticky_header', 'Sticky header', [(False, 'Off'), (True, 'On')]),
         ('table_style', 'Style', [('default', 'Default'), ('card', 'Card')]),
     ]
@@ -100,6 +101,8 @@ class FilterPanelOptions(ManualPage, DatatableView):
             'the panel to resize it, or double-click it to hide the panel. <b>sticky_filter</b> '
             '(<code>DATATABLE_STICKY_FILTER</code>) keeps the panel in view while the table scrolls, and '
             '<b>sticky_header</b> (<code>DATATABLE_STICKY_HEADER</code>) does the same for the column headers. '
+            '<b>sortable_filters</b> (<code>DATATABLE_SORTABLE_FILTERS</code>, on unless turned off) lets you '
+            'drag a filter by its title to reorder the filters. '
             '<b>table_style</b> (<code>DATATABLE_STYLE</code>) switches between the default look and the card '
             'style (see <i>Layout &rsaquo; Card Style &amp; Sticky Headers</i>).'
         )}

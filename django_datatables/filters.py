@@ -51,11 +51,21 @@ class DatatableFilter:
             'filter_title': self.filter_title,
             'table': self.datatable,
             'collapsed': self.collapsed,
-            'kwargs': self.kwargs
+            'kwargs': self.kwargs,
+            'order_key': self.order_key(),
         }
         if self.column:
             context['column_no'] = self.datatable.find_column(self.column.column_name)[1]
         return context
+
+    def order_key(self):
+        """Names the filter in a saved filter order: its template and column (or title), which stay the same from one
+        page load to the next where html_id does not. A repeat of the same key gets its count added"""
+        def key(f):
+            return f"{getattr(f, 'template', type(f).__name__)}:{f.column.column_name if f.column else f.filter_title}"
+        filters = self.datatable.js_filter_list
+        repeats = sum(1 for f in filters[:filters.index(self)] if key(f) == key(self)) if self in filters else 0
+        return key(self) + (f':{repeats}' if repeats else '')
 
     def column_titles(self):
         """Resolve the ``columns`` kwarg to a list of (title, column_name, column_no) tuples."""

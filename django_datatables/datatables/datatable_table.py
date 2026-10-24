@@ -310,12 +310,12 @@ class DatatableTable:
             return self.session_or_default_state().get('hidden_side_bar')
         return self.table_options.get('hidden_side_bar', False)
 
-    def side_bar_option(self, option, setting):
-        """Opt-in features. table_options[option] wins, else settings.<setting>, which may be a bool or the
+    def side_bar_option(self, option, setting, default=False):
+        """Optional features. table_options[option] wins, else settings.<setting>, which may be a bool or the
         dotted path of a function taking the table (e.g. to turn a feature on per user)."""
         if option in self.table_options:
             return bool(self.table_options[option])
-        value = getattr(settings, setting, False)
+        value = getattr(settings, setting, default)
         if isinstance(value, str):
             value = import_string(value)(self)
         return bool(value)
@@ -325,6 +325,10 @@ class DatatableTable:
 
     def sticky_filter(self):
         return self.side_bar_option('sticky_filter', 'DATATABLE_STICKY_FILTER')
+
+    def sortable_filters(self):
+        """Filters in the side panel can be dragged by their title to reorder them. On unless turned off"""
+        return self.side_bar_option('sortable_filters', 'DATATABLE_SORTABLE_FILTERS', default=True)
 
     def sticky_header(self):
         """Column headers stay in view while the page scrolls, below a sticky navbar (--dt-sticky-top)"""

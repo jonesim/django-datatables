@@ -191,12 +191,7 @@
     text-decoration: none;
 }
 
-/* A filter's title icons (select all / none, fold) each get a 24px target, so a click doesn't miss them. The filter
-   itself is dragged by its title to reorder it */
-.filter-header {
-    cursor: grab;
-}
-
+/* A filter's title icons (select all / none, fold) each get a 24px target, so a click doesn't miss them */
 .filter-header .filter-header-icon {
     display: inline-flex;
     align-items: center;
@@ -210,6 +205,47 @@
 
 .filter-header .filter-header-icon:hover {
     background-color: rgba(0, 0, 0, 0.07);
+}
+
+/* On unless turned off (DATATABLE_SORTABLE_FILTERS / table_options['sortable_filters']): a filter is dragged by its
+   title to reorder the filters (filtered-datatable.js sortable_filters). The title neither selects text nor scrolls
+   the page on a touch screen, so the drag can start */
+.filter-sortable .filter-header {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.filter-sortable .filter-header .filter-header-icon {
+    touch-action: manipulation;
+}
+
+/* the filter being dragged follows the pointer above the panel, and a gap shows where it will go */
+.filter-block.filter-dragging {
+    position: fixed;
+    z-index: 1000;
+    margin: 0 !important;
+    pointer-events: none;
+    background: var(--dt-surface);
+    box-shadow: 0 8px 24px rgba(30, 42, 58, 0.18);
+    opacity: 0.95;
+}
+
+/* while a filter is dragged every filter shows only its title, so the list is short enough to drop into */
+.filter-sorting-collapsed > .filter-block > .card-body {
+    display: none !important;
+}
+
+.filter-drag-gap {
+    border: 1px dashed var(--dt-line);
+    border-radius: var(--dt-radius-sm);
+    background: var(--dt-line-soft);
+}
+
+.filter-sorting,
+.filter-sorting * {
+    cursor: grabbing !important;
+    user-select: none;
 }
 
 .filter-all .all-check, .filter-none .none-check {
@@ -880,6 +916,14 @@ table.dataTable.dt-style-card tfoot th {
 
 .filter-control.dt-style-card .side-filter .tag-filter.option-4:hover::before {
     content: 'Exclude \00b7  click to clear';
+}
+
+/* a dragged filter: a card of its own while it is lifted out of the panel */
+.filter-control.dt-style-card .filter-block.filter-dragging {
+    background: var(--dt-surface);
+    border: 1px solid var(--dt-line);
+    border-radius: var(--dt-radius-sm);
+    overflow: hidden;
 }
 
 /* the resize bar's line clears the panel's rounded top corner */
