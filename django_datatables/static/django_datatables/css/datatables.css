@@ -178,6 +178,24 @@
     cursor: not-allowed;
 }
 
+/* Count badge for a value no row in the current filter has. Set by FilterCalcs.badge_colour, it has to win over
+   whatever colour class the template gives the badge (BS5's text-bg-* classes use !important) */
+.badge.filter-count-empty {
+    background-color: var(--bs-secondary, var(--secondary, #6c757d)) !important;
+    color: #fff !important;
+}
+
+/* RowGroup header and subtotal rows */
+table.dataTable tr.dtrg-group.dtrg-start th {
+    background-color: #bee5eb;
+    font-weight: bold;
+}
+
+table.dataTable tr.dtrg-group.dtrg-end td {
+    font-weight: bold;
+    text-align: right;
+}
+
 .row_select{
     width: 6.5em;
     padding: .1rem;

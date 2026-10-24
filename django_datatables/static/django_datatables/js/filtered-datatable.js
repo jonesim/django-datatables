@@ -334,14 +334,13 @@ if (typeof django_datatables === 'undefined') {
                 }
             }
 
+            // [class to add, class to remove]; the badge's colour comes from the template's markup and
+            // datatables.css greys out filter-count-empty, so no Bootstrap classes are needed here
             this.badge_colour = function (key) {
-                if (this.calcs[key] == undefined){
-                    return ['badge-secondary', 'badge-primary']
-                }
-                else if (this.calcs[key][0] > 0) {
-                    return ['badge-primary', 'badge-secondary']
+                if (this.calcs[key] != undefined && this.calcs[key][0] > 0) {
+                    return ['', 'filter-count-empty']
                 } else {
-                    return ['badge-secondary', 'badge-primary']
+                    return ['filter-count-empty', '']
                 }
             }
 
@@ -1165,9 +1164,8 @@ if (typeof django_datatables === 'undefined') {
                                 }
                             }
                             return $('<tr>' + sums_row + '</tr>')
-                        },
-                        startClassName: 'table-info font-weight-bold',
-                        endClassName: 'font-weight-bold white text-right'
+                        }
+                        // RowGroup's own dtrg-start / dtrg-end classes are styled in datatables.css
                     }
             }
 

@@ -72,7 +72,7 @@
                 $("select", context).val('').trigger('change')
             }
             this.format_template = function (state) {
-                var dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill %3">%2</span></span>';
+                var dropdown_item = '<span>%1<span class="float-right mx-1 small badge badge-pill badge-primary %3">%2</span></span>';
                 if (state.loading) return;
                 return $(dropdown_item.replace('%1', state.text).replace('%2', this.filter_calcs.badge_string(state.text)).replace('%3', this.filter_calcs.badge_colour(state.text)[0]));
             }
