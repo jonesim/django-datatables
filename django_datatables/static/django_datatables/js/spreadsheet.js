@@ -2,12 +2,12 @@ if (typeof spreadsheets == 'undefined') {
     var spreadsheets = function () {
         var sheets = {};
         ajax_helpers.command_functions.send_spreadsheet = function (command) {
-            data = sheets[command.table_id].getData();
+            var data = sheets[command.table_id].getData();
             ajax_helpers.post_json({data: {button: 'spreadsheet', data: data}});
         };
 
         ajax_helpers.command_functions.set_cell = function (command) {
-            data = sheets[command.table_id].setValue(command.cell, command.value);
+            sheets[command.table_id].setValue(command.cell, command.value);
         };
 
         var custom_column = {
@@ -30,7 +30,7 @@ if (typeof spreadsheets == 'undefined') {
                     return editor;
                 };
 
-                value = cell.innerHTML;
+                var value = cell.innerHTML;
                 var editor = createEditor('input');
                 editor.focus();
                 editor.value = value;

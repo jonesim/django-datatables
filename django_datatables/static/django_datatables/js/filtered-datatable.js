@@ -125,6 +125,7 @@ if (typeof django_datatables === 'undefined') {
 
         ajax_helpers.command_functions.send_selected = function (command) {
             var ids = django_datatables.DataTables[command.table_id].selected;
+            var data;
             if (command.data === undefined) {
                 data = {};
             } else {
@@ -172,8 +173,6 @@ if (typeof django_datatables === 'undefined') {
                         filter.filter_calcs.sorted_keys = null;
                     }
                 });
-                DataTables[command.table_id].table.api().rows().data().each(function (row) {
-                })
                 for (var r = 0; r < json.data.length; r++) {
                     DataTables[command.table_id].filters.forEach(function (filter) {
                         if (filter.filter_calcs != undefined) {
@@ -554,6 +553,7 @@ if (typeof django_datatables === 'undefined') {
                     var ticked = $(this).closest('.filter-row').find('.filtercheck').prop('checked')
                     $(this).toggleClass('d-none', include && !(several && ticked))
                 })
+                var status
                 if (this.filter_all || this.filter_data.length === Object.keys(this.filter_calcs.calcs).length) {
                     status = 'all'
                 } else if (this.filter_data.length === 0) {
@@ -793,7 +793,7 @@ if (typeof django_datatables === 'undefined') {
                     }
                 } else {
                     this.convert = function (current, value, meta, row) {
-                        return params.html.replace(params.var, meta.setup.rowId(row))
+                        return params.html.replace(params.var, meta.settings.rowId(row))
                     }
                 }
             },
@@ -839,6 +839,7 @@ if (typeof django_datatables === 'undefined') {
                     this.params.not_selected = ''
                 }
                 this.convert = function (current, value) {
+                    var default_value
                     if (django_datatables.DataTables[this.table_id].selected.indexOf(value) != -1){
                         default_value = this.params.selected
                     } else {
