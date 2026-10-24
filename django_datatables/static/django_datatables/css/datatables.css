@@ -264,6 +264,36 @@ table.dataTable tr.dtrg-group.dtrg-end td {
     text-decoration: none;
 }
 
+/* The filter panel is as tall as its filters, not stretched to the table's height. A sticky panel keeps the full
+   height, which it needs to slide within */
+.filter-control {
+    align-self: flex-start;
+}
+
+.filter-control.side-filter-sticky {
+    align-self: stretch;
+}
+
+/* A pivot value: label on the left, "only" and the count badge on the right. A long label wraps beside the badge
+   rather than pushing it onto the next line */
+.filter-row {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.filter-row .form-check {
+    min-width: 0;
+}
+
+.filter-row-end {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-left: 4px;
+}
+
 /* "only" on a pivot filter row: untick every other value. Shown on hover (always on touch screens) */
 .side-filter a.filter-only {
     display: none;
