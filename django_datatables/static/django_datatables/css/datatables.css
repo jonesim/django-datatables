@@ -149,8 +149,10 @@
 }
 
 /* Theme tokens. Defaults sit in :where(:root), which has no specificity, so a site's own :root (or a wrapper's)
-   setting of any of them wins whichever stylesheet loads first. The 'card' table style uses all of them; the
-   default look uses --dt-accent (resize handle, "only" link) and --dt-surface (sticky header background) */
+   setting of any of them wins whichever stylesheet loads first. The 'card' table style uses all of them and needs a
+   browser from 2023 on (:has, color-mix). The default look uses a few (resize handle, "only" link, sticky header,
+   dragged filter), each with its default written in as a fallback, so a browser without :where() (before 2021)
+   still gets those colours */
 :where(:root) {
     --dt-accent: var(--bs-primary, var(--primary, #007bff));
     --dt-accent-soft: color-mix(in srgb, var(--dt-accent) 12%, #ffffff);
@@ -226,7 +228,7 @@
     z-index: 1000;
     margin: 0 !important;
     pointer-events: none;
-    background: var(--dt-surface);
+    background: var(--dt-surface, #ffffff);
     box-shadow: 0 8px 24px rgba(30, 42, 58, 0.18);
     opacity: 0.95;
 }
@@ -237,9 +239,9 @@
 }
 
 .filter-drag-gap {
-    border: 1px dashed var(--dt-line);
-    border-radius: var(--dt-radius-sm);
-    background: var(--dt-line-soft);
+    border: 1px dashed var(--dt-line, #d8dee6);
+    border-radius: var(--dt-radius-sm, 6px);
+    background: var(--dt-line-soft, #eef1f5);
 }
 
 .filter-sorting,
@@ -376,7 +378,7 @@ table.dataTable tr.dtrg-group.dtrg-end td {
     margin-right: 6px;
     font-size: 11px;
     line-height: 18px;
-    color: var(--dt-accent);
+    color: var(--dt-accent, #007bff);
 }
 
 .filter-row:hover a.filter-only {
@@ -427,7 +429,8 @@ table.dataTable tr.dtrg-group.dtrg-end td {
 
 .fb-resize-handle:hover::after,
 .fb-resizing .fb-resize-handle::after {
-    background: color-mix(in srgb, var(--dt-accent) 45%, transparent);
+    background: rgba(0, 123, 255, 0.45);
+    background: color-mix(in srgb, var(--dt-accent, #007bff) 45%, transparent);
 }
 
 .side-filter.fb-collapsed + .fb-resize-handle {
@@ -514,7 +517,7 @@ table.dataTable.sticky-header thead {
 
 table.dataTable.sticky-header thead th,
 table.dataTable.sticky-header thead td {
-    background: var(--dt-surface);
+    background: var(--dt-surface, #ffffff);
 }
 
 /* Opt-in (DATATABLE_STYLE / table_options['table_style'] = 'card'): the table in a rounded card with a tinted header
