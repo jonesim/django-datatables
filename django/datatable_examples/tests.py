@@ -1382,3 +1382,42 @@ class TestColumnMenu(TestCase):
         table.show_column_modal = False
         self.assertFalse(table.show_column_menu())
         self.assertNotIn('fa-columns', table.filter_menu())
+
+
+def card_for_staff(table):
+    return 'card' if table.table_id == 'staff' else 'default'
+
+
+class TestTableStyleOptions(TestCase):
+
+    def table(self, table_id='people', **options):
+        table = DatatableTable(table_id, model=Person, table_options=options)
+        table.add_columns('id', 'first_name')
+        return table
+
+    def test_defaults_add_no_classes(self):
+        table = self.table()
+        self.assertFalse(table.sticky_header())
+        self.assertEqual(table.table_style(), 'default')
+        self.assertEqual(table.table_class(), ' '.join(table.table_classes))
+
+    def test_table_options(self):
+        classes = self.table(sticky_header=True, table_style='card').table_class().split()
+        self.assertIn('sticky-header', classes)
+        self.assertIn('dt-style-card', classes)
+
+    def test_settings_and_function_path(self):
+        with self.settings(DATATABLE_STICKY_HEADER=True, DATATABLE_STYLE='datatable_examples.tests.card_for_staff'):
+            self.assertIn('sticky-header', self.table().table_class().split())
+            self.assertEqual(self.table().table_style(), 'default')
+            self.assertEqual(self.table('staff').table_style(), 'card')
+
+    def test_table_option_wins_over_setting(self):
+        with self.settings(DATATABLE_STYLE='card', DATATABLE_STICKY_HEADER=True):
+            table = self.table(table_style='default', sticky_header=False)
+            self.assertEqual(table.table_class(), ' '.join(table.table_classes))
+
+    def test_table_classes_not_modified(self):
+        table = self.table(table_style='card')
+        table.table_class()
+        self.assertNotIn('dt-style-card', table.table_classes)

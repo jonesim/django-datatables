@@ -1,5 +1,5 @@
 {% load datatable_tags %}
-<div id="fbar-{{ datatable.table_id }}" class="filter-bar{% if labels %} filter-bar-labels{% endif %}">
+<div id="fbar-{{ datatable.table_id }}" class="filter-bar{% if labels %} filter-bar-labels{% endif %}{% if datatable.table_style == 'card' %} dt-style-card{% endif %}">
     <div class="filter-bar-search">
         {% table_search datatable %}
     </div>

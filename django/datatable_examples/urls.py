@@ -66,6 +66,7 @@ urlpatterns = [
 
     # Layout
     path('layout/multiple-tables', layout.MultipleTables.as_view(), name='multiple_tables'),
+    path('layout/table-style', layout.TableStyle.as_view(), name='table_style'),
     path('layout/horizontal', layout.HorizontalTablePage.as_view(), name='horizontal'),
     path('layout/no-model', layout.NoModelData.as_view(), name='no_model'),
     path('layout/simple-table', layout.SimpleTablePage.as_view(), name='simple_table'),

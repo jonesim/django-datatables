@@ -67,6 +67,7 @@ CHAPTERS = (
     )),
     Chapter('Layout', (
         PageRef('multiple_tables', 'Multiple Tables'),
+        PageRef('table_style', 'Card Style & Sticky Headers'),
         PageRef('horizontal', 'Horizontal Table'),
         PageRef('no_model', 'Table Without a Model'),
         PageRef('simple_table', 'Simple Table (No JS)'),

@@ -148,6 +148,25 @@
     -webkit-font-smoothing: antialiased;
 }
 
+/* Theme tokens. Defaults sit in :where(:root), which has no specificity, so a site's own :root (or a wrapper's)
+   setting of any of them wins whichever stylesheet loads first. The 'card' table style uses all of them; the
+   default look uses --dt-accent (resize handle, "only" link) and --dt-surface (sticky header background) */
+:where(:root) {
+    --dt-accent: var(--bs-primary, var(--primary, #007bff));
+    --dt-accent-soft: color-mix(in srgb, var(--dt-accent) 12%, #ffffff);
+    --dt-accent-strong: color-mix(in srgb, var(--dt-accent) 75%, #000000);
+    --dt-good: var(--bs-success, var(--success, #28a745));
+    --dt-bad: var(--bs-danger, var(--danger, #dc3545));
+    --dt-muted: #556172;
+    --dt-surface: #ffffff;
+    --dt-line: #d8dee6;
+    --dt-line-soft: #eef1f5;
+    --dt-head-bg: #f6f8fa;
+    --dt-row-hover: #f5f8fc;
+    --dt-radius: 10px;
+    --dt-radius-sm: 6px;
+}
+
 .section-header-right {
     float: right;
 }
@@ -300,7 +319,7 @@ table.dataTable tr.dtrg-group.dtrg-end td {
     margin-right: 6px;
     font-size: 11px;
     line-height: 18px;
-    color: #007bff;
+    color: var(--dt-accent);
 }
 
 .filter-row:hover a.filter-only {
@@ -351,7 +370,7 @@ table.dataTable tr.dtrg-group.dtrg-end td {
 
 .fb-resize-handle:hover::after,
 .fb-resizing .fb-resize-handle::after {
-    background: rgba(0, 123, 255, 0.45);
+    background: color-mix(in srgb, var(--dt-accent) 45%, transparent);
 }
 
 .side-filter.fb-collapsed + .fb-resize-handle {
@@ -369,16 +388,26 @@ table.dataTable tr.dtrg-group.dtrg-end td {
 }
 
 /* Opt-in (DATATABLE_STICKY_FILTER / table_options['sticky_filter']): the panel stays in view while the table scrolls.
-   Set --fb-sticky-top to clear a sticky navbar */
+   It stops below a sticky navbar at --dt-sticky-top (measured by filtered-datatable.js unless the page sets it),
+   plus --dt-sticky-gap;
+   --fb-sticky-top, if set, still wins for the panel */
 .side-filter-sticky .side-filter,
 .side-filter-sticky .collapsed-bar {
     position: sticky;
-    top: var(--fb-sticky-top, 0px);
+    top: var(--fb-sticky-top, calc(var(--dt-sticky-top, 0px) + var(--dt-sticky-gap, 0px)));
     align-self: flex-start;
 }
 
+/* Filters taller than the screen scroll inside the panel's body, not the whole panel: a scrollbar on the panel
+   itself would sit square over its rounded top corner. The panel is a flex column (.card), so the body takes the
+   height left under the header row */
 .side-filter-sticky .side-filter {
-    max-height: calc(100vh - var(--fb-sticky-top, 0px) - 8px);
+    max-height: calc(100vh - var(--fb-sticky-top, calc(var(--dt-sticky-top, 0px) + var(--dt-sticky-gap, 0px))) - 8px);
+    overflow: hidden;
+}
+
+.side-filter-sticky .side-filter > .card-body {
+    min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
 }
@@ -416,4 +445,433 @@ table.dataTable tr.dtrg-group.dtrg-end td {
 /* DATATABLE_FILTER_BAR_LABELS / table_options['filter_bar_labels']: the reset button shows a filter is on */
 .filter-bar-labels .btn.text-warning {
     border-color: currentColor;
+}
+
+/* Opt-in (DATATABLE_STICKY_HEADER / table_options['sticky_header']): column headers stay in view while the page
+   scrolls, below a sticky navbar at --dt-sticky-top. Needs no scrolling container around the table */
+table.dataTable.sticky-header thead {
+    position: sticky;
+    top: var(--dt-sticky-top, 0px);
+    z-index: 5;
+}
+
+table.dataTable.sticky-header thead th,
+table.dataTable.sticky-header thead td {
+    background: var(--dt-surface);
+}
+
+/* Opt-in (DATATABLE_STYLE / table_options['table_style'] = 'card'): the table in a rounded card with a tinted header
+   band, no striping, and a matching filter panel, coloured by the --dt-* tokens above.
+   The wrapper does not clip the table: a table a few px wider than the card would lose its last column, and
+   clipping would also stop a sticky header sticking */
+.dataTables_wrapper:has(> table.dt-style-card) {
+    background: var(--dt-surface);
+    border: 1px solid var(--dt-line);
+    border-radius: var(--dt-radius);
+    padding: 0 0 6px;
+    margin-top: 6px;
+}
+
+/* DataTables writes a measured px width onto the table, which can push the last column past the card's edge; fill
+   the card instead (a table still grows past it if its content needs to). Direct children only, so scrollY tables
+   keep their split header/body widths */
+.dataTables_wrapper > table.dataTable.dt-style-card {
+    width: 100% !important;
+}
+
+/* Separate, not collapsed, borders: border-radius does not apply to the cells of a collapsed table (Firefox follows
+   the spec; Chrome rounds them anyway), and the header band's corners are rounded on its cells. Each cell draws
+   only a top or a bottom rule, so nothing doubles up. No background of its own: the card is the surface, and a
+   square table background would paint over the inside of the card's rounded border at the corners */
+table.dataTable.dt-style-card {
+    margin: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0;
+    background: transparent;
+}
+
+/* the header band's top corners follow the card's (the card itself does not clip) */
+table.dataTable.dt-style-card thead tr:first-child > :first-child {
+    border-top-left-radius: calc(var(--dt-radius) - 1px);
+}
+
+table.dataTable.dt-style-card thead tr:first-child > :last-child {
+    border-top-right-radius: calc(var(--dt-radius) - 1px);
+}
+
+table.dataTable.dt-style-card thead th,
+table.dataTable.dt-style-card thead td {
+    background-color: var(--dt-head-bg);
+}
+
+table.dataTable.dt-style-card thead th {
+    color: var(--dt-muted);
+    font-size: 13px;
+    font-weight: 600;
+    border-top: 0;
+    border-bottom: 0 !important;
+    vertical-align: bottom;
+}
+
+/* the row of per-column search boxes is part of the header band, ruled off below */
+table.dataTable.dt-style-card thead .column-search-header th {
+    padding-top: 0;
+    border-bottom: 1px solid var(--dt-line) !important;
+}
+
+table.dataTable.dt-style-card .column-search.form-control,
+table.dataTable.dt-style-card .column-search-select.form-control {
+    height: 26px;
+    padding: 2px 6px;
+    font-size: 13px;
+    border-color: var(--dt-line);
+    border-radius: 4px;
+}
+
+/* a header with no search row still needs its rule */
+table.dataTable.dt-style-card thead tr:only-child th {
+    border-bottom: 1px solid var(--dt-line) !important;
+}
+
+/* sort arrows: faint until the column is sorted on */
+table.dataTable.dt-style-card thead th.sorting:before,
+table.dataTable.dt-style-card thead th.sorting:after {
+    opacity: 0.2;
+}
+
+table.dataTable.dt-style-card thead th.sorting_asc:before,
+table.dataTable.dt-style-card thead th.sorting_desc:after {
+    opacity: 0.8;
+    color: var(--dt-accent);
+}
+
+table.dataTable.dt-style-card tbody td {
+    border-top: 1px solid var(--dt-line-soft);
+    vertical-align: middle;
+}
+
+table.dataTable.dt-style-card tbody tr:first-child td {
+    border-top: 0;
+}
+
+/* No striping or sorted-column tint (DataTables paints both with an inset box-shadow). Rows given a colour class
+   (ColourRowsPlugin's table-warning etc.) are left out so they keep it */
+table.dataTable.dt-style-card tbody tr > * {
+    box-shadow: none !important;
+}
+
+table.dataTable.dt-style-card tbody tr:not([class*="table-"]),
+table.dataTable.dt-style-card tbody tr:not([class*="table-"]) > * {
+    background-color: transparent;
+}
+
+table.dataTable.dt-style-card tbody tr:not([class*="table-"]):hover > * {
+    background-color: var(--dt-row-hover);
+}
+
+table.dataTable.dt-style-card tfoot th {
+    color: var(--dt-muted);
+    font-weight: 600;
+}
+
+/* info line and paging under the table */
+.dataTables_wrapper:has(> table.dt-style-card) .dataTables_info,
+.dataTables_wrapper:has(> table.dt-style-card) .dataTables_paginate {
+    padding: 8px 12px 0;
+    font-size: 13px;
+    color: var(--dt-muted);
+}
+
+.dataTables_wrapper:has(> table.dt-style-card) .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper:has(> table.dt-style-card) .dataTables_paginate .paginate_button.current:hover {
+    background: var(--dt-accent);
+    border-color: var(--dt-accent);
+    color: #ffffff !important;
+    border-radius: var(--dt-radius-sm);
+}
+
+/* The filter panel: one card like the table's, with flat sections inside it (by default each filter is a card of
+   its own inside the panel's card). Ported from racelogic's "New look" */
+.filter-control.dt-style-card {
+    --dt-sticky-gap: 8px;
+}
+
+.filter-control.dt-style-card .side-filter,
+.filter-control.dt-style-card .collapsed-bar {
+    margin-top: 6px;
+}
+
+.filter-control.dt-style-card .side-filter {
+    background: var(--dt-surface);
+    border-color: var(--dt-line);
+    border-radius: var(--dt-radius);
+    font-size: 13px;
+}
+
+.filter-control.dt-style-card .side-filter.fb-collapsed {
+    border: 0;
+    margin: 0;
+}
+
+.filter-control.dt-style-card .collapsed-bar {
+    border-radius: var(--dt-radius-sm);
+}
+
+/* a sticky panel's scrollbar: thin, with no track, and stopping short of the rounded bottom corner */
+.filter-control.dt-style-card.side-filter-sticky .side-filter {
+    padding-bottom: calc(var(--dt-radius) / 2);
+}
+
+.filter-control.dt-style-card.side-filter-sticky .side-filter > .card-body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--dt-line) transparent;
+}
+
+/* the top row: results count, rows select and the panel's icons */
+.filter-control.dt-style-card .side-filter > :first-child {
+    padding: 6px 10px !important;
+    background: var(--dt-head-bg);
+    border-bottom: 1px solid var(--dt-line);
+    color: var(--dt-muted);
+    line-height: 24px;
+}
+
+.filter-control.dt-style-card .side-filter a {
+    font-size: 14px;
+    color: var(--dt-muted);
+    margin-right: 6px;
+    transition: color 0.15s;
+}
+
+.filter-control.dt-style-card .side-filter a:hover {
+    color: var(--dt-accent);
+}
+
+.filter-control.dt-style-card .side-filter .row_select {
+    width: auto;
+    height: 24px;
+    padding: 0 4px;
+    margin-left: 4px;
+    font-size: 12px;
+    border-color: var(--dt-line);
+    border-radius: var(--dt-radius-sm);
+}
+
+.filter-control.dt-style-card .side-filter > .card-body {
+    padding: 0 !important;
+}
+
+/* the search box, with a magnifier inside it */
+.filter-control.dt-style-card .side-filter input.table-search {
+    width: calc(100% - 20px);
+    height: 30px;
+    margin: 10px;
+    padding: 4px 8px 4px 28px;
+    font-size: 13px;
+    border-color: var(--dt-line);
+    border-radius: var(--dt-radius-sm);
+    background: var(--dt-surface) no-repeat 9px center / 13px
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23556172' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='M11 11l3.5 3.5'/%3E%3C/svg%3E");
+}
+
+.filter-control.dt-style-card .side-filter a.filter-only {
+    margin: 0 6px 0 0;
+    font-size: 11.5px;
+    line-height: 20px;
+    color: var(--dt-accent);
+}
+
+/* each filter: a tinted title band over its options, split from the next by a full-width line rather than a card */
+.filter-control.dt-style-card .filter-block {
+    margin: 0 !important;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--dt-line);
+    border-radius: 0;
+}
+
+.filter-control.dt-style-card .filter-header {
+    padding: 7px 10px !important;
+    margin: 0;
+    background: var(--dt-head-bg);
+    border: 0;
+    border-radius: 0;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+.filter-control.dt-style-card .filter-block > .card-body {
+    padding: 8px 10px !important;
+}
+
+.filter-control.dt-style-card .filter-block > .card-body.show {
+    border-top: 1px solid var(--dt-line-soft);
+}
+
+/* a part-selected or nothing-selected filter: a bar down the left edge instead of a box round the title */
+.filter-control.dt-style-card .filter-active .filter-header,
+.filter-control.dt-style-card .filter-none .filter-header {
+    border: 0;
+    margin: 0;
+}
+
+.filter-control.dt-style-card .filter-active .filter-header {
+    box-shadow: inset 3px 0 0 var(--dt-good);
+}
+
+.filter-control.dt-style-card .filter-none .filter-header {
+    box-shadow: inset 3px 0 0 var(--dt-bad);
+}
+
+.filter-control.dt-style-card .filter-header-icon {
+    font-size: 13px;
+    margin: 0 0 0 6px;
+}
+
+/* select all / none only while the pointer is over the filter (always on touch screens) */
+@media (hover: hover) {
+    .filter-control.dt-style-card .filter-header .all-check,
+    .filter-control.dt-style-card .filter-header .none-check {
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .filter-control.dt-style-card .filter-block:hover .all-check,
+    .filter-control.dt-style-card .filter-block:hover .none-check {
+        opacity: 1;
+    }
+}
+
+/* each checkbox centred on its label: Bootstrap places it absolutely with a fixed top margin, which sits it low
+   beside the smaller text */
+.filter-control.dt-style-card .side-filter .form-check {
+    padding-left: 0;
+}
+
+.filter-control.dt-style-card .side-filter .form-check-label {
+    display: flex;
+    align-items: center;
+    line-height: 20px;
+}
+
+.filter-control.dt-style-card .side-filter .form-check-label.small {
+    font-size: 12.5px;
+}
+
+.filter-control.dt-style-card .side-filter .form-check-input {
+    position: static;
+    flex-shrink: 0;
+    margin: 0 6px 0 0;
+}
+
+.filter-control.dt-style-card .side-filter table.small td {
+    line-height: 20px;
+    vertical-align: middle;
+}
+
+/* count badges: soft accent rather than solid (an empty count stays grey, see .filter-count-empty) */
+.filter-control.dt-style-card .side-filter .badge-pill {
+    min-width: 26px;
+    margin-top: 2px;
+    font-weight: 600;
+    background: var(--dt-accent-soft);
+    color: var(--dt-accent-strong);
+}
+
+.filter-control.dt-style-card .side-filter .form-control,
+.filter-control.dt-style-card .side-filter .custom-select {
+    height: 30px;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+/* Tag filter: a fixed-size state box before the label. By default the box widens on hover to spell out its state,
+   which pushes the label along; here it keeps its size and a tip above names the state and what a click does next
+   (not set -> include -> required -> exclude -> not set) */
+.filter-control.dt-style-card .side-filter .tag-filter,
+.filter-control.dt-style-card .side-filter .tag-filter:hover {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    margin: 0 6px 0 0;
+    padding: 0;
+    font-family: inherit;
+    font-size: 9px;
+    line-height: 1;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+/* not set: an empty box like an unticked checkbox, rather than a grey cross that reads as "remove" */
+.filter-control.dt-style-card .side-filter .tag-filter.option-1 {
+    background: var(--dt-surface);
+    border: 1px solid var(--dt-line);
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter.option-1::after,
+.filter-control.dt-style-card .side-filter .tag-filter.option-1:hover::after {
+    content: '';
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter.option-2:hover::after {
+    content: '\2714';
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter.option-3:hover::after {
+    content: '\2713';
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter.option-4:hover::after {
+    content: '\2716';
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter:hover::before {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 4px);
+    z-index: 10;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 16px;
+    white-space: nowrap;
+    color: #ffffff;
+    background: #1e2530;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter.option-1:hover::before {
+    content: 'Not set \00b7  click to include';
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter.option-2:hover::before {
+    content: 'Include \00b7  click to require';
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter.option-3:hover::before {
+    content: 'Required \00b7  click to exclude';
+}
+
+.filter-control.dt-style-card .side-filter .tag-filter.option-4:hover::before {
+    content: 'Exclude \00b7  click to clear';
+}
+
+/* the resize bar's line clears the panel's rounded top corner */
+.filter-control.dt-style-card .fb-resize-handle::after {
+    top: 6px;
+}
+
+/* the filter bar's controls match the panel's */
+.filter-bar.dt-style-card .badge-primary {
+    background-color: var(--dt-accent);
+}
+
+.filter-bar.dt-style-card .table-search.form-control {
+    border-color: var(--dt-line);
+    border-radius: var(--dt-radius-sm);
 }

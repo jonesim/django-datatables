@@ -1357,6 +1357,26 @@ if (typeof django_datatables === 'undefined') {
             ajax_helpers.post_json({data: data});
         };
 
+        // Sticky panels and headers (sticky_filter / sticky_header) stop below a sticky navbar at --dt-sticky-top.
+        // Unless the page's css sets it, it is the height of the first sticky or fixed .navbar, kept up to date as
+        // the window resizes (a navbar can wrap onto two lines)
+        var track_sticky_top = function () {
+            var root = document.documentElement
+            if (getComputedStyle(root).getPropertyValue('--dt-sticky-top').trim() !== '') {
+                return
+            }
+            var measure = function () {
+                var navbar = document.querySelector('.navbar.sticky-top, .navbar.fixed-top')
+                root.style.setProperty('--dt-sticky-top', (navbar ? navbar.offsetHeight : 0) + 'px')
+            }
+            measure()
+            window.addEventListener('resize', measure)
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', track_sticky_top)
+        } else {
+            track_sticky_top()
+        }
 
         return {
             BaseProcessAjaxData,

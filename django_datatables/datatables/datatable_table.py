@@ -95,7 +95,12 @@ class DatatableTable:
         return mark_safe('\n            '.join(lines))
 
     def table_class(self):
-        return ' '.join(self.table_classes)
+        classes = list(self.table_classes)
+        if self.sticky_header():
+            classes.append('sticky-header')
+        if self.table_style() == 'card':
+            classes.append('dt-style-card')
+        return ' '.join(classes)
 
     def column(self, column_name):
         return self.find_column(column_name)[0]
@@ -306,7 +311,7 @@ class DatatableTable:
         return self.table_options.get('hidden_side_bar', False)
 
     def side_bar_option(self, option, setting):
-        """Opt-in side bar features. table_options[option] wins, else settings.<setting>, which may be a bool or the
+        """Opt-in features. table_options[option] wins, else settings.<setting>, which may be a bool or the
         dotted path of a function taking the table (e.g. to turn a feature on per user)."""
         if option in self.table_options:
             return bool(self.table_options[option])
@@ -320,6 +325,19 @@ class DatatableTable:
 
     def sticky_filter(self):
         return self.side_bar_option('sticky_filter', 'DATATABLE_STICKY_FILTER')
+
+    def sticky_header(self):
+        """Column headers stay in view while the page scrolls, below a sticky navbar (--dt-sticky-top)"""
+        return self.side_bar_option('sticky_header', 'DATATABLE_STICKY_HEADER')
+
+    def table_style(self):
+        """'default', or 'card': the table in a rounded card with a tinted header band, no striping, and a matching
+        filter panel, coloured by the --dt-* custom properties in datatables.css. table_options['table_style'] wins,
+        else settings.DATATABLE_STYLE: either style, or the dotted path of a function taking the table."""
+        style = self.table_options.get('table_style', getattr(settings, 'DATATABLE_STYLE', 'default'))
+        if style not in ('default', 'card'):
+            style = import_string(style)(self)
+        return 'card' if style == 'card' else 'default'
 
     def filter_bar(self):
         """Search, result count, rows per page, reset and columns in one row above the table, in place of the side

@@ -14,6 +14,7 @@ from django_modals.modals import FormModal
 
 from datatable_examples import models
 from datatable_examples.views.base import ManualPage
+from django_datatables.column_visibility.mixins import ColumnVisibilityMixin
 from django_datatables.columns import ColumnBase, ColumnLink, DatatableColumn
 from django_datatables.datatables import DatatableTable, DatatableView, HorizontalTable, SimpleTable
 from django_datatables.plugins.column_totals import ColumnTotals
@@ -52,6 +53,39 @@ class MultipleTables(ManualPage, DatatableView):
             'with an id and model, then configure each in its own <code>setup_&lt;table_id&gt;</code> '
             'method. The template receives them as <code>datatables.t1</code>, '
             '<code>datatables.t2</code>, … instead of the single <code>datatable</code>.'
+        )}
+
+
+class TableStyle(ColumnVisibilityMixin, ManualPage, DatatableView):
+    model = models.Person
+    page_title = 'Card Style & Sticky Headers'
+
+    @staticmethod
+    def setup_table(table):
+        table.table_options.update({'table_style': 'card', 'sticky_header': True, 'sticky_filter': True})
+        table.add_columns(
+            'id',
+            'first_name',
+            'surname',
+            ('company__name', {'title': 'Company Name'}),
+            'title_model',
+        )
+        table.add_js_filters('pivot', 'title_model')
+        table.add_js_filters('pivot', 'company__name')
+
+    def add_to_context(self, **kwargs):
+        return {'description': (
+            "<b>table_style</b> (<code>DATATABLE_STYLE</code>) set to <code>'card'</code> puts the table in a "
+            'rounded card with a tinted header band, no striping and a soft row hover, and gives the filter panel '
+            'and filter bar a matching look. Its colours and corners come from custom properties that a site can '
+            'set on <code>:root</code>: <code>--dt-accent</code>, <code>--dt-muted</code>, <code>--dt-surface</code>, '
+            '<code>--dt-line</code>, <code>--dt-line-soft</code>, <code>--dt-head-bg</code>, '
+            '<code>--dt-row-hover</code>, <code>--dt-radius</code> and <code>--dt-radius-sm</code>. '
+            '<b>sticky_header</b> (<code>DATATABLE_STICKY_HEADER</code>) keeps the column headers in view while the '
+            'page scrolls. Sticky headers and panels stop below a sticky navbar: <code>--dt-sticky-top</code> is '
+            'set to the height of the first <code>.navbar.sticky-top</code> or <code>.navbar.fixed-top</code>, '
+            "unless the site's css sets it. Each option can also be a setting whose value is the dotted path of a "
+            'function taking the table, for example to give the card style only to users who choose it.'
         )}
 
 
