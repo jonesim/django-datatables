@@ -191,11 +191,69 @@ if (typeof django_datatables === 'undefined') {
         };
 
         ajax_helpers.command_functions.restore_datatable = function (command) {
-            state = JSON.parse(command.state)
+            var tablesetup = DataTables[command.table_id].initsetup
+            var state = JSON.parse(command.state)
             state.time = new Date().getTime()
             state.state_id = command.state_id
-            localStorage.setItem('DataTables_' + command.table_id + '_' + location.pathname, JSON.stringify(state));
+            // get_key only accepts a state saved in this session
+            state.session_id = tablesetup.session_id
+            store_state(tablesetup.local_storage_key, JSON.stringify(state), tablesetup.session_id);
         };
+
+        // Table states are saved to localStorage on every draw. Storage is shared by the whole origin and
+        // capped at a few MB, so stale states are cleared to make room when it is full, and a full or blocked
+        // store never stops a table drawing.
+        var storage_failed = false
+
+        // DataTables_* keys are only written by filtered_datatables_legacy.js; drop them here along with it
+        function is_state_key(key) {
+            return (key.indexOf('Datatable_') === 0 && !/_filter_width$/.test(key)) || key.indexOf('DataTables_') === 0
+        }
+
+        // Removes the states nothing reads again: DataTables_* keys (one per table per URL, left by versions
+        // before July 2025) and Datatable_* states from another session, which get_key ignores. Every state
+        // is written by JSON.stringify, so a string search finds the session without parsing each one.
+        function sweep_stale_states(session_id, keep) {
+            var live = typeof session_id === 'string' && session_id !== '' ? '"session_id":' + JSON.stringify(session_id) : null
+            Object.keys(localStorage).forEach(function (key) {
+                if (key === keep || !is_state_key(key)) return
+                if (key.indexOf('DataTables_') === 0 || (live && localStorage.getItem(key).indexOf(live) === -1)) {
+                    localStorage.removeItem(key)
+                }
+            })
+        }
+
+        function store_state(key, value, session_id) {
+            if (storage_failed) return
+            try {
+                localStorage.setItem(key, value)
+                return
+            } catch (e) {
+            }
+            // full: free the stale states, then every other table's state, before giving up for this page
+            try {
+                sweep_stale_states(session_id, key)
+                localStorage.setItem(key, value)
+                return
+            } catch (e) {
+            }
+            try {
+                Object.keys(localStorage).forEach(function (k) {
+                    if (k !== key && is_state_key(k)) localStorage.removeItem(k)
+                })
+                localStorage.setItem(key, value)
+            } catch (e) {
+                storage_failed = true
+            }
+        }
+
+        function read_state(key) {
+            try {
+                return JSON.parse(localStorage.getItem(key))
+            } catch (e) {
+                return null
+            }
+        }
 
         var utilities = {
 
@@ -929,16 +987,13 @@ if (typeof django_datatables === 'undefined') {
                 data.columns.forEach((item, i) => {
                     item.name = tablesetup.tableOptions.columnDefs[i].name;
                 });
-                localStorage.setItem(tablesetup.local_storage_key, JSON.stringify(data));
+                store_state(tablesetup.local_storage_key, JSON.stringify(data), tablesetup.session_id);
             }
 
             this.get_key = function (settings) {
-                var data = localStorage.getItem(tablesetup.local_storage_key);
-                if (data) {
-                    data = JSON.parse(data);
-                    if (tablesetup.session_id == data.session_id) {
-                        return data;
-                    }
+                var data = read_state(tablesetup.local_storage_key);
+                if (data && tablesetup.session_id == data.session_id) {
+                    return data;
                 }
                 return tablesetup.state ? tablesetup.state: null;
             }

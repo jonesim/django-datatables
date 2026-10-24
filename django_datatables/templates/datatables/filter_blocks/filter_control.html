@@ -38,8 +38,11 @@
             $("#" + html_id + "-filter-block .card-body").collapse('show')
         }
 
-        var data = localStorage.getItem('{{ datatable.local_storage_key }}');
-        data = data ? JSON.parse(data) : null;
+        var data = null;
+        try {
+            data = JSON.parse(localStorage.getItem('{{ datatable.local_storage_key }}'));
+        } catch (e) {
+        }
         if (data != null){
             show_hide_filter_block('{{ datatable.table_id }}', !data.hidden_side_bar)
         } else {
