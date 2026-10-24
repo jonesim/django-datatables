@@ -1,5 +1,6 @@
 from django.db.models import Count
 from django.forms.fields import CharField
+from django_menus.menu import MenuItem
 
 from datatable_examples import models
 from datatable_examples.views.base import ManualPage
@@ -44,10 +45,23 @@ class PivotSelect2Filters(ManualPage, DatatableView):
 class FilterPanelOptions(ManualPage, DatatableView):
     model = models.Person
     page_title = 'Filter Panel Options'
+    code_examples = ['setup_table', 'setup_menu']
 
-    @staticmethod
-    def setup_table(table):
-        table.table_options.update({'filter_mode': 'include', 'resizable_filter': True, 'sticky_filter': True})
+    # The table options the buttons above the table switch: (table_options key, button label, [(value, text), ...]).
+    # The page opens with the first value of each; the query string carries the index of the one picked.
+    panel_options = [
+        ('filter_mode', 'Pivot filters', [('include', 'Tick to show'), ('exclude', 'Untick to hide')]),
+        ('resizable_filter', 'Resizable', [(True, 'On'), (False, 'Off')]),
+        ('sticky_filter', 'Sticky panel', [(True, 'On'), (False, 'Off')]),
+        ('sticky_header', 'Sticky header', [(False, 'Off'), (True, 'On')]),
+        ('table_style', 'Style', [('default', 'Default'), ('card', 'Card')]),
+    ]
+
+    def picked(self, key):
+        return 1 if self.request.GET.get(key) == '1' else 0
+
+    def setup_table(self, table):
+        table.table_options.update({key: choices[self.picked(key)][0] for key, _label, choices in self.panel_options})
         table.add_columns(
             'id',
             'first_name',
@@ -57,18 +71,37 @@ class FilterPanelOptions(ManualPage, DatatableView):
         table.add_js_filters('pivot', 'title_model')
         table.add_js_filters('pivot', 'company__name')
 
+    def setup_menu(self):
+        super().setup_menu()
+        buttons = []
+        for key, label, choices in self.panel_options:
+            picked = self.picked(key)
+            query = self.request.GET.copy()
+            query[key] = str(1 - picked)
+            buttons.append(MenuItem(f'?{query.urlencode()}', f'{label}: {choices[picked][1]}',
+                                    link_type=MenuItem.HREF,
+                                    css_classes='btn-sm ' + ('btn-outline-primary' if picked else 'btn-outline-secondary'),
+                                    tooltip=f'Switch to {choices[1 - picked][1]}'))
+        buttons.append(MenuItem(self.request.path, 'Reset options', link_type=MenuItem.HREF, css_classes='btn-sm btn-link'))
+        self.add_menu('page_menu', 'buttons').add_items(*buttons)
+
     def add_to_context(self, **kwargs):
         return {'description': (
             'Opt-in behaviour for the filter panel, each set per table in <code>table_options</code> or for '
             'every table with a setting (a bool, or the dotted path of a function taking the table). '
+            'Use the buttons above the table to switch each one; a button turns blue when its option is '
+            'changed from how the page opens. '
             '<b>filter_mode</b> (<code>DATATABLE_FILTER_MODE</code>) sets how pivot filters tick: '
             '<code>exclude</code> (the default) starts every value ticked and unticking one hides it; '
-            '<code>include</code>, used here, starts with nothing ticked showing every row, and ticking values '
-            'shows only those. Ticks saved in one mode are moved over when the table opens in the other. '
-            'Hover a pivot row for <i>only</i>. '
+            '<code>include</code> starts with nothing ticked showing every row, and ticking values shows only '
+            'those. Ticks made in one mode are moved over when the table opens in the other, so the same rows '
+            'show. Hover a pivot row for <i>only</i>. '
             '<b>resizable_filter</b> (<code>DATATABLE_RESIZABLE_FILTER</code>) lets you drag the bar right of '
             'the panel to resize it, or double-click it to hide the panel. <b>sticky_filter</b> '
-            '(<code>DATATABLE_STICKY_FILTER</code>) keeps the panel in view while the table scrolls.'
+            '(<code>DATATABLE_STICKY_FILTER</code>) keeps the panel in view while the table scrolls, and '
+            '<b>sticky_header</b> (<code>DATATABLE_STICKY_HEADER</code>) does the same for the column headers. '
+            '<b>table_style</b> (<code>DATATABLE_STYLE</code>) switches between the default look and the card '
+            'style (see <i>Layout &rsaquo; Card Style &amp; Sticky Headers</i>).'
         )}
 
 
