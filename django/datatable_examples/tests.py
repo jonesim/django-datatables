@@ -21,6 +21,7 @@ from datatable_examples.column_docs import ALIAS_COLUMNS, COLUMN_SECTIONS, docum
 from datatable_examples.models import Company, Payment, Person, Tags
 from datatable_examples.views.reference import ColumnReference
 from django_datatables import columns as columns_module
+from django_datatables.column_visibility.mixins import ColumnVisibilityMixin
 from datatable_examples.views.server_side import (JsonBooleanColumn, ServerSideJsonColumn,
                                                   ServerSidePagination, ServerSideTagFilter,
                                                   ServerSideTotalsFilter)
@@ -1341,3 +1342,43 @@ class TestModelOrdering(TestCase):
         table.initial_values = ['name']
         with mock.patch.object(Company._meta, 'ordering', ['order']):
             self.assertEqual([r['name'] for r in table.get_query()].count('Duplicate'), 1)
+
+
+class TestColumnMenu(TestCase):
+    """The columns button posts to datatable_columns, so it only shows on views with ColumnVisibilityMixin"""
+
+    class PlainView(DatatableView):
+        model = Person
+
+    class ColumnsView(ColumnVisibilityMixin, DatatableView):
+        model = Person
+
+    def table(self, view_class):
+        view = None
+        if view_class:
+            view = view_class()
+            view.request = RequestFactory().get('/')
+            view.request.user = AnonymousUser()
+        table = DatatableTable('people', model=Person, view=view)
+        table.add_columns('id', 'first_name')
+        return table
+
+    def test_hidden_without_mixin(self):
+        for view_class in (self.PlainView, None):
+            table = self.table(view_class)
+            self.assertFalse(table.show_column_menu())
+            self.assertNotIn('fa-columns', table.filter_menu())
+            self.assertNotIn('fa-columns', table.filter_bar_menu(labels=True))
+
+    def test_shown_with_mixin(self):
+        table = self.table(self.ColumnsView)
+        self.assertTrue(table.show_column_menu())
+        self.assertIn('fa-columns', table.filter_menu())
+        self.assertIn('fa-columns', table.collapsed_filter_menu())
+        self.assertIn('Columns', table.filter_bar_menu(labels=True))
+
+    def test_show_column_modal_false_hides_it(self):
+        table = self.table(self.ColumnsView)
+        table.show_column_modal = False
+        self.assertFalse(table.show_column_menu())
+        self.assertNotIn('fa-columns', table.filter_menu())

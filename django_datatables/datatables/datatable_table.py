@@ -486,12 +486,17 @@ class DatatableTable:
                         link_type=MenuItem.JAVASCRIPT,
                         font_awesome='fas fa-minus-circle')
 
+    def show_column_menu(self):
+        """The columns button posts to the view's datatable_columns, which ColumnVisibilityMixin provides; without it
+        the request fails, so the button is only shown on views that have it. show_column_modal = False hides it."""
+        return self.show_column_modal and hasattr(self.view, 'datatable_columns')
+
     def column_menu_item(self):
         return MenuItem(f"ajax_helpers.post_json({{data:"
                         f"{{ajax_method: 'datatable_columns', datatable: '{self.table_id}'}}}})", ' ',
                         css_classes=' ',
                         tooltip='Hide/Order Columns',
-                        visible=self.show_column_modal,
+                        visible=self.show_column_menu(),
                         link_type=MenuItem.JAVASCRIPT,
                         font_awesome='fas fa-columns')
 
@@ -548,7 +553,7 @@ class DatatableTable:
                      'Columns' if labels else '',
                      css_classes=css_classes,
                      tooltip=None if labels else 'Hide/Order Columns',
-                     visible=self.show_column_modal,
+                     visible=self.show_column_menu(),
                      link_type=MenuItem.JAVASCRIPT,
                      font_awesome='fas fa-columns'),
         ).render()

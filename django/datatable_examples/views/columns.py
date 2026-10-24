@@ -118,13 +118,12 @@ class ColumnVisibility(ColumnVisibilityMixin, ManualPage, DatatableView):
         table.add_js_filters('selected', 'SelectColumn')
         table.hidden_side_bar = True
         table.table_options['ajax_url'] = self.request.path
-        table.show_column_modal = True
 
     def add_to_context(self, **kwargs):
         description = (
             '<code>ColumnVisibilityMixin</code> lets users choose and reorder the visible columns, with '
-            'the layout saved per user. <code>show_column_modal</code> adds the column-picker button, '
-            'and per-column <code>hide_options</code> control the behaviour: <code>HIDE_OPTIONAL</code> '
+            'the layout saved per user. The mixin adds the column-picker button to the filter panel '
+            '(set <code>show_column_modal = False</code> to leave it out), and per-column <code>hide_options</code> control the behaviour: <code>HIDE_OPTIONAL</code> '
             'columns are hidden on small screens, <code>HIDE_OMIT</code> columns are dropped from the '
             'request entirely when hidden. <code>hidden_side_bar</code> collapses the filter side bar '
             'behind a toggle. When the URL contains a company id (as the links on the '
