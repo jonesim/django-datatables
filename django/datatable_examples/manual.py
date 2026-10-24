@@ -48,6 +48,7 @@ CHAPTERS = (
         PageRef('search_boxes', 'Search Boxes'),
         PageRef('modal_filter', 'Modal Filter'),
         PageRef('filter_panel_options', 'Filter Panel Options'),
+        PageRef('filter_bar', 'Filter Bar'),
     )),
     Chapter('Server-side Tables', (
         PageRef('server_side', 'Pagination & Search'),

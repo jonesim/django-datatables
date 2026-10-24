@@ -20,6 +20,14 @@ def filter_control(table):
     return {'datatable': table}
 
 
+@register.inclusion_tag('datatables/filter_blocks/filter_bar.html')
+def filter_bar(table, labels=None):
+    """The side panel's controls in one row. labels=True/False overrides the table's filter_bar_labels option."""
+    if labels is None:
+        labels = table.filter_bar_labels()
+    return {'datatable': table, 'labels': labels, 'menu': table.filter_bar_menu(labels)}
+
+
 @register.simple_tag
 def filter_group(datatable):
     filters = []

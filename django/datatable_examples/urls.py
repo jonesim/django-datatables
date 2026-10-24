@@ -47,6 +47,7 @@ urlpatterns = [
     path('filters/modal', filters.ModalFilter.as_view(), name='modal_filter'),
     path('filters/modal/<str:base64>', filters.ModalFilter.as_view(), name='modal_filter'),
     path('filters/panel-options', filters.FilterPanelOptions.as_view(), name='filter_panel_options'),
+    path('filters/filter-bar', filters.FilterBar.as_view(), name='filter_bar'),
 
     # Server-side tables
     path('server-side/pagination', server_side.ServerSidePagination.as_view(), name='server_side'),

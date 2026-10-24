@@ -1,4 +1,6 @@
 {% load datatable_tags %}
+{# with the filter bar on, its controls render above the table instead (datatables/table.html) #}
+{% if not datatable.filter_bar %}
 {% with resizable=datatable.resizable_filter sticky=datatable.sticky_filter filter_mode=datatable.filter_mode %}
 <div class="d-flex{% if resizable %} side-filter-resizable{% endif %}{% if sticky %} side-filter-sticky{% endif %}">
     <div id="fb-{{ datatable.table_id }}" class="side-filter card{% if filter_mode == 'include' %} fb-mode-include{% endif %}{% if datatable.hidden_side_bar %} fb-collapsed{% endif %}">
@@ -166,3 +168,4 @@
 {% endwith %}
 
 {% block remove_registration %}{% endblock %}
+{% endif %}

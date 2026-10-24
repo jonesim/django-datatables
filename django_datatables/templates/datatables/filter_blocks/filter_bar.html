@@ -1,0 +1,19 @@
+{% load datatable_tags %}
+<div id="fbar-{{ datatable.table_id }}" class="filter-bar{% if labels %} filter-bar-labels{% endif %}">
+    <div class="filter-bar-search">
+        {% table_search datatable %}
+    </div>
+    {% no_of_results datatable %}
+    {% no_of_rows datatable %}
+    <div class="filter-bar-buttons">
+        {{ menu }}
+    </div>
+</div>
+<script>
+    django_datatables.add_plugin('{{ datatable.table_id }}', {
+        refresh: function (table) {
+            var page_info = table.table.api().page.info()
+            $('.{{ datatable.table_id }}-reset-button').toggleClass('text-warning', page_info.recordsTotal !== page_info.recordsDisplay)
+        }
+    });
+</script>

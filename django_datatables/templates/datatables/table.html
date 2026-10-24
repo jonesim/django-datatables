@@ -1,4 +1,5 @@
-{% spaceless %}
+{% load datatable_tags %}{% spaceless %}
+    {% if datatable.filter_bar %}{% filter_bar datatable %}{% endif %}
     <div id="{{ datatable.table_id }}-above"></div>
     <table id="{{ datatable.table_id }}" class="{{ datatable.table_class }}" data-url="{{ request.path }}">
         <thead>

@@ -321,6 +321,22 @@ class DatatableTable:
     def sticky_filter(self):
         return self.side_bar_option('sticky_filter', 'DATATABLE_STICKY_FILTER')
 
+    def filter_bar(self):
+        """Search, result count, rows per page, reset and columns in one row above the table, in place of the side
+        panel (which then renders nothing). table_options['filter_bar'] wins, else settings.DATATABLE_FILTER_BAR: a
+        bool, 'auto' (only tables with no JS filters, so nothing needs the panel), or the dotted path of a function
+        taking the table."""
+        value = self.table_options.get('filter_bar', getattr(settings, 'DATATABLE_FILTER_BAR', False))
+        if value == 'auto':
+            return not self.js_filter_list
+        if isinstance(value, str):
+            value = import_string(value)(self)
+        return bool(value)
+
+    def filter_bar_labels(self):
+        """Named buttons ("Reset table", "Columns") in the filter bar instead of icons with tooltips"""
+        return self.side_bar_option('filter_bar_labels', 'DATATABLE_FILTER_BAR_LABELS')
+
     def filter_mode(self):
         """How pivot filters tick: 'exclude' (every value starts ticked, untick to hide) or 'include' (nothing ticked
         shows every row, tick values to show only those). table_options['filter_mode'] wins, else
@@ -517,6 +533,25 @@ class DatatableTable:
         return HtmlMenu(None, template='datatables/icon_menu.html').add_items(self.expand_filter_menu_item(),
                                                                               self.column_menu_item(),
                                                                               self.clear_table_menu_item(),).render()
+
+    def filter_bar_menu(self, labels=False):
+        css_classes = 'btn btn-sm btn-outline-secondary' if labels else 'filter-header-icon'
+        return HtmlMenu(None, template='datatables/icon_menu.html').add_items(
+            MenuItem(f"django_datatables.DataTables['{self.table_id}'].reset_table()",
+                     'Reset table' if labels else '',
+                     css_classes=f'{self.table_id}-reset-button {css_classes}',
+                     tooltip=None if labels else 'Reset Table',
+                     link_type=MenuItem.JAVASCRIPT,
+                     font_awesome='fas fa-minus-circle'),
+            MenuItem(f"ajax_helpers.post_json({{data:"
+                     f"{{ajax_method: 'datatable_columns', datatable: '{self.table_id}'}}}})",
+                     'Columns' if labels else '',
+                     css_classes=css_classes,
+                     tooltip=None if labels else 'Hide/Order Columns',
+                     visible=self.show_column_modal,
+                     link_type=MenuItem.JAVASCRIPT,
+                     font_awesome='fas fa-columns'),
+        ).render()
 
 
 class HorizontalTable(DatatableTable):

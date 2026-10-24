@@ -1,0 +1,13 @@
+{% extends 'datatable_examples/table.html' %}
+{% load datatable_tags %}
+{% block tables %}
+    {# the same layout as a single-table page: filter_control renders nothing once filter_bar is on #}
+    {% for datatable in datatables.values %}
+        <div class="d-flex mb-5">
+            {% filter_control datatable %}
+            <div class="px-4 d-block float-left">
+                {{ datatable.render|safe }}
+            </div>
+        </div>
+    {% endfor %}
+{% endblock %}

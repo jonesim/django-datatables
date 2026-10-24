@@ -352,3 +352,38 @@ table.dataTable tr.dtrg-group.dtrg-end td {
     overflow-x: hidden;
     overflow-y: auto;
 }
+
+/* Opt-in (DATATABLE_FILTER_BAR / table_options['filter_bar']): the side panel's controls in one row above the table */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    margin-bottom: 6px;
+}
+
+.filter-bar .filter-bar-search {
+    flex: 0 1 280px;
+    min-width: 160px;
+}
+
+.filter-bar .table-search {
+    height: auto;
+    padding: .25rem .5rem;
+    font-size: .875rem;
+}
+
+.filter-bar .filter-bar-buttons {
+    margin-left: auto;
+}
+
+.filter-bar .filter-bar-buttons > div {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* DATATABLE_FILTER_BAR_LABELS / table_options['filter_bar_labels']: the reset button shows a filter is on */
+.filter-bar-labels .btn.text-warning {
+    border-color: currentColor;
+}

@@ -3,6 +3,7 @@ from django.forms.fields import CharField
 
 from datatable_examples import models
 from datatable_examples.views.base import ManualPage
+from django_datatables.column_visibility.mixins import ColumnVisibilityMixin
 from django_datatables.columns import ColumnBase, DatatableColumn, DateColumn
 from django_datatables.datatables import DatatableView
 from django_datatables.filters import PythonPivotFilter
@@ -68,6 +69,47 @@ class FilterPanelOptions(ManualPage, DatatableView):
             '<b>resizable_filter</b> (<code>DATATABLE_RESIZABLE_FILTER</code>) lets you drag the bar right of '
             'the panel to resize it, or double-click it to hide the panel. <b>sticky_filter</b> '
             '(<code>DATATABLE_STICKY_FILTER</code>) keeps the panel in view while the table scrolls.'
+        )}
+
+
+class FilterBar(ColumnVisibilityMixin, ManualPage, DatatableView):
+    template_name = 'datatable_examples/filter_bar.html'
+    page_title = 'Filter Bar'
+    code_examples = ['add_tables', 'setup_t1', 'setup_t2']
+
+    def add_tables(self):
+        self.add_table('t1', model=models.Company)
+        self.add_table('t2', model=models.Person)
+
+    @staticmethod
+    def setup_t1(table):
+        table.table_options['filter_bar'] = 'auto'
+        table.add_columns(
+            'id',
+            'name',
+            ColumnBase(column_name='people', field='people', annotations={'people': Count('person__id')}),
+        )
+
+    @staticmethod
+    def setup_t2(table):
+        table.table_options.update({'filter_bar': True, 'filter_bar_labels': True})
+        table.add_columns(
+            'id',
+            'first_name',
+            'surname',
+            ('company__name', {'title': 'Company Name'}),
+        )
+
+    def add_to_context(self, **kwargs):
+        return {'description': (
+            'A table with no JavaScript filters only needs the top of the filter panel: search, the result count, '
+            'rows per page, reset and columns. <b>filter_bar</b> (<code>DATATABLE_FILTER_BAR</code>) puts those in '
+            'one row above the table instead, and <code>{% filter_control %}</code> then renders nothing, so page '
+            'templates need no change. Set it to <code>True</code>, or to <code>\'auto\'</code> to use the bar only '
+            'on tables without JS filters (the first table). <b>filter_bar_labels</b> '
+            '(<code>DATATABLE_FILTER_BAR_LABELS</code>) names the buttons instead of showing icons (the second '
+            'table). To place the bar yourself, use <code>{% filter_bar datatable %}</code> (with '
+            '<code>labels=True</code> to override the option) and leave <b>filter_bar</b> off.'
         )}
 
 
