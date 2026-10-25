@@ -1,6 +1,5 @@
 import base64
 
-from crispy_forms.layout import HTML
 from django.db import transaction, IntegrityError
 from django.forms import BooleanField
 from django_modals.forms import CrispyForm
@@ -8,6 +7,7 @@ from django_modals.modals import FormModal
 
 from django_datatables.constants import HIDE_OPTIONAL
 from django_datatables.datatables import DatatableTable
+from django_datatables.modal_layout import HTML
 from django_datatables.models import SavedState
 from django_datatables.reorder_datatable import OrderedDatatable
 

@@ -1,8 +1,6 @@
 import json
 
 from ajax_helpers.utils import ajax_command
-from crispy_forms.bootstrap import StrictButton
-from crispy_forms.layout import HTML
 from django import forms
 from django.conf import settings
 from django.db.models import Count
@@ -17,6 +15,7 @@ from datatable_examples.views.base import ManualPage
 from django_datatables.column_visibility.mixins import ColumnVisibilityMixin
 from django_datatables.columns import ColumnBase, ColumnLink, DatatableColumn
 from django_datatables.datatables import DatatableTable, DatatableView, HorizontalTable, SimpleTable
+from django_datatables.modal_layout import HTML, StrictButton
 from django_datatables.plugins.column_totals import ColumnTotals
 from django_datatables.reorder_datatable import reorder
 from django_datatables.widgets import DataTableReorderWidget, DataTableWidget

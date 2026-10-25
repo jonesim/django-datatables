@@ -1,7 +1,7 @@
 from django.utils.safestring import mark_safe
-from crispy_forms.bootstrap import StrictButton
 from django_modals.modals import ModelFormModal
 from django_modals.widgets.widgets import Toggle
+from .modal_layout import StrictButton
 from .models import SavedState
 
 from django_modals.processes import PROCESS_DELETE, PERMISSION_METHOD, PROCESS_EDIT_DELETE
